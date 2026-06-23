@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
 # ---- runtime: slim, non-root, just the venv + the CLI on PATH ------------------------------------
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 LABEL org.opencontainers.image.title="Watchman" \
       org.opencontainers.image.description="The headless engine — the hn CLI + standing agents + bus." \
       org.opencontainers.image.source="https://github.com/thwomp-io/watchman" \
