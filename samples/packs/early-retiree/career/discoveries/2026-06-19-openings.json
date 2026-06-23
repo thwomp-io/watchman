@@ -1,0 +1,22 @@
+[
+  {
+    "company": "Brightwell Health",
+    "ats": "greenhouse",
+    "total_open": 3,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      { "company": "Brightwell Health", "title": "Independent Board Director", "url": "https://example.com/brightwell/board", "location": "Hybrid", "remote": false, "salary": "$45,000 – $70,000 retainer", "department": "Board", "updated": "2026-06-17", "source": "greenhouse" }
+    ]
+  },
+  {
+    "company": "Cascade Robotics",
+    "ats": "greenhouse",
+    "total_open": 5,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      { "company": "Cascade Robotics", "title": "Technical Advisor (part-time)", "url": "https://example.com/cascade/advisor", "location": "Remote", "remote": true, "salary": "equity + stipend", "department": "Advisory", "updated": "2026-06-14", "source": "greenhouse" }
+    ]
+  }
+]

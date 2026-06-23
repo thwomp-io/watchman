@@ -1,0 +1,69 @@
+# Early Retiree — a FICTIONAL finance profile (sample weight pack).
+#
+# Everything here is invented for demonstration: an early retiree (~$2.5M net worth) living off a
+# diversified, income-tilted portfolio — broad index funds + dividend equities + a real bond sleeve, a
+# large tax-advantaged base, and a healthy cash runway. The contrast to `demo-growth` (young, aggressive,
+# thin) and `demo-investor` (mid, index-anchored): load one, swap to another, watch the finance dashboards
+# re-render against a different life.
+#
+# NOT real holdings. NOT financial advice. The toolkit is read-only (observation + research), never execution.
+#
+# Schema:
+#   - `holdings` grouped by `account` (taxable / retirement / cash).
+#   - Market positions (`type: etf|stock`) value from LIVE public prices (or the offline quotes.json fixture).
+#   - Non-market balances (`type: retirement|cash`) value from a static `balance` + `as_of`.
+
+holdings:
+  # --- Taxable brokerage (the income engine: broad index + dividend equity + a real bond sleeve) ---
+  - {symbol: VTI,  name: Vanguard Total Stock Market ETF,   account: taxable, shares: 1800, avg_cost: 205.10, cost_basis: 369180.00, type: etf}
+  - {symbol: VXUS, name: Vanguard Total International ETF,   account: taxable, shares: 2400, avg_cost: 55.40,  cost_basis: 132960.00, type: etf}
+  - {symbol: SCHD, name: Schwab US Dividend Equity ETF,      account: taxable, shares: 3600, avg_cost: 24.90,  cost_basis: 89640.00,  type: etf}
+  - {symbol: VYM,  name: Vanguard High Dividend Yield ETF,   account: taxable, shares: 900,  avg_cost: 112.30, cost_basis: 101070.00, type: etf}
+  - {symbol: BND,  name: Vanguard Total Bond Market ETF,     account: taxable, shares: 2800, avg_cost: 74.60,  cost_basis: 208880.00, type: etf}
+  - {symbol: JNJ,  name: Johnson & Johnson,                  account: taxable, shares: 400,  avg_cost: 158.20, cost_basis: 63280.00,  type: stock}
+  - {symbol: PG,   name: Procter & Gamble Co,                account: taxable, shares: 300,  avg_cost: 145.70, cost_basis: 43710.00,  type: stock}
+  - {symbol: KO,   name: Coca-Cola Co,                       account: taxable, shares: 700,  avg_cost: 58.40,  cost_basis: 40880.00,  type: stock}
+  - {symbol: JPM,  name: JPMorgan Chase & Co,                account: taxable, shares: 200,  avg_cost: 198.50, cost_basis: 39700.00,  type: stock}
+  # --- Career-accumulated company stock, unwinding in retirement (the unwind story; per-lot basis) ---
+  - symbol: IBM
+    name: IBM (career-accumulated company stock)
+    account: taxable
+    shares: 600
+    avg_cost: 142.30
+    cost_basis: 85380.00
+    type: stock
+    lots:
+      - {acquired: "2012-04-01", qty: 250, unit_cost: 98.40}    # deep long-term gain
+      - {acquired: "2016-06-15", qty: 180, unit_cost: 150.20}   # gain
+      - {acquired: "2020-11-01", qty: 120, unit_cost: 118.70}   # gain
+      - {acquired: "2024-09-01", qty: 50,  unit_cost: 285.00}   # loss lot (TLH inventory)
+  # --- Retirement (penalty-locked; valued from a synced balance, not a live price) ---
+  - {symbol: ROLLOVER-IRA, name: Rollover IRA (Vanguard),    account: retirement, balance: 912000, type: retirement, as_of: 2026-06-01}
+  - {symbol: ROTH-IRA,     name: Roth IRA (Fidelity),        account: retirement, balance: 418000, type: retirement, as_of: 2026-06-01}
+  # --- Cash (the runway: a few years of expenses out of the market) ---
+  - {symbol: CASH-HYSA,    name: High-Yield Savings,         account: cash, balance: 145000, type: cash, as_of: 2026-06-01}
+
+# Non-held names tracked for day-moves + news (income/quality wishlist).
+watchlist:
+  - {symbol: O,    note: "Realty Income — monthly dividend REIT, on the wishlist"}
+  - {symbol: ABBV, note: "AbbVie — dividend-growth pharma"}
+  - {symbol: VICI, note: "VICI Properties — gaming/experiential REIT"}
+
+# Rebalance bands — % of the taxable account; only flagged when breached.
+rebalance:
+  VTI:  {target: 35, band: 5}
+  BND:  {target: 20, band: 4}
+  VXUS: {target: 13, band: 4}
+
+# Standing-watch thresholds (a retiree watches more gently than a trader).
+pulse:
+  day_move_pct: 4.0
+  index_move_pct: 1.5
+  trap_proximity_pct: 1.0
+  print_days: 3
+  macro_days: 2
+
+index_watch: [SPY, QQQ]
+
+macro_events:
+  - {date: 2026-07-29, label: "FOMC decision"}

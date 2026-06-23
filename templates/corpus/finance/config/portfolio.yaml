@@ -1,0 +1,36 @@
+# Your portfolio seed — the finance lane's "weights" (holdings + watchlist + thresholds).
+#
+# This is the one finance file you maintain by hand. The toolkit values your holdings with public
+# prices (read-only; it never trades) and reads this for net worth, day-moves, drift, and pulse flags.
+# Keep it in sync with reality when positions change. Replace the examples below with your own.
+#
+# Live-priced holdings (equities/ETFs) need only shares + basis; the toolkit quotes them. A mutual fund
+# or other non-intraday holding needs a `last_price` (it can't be quoted live) — sync it when you see it.
+
+holdings: []
+  # - symbol: VTI          # an equity/ETF — quoted live
+  #   shares: 100
+  #   basis: 200.00        # average cost per share
+  #   account: brokerage   # brokerage | retirement | cash — groups the net-worth view
+  # - symbol: ROTH-IRA     # an un-quotable balance (retirement/cash): give it a static balance
+  #   balance: 25000
+  #   account: retirement
+  #   as_of: 2026-01-01
+
+# Non-held symbols you want day-moves + news for (mirrors a brokerage watchlist).
+watchlist: []
+  # - {symbol: NVDA, note: "why you're watching it"}
+
+# Rebalance bands — % of the taxable brokerage account. A symbol without a band isn't drift-checked.
+rebalance: {}
+  # VTI: {target: 60, band: 5}
+
+# Pulse thresholds (the standing-watch flags). Sensible defaults; tune to taste.
+pulse:
+  day_move_pct: 5.0        # flag a holding moving more than this on the day
+  index_move_pct: 1.5      # flag a broad-index day move past this
+  trap_proximity_pct: 1.0  # flag a resting order within this % of its limit
+
+# Macro calendar the watch surfaces (FOMC/CPI/jobs). Add dated events you care about.
+macro_events: []
+  # - {date: 2026-01-28, label: "FOMC decision"}

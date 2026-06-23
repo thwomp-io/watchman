@@ -1,0 +1,32 @@
+{
+  "title": "How the harness works",
+  "subtitle": "The corpus is the product; the tools render value off it.",
+  "nodes": [
+    {
+      "id": "corpus",
+      "col": 0,
+      "label": "Corpus",
+      "sublabel": "your narrative + voice\nstories, reasoning, weights\n(the moat)",
+      "accent": "#e8a33d"
+    },
+    {
+      "id": "harness",
+      "col": 1,
+      "label": "Harness · hn",
+      "sublabel": "reads corpus + live data\nfinance · career · travel\nread-rich, execute-gated",
+      "accent": "#59b9ff"
+    },
+    {
+      "id": "watchman",
+      "col": 2,
+      "label": "Watchman",
+      "sublabel": "console · dashboards · bus\nstanding agents, deterministic\nno model in the render loop",
+      "accent": "#7dd6a0"
+    }
+  ],
+  "links": [
+    { "source": "corpus", "target": "harness", "label": "weights + narrative" },
+    { "source": "harness", "target": "watchman", "label": "live, deterministic data" },
+    { "source": "watchman", "target": "corpus", "label": "research artifacts written back", "feedback": true }
+  ]
+}

@@ -1,0 +1,43 @@
+# Demo Traveler — a FICTIONAL travel-lane weights file (sample weight pack).
+#
+# Generic ranking weights for a demo home base. Every field not set here falls back to the built-in
+# WeightConfig defaults — this file only overrides the few that should be neutral/generic for a sample
+# (no personal home-airport thumb, a generic home city, a handful of destination mappings). Replace
+# with your own home + preferences when you build a real pack.
+
+synced_from: preferences.md
+
+flight:
+  # The home-airport convenience bonus is personal; the generic sample keeps it neutral (no thumb).
+  home_airport: ""
+  comparison_airport: DEN
+  home_airport_note: ""
+  home_airport_bonus: 0.0
+  home_airport_served_iata: []
+  hour_soft_cap: 5.0
+  over_cap_penalty_per_hour: 8.0
+  airline_avoid_iata: []
+
+# Keyless weather/air conditions watch runs against `home`. Generic demo city.
+conditions:
+  home: "Denver, CO"
+  horizon_days: 3
+
+# Example event-interest tiering: the only leagues worth building a trip AROUND (everything else is
+# perk-tier — surfaced, never the anchor). Edit to taste.
+events:
+  centerpiece_subgenres: ["NBA", "NFL"]
+  # Followed teams whose static schedules the reference almanac surfaces (config-drives the schedule
+  # parser). Example: a fictional NFL fandom for the demo persona.
+  followed_teams:
+    - {name: Surge, section_match: surge, home_venue: "Austin, TX"}
+
+# Destination slug -> gateway airport / city, for the trips referenced in this pack.
+destination_airports:
+  portland: PDX
+  moab: CNY
+  san-diego: SAN
+destination_cities:
+  portland: "Portland, OR"
+  moab: "Moab, UT"
+  san-diego: "San Diego, CA"

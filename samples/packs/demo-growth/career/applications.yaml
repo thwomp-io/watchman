@@ -1,0 +1,49 @@
+# Demo Job-Hunter applications pipeline — a FICTIONAL career-lane sample (sample weight pack).
+#
+# The opportunity/application pipeline as domain state. The career dashboard's PIPELINE table reads
+# this (`hn career applications --json`). In the real lane this is hand-edited — advancing a stage is
+# the user's act, never the tool's (read-rich / execute-gated). Everything here is invented.
+#
+# `stage` is one of: inbound, researching, drafting, applied, screening, interviewing, offer, closed.
+
+applications:
+  - company: HashiCorp
+    role: Senior Platform Engineer
+    stage: interviewing
+    source: referral
+    next_step: "Onsite loop scheduled — systems design + 2x behavioral"
+    location: "Remote, US"
+    comp_signal: "$168k–$216k base (posted)"
+    updated: "2026-06-18"
+    url: "https://example.com/hashicorp/jobs/2001"
+    notes: "Strong fit on IaC; referral from a former colleague."
+  - company: Datadog
+    role: Staff Site Reliability Engineer, Observability
+    stage: applied
+    source: direct apply
+    next_step: "Awaiting recruiter screen"
+    location: "Remote, US"
+    comp_signal: "$210k–$275k base (posted)"
+    updated: "2026-06-16"
+    url: "https://example.com/datadog/jobs/3002"
+    notes: "Top-choice for the observability depth."
+  - company: GitLab
+    role: Senior Site Reliability Engineer
+    stage: researching
+    source: board scan
+    next_step: "Tailor resume to the reliability charter before applying"
+    location: "Remote, Americas"
+    comp_signal: "$172k–$228k base (posted)"
+    updated: "2026-06-17"
+    url: "https://example.com/gitlab/jobs/1001"
+    notes: "All-remote; reading their handbook on SRE practices."
+  - company: MongoDB
+    role: Senior Kubernetes Platform Engineer
+    stage: inbound
+    source: recruiter outreach
+    next_step: "Reply to the recruiter; gauge team + scope"
+    location: "Remote, US"
+    comp_signal: "$165k–$215k base (posted)"
+    updated: "2026-06-14"
+    url: "https://example.com/mongodb/jobs/4001"
+    notes: "Inbound LinkedIn message — warm."

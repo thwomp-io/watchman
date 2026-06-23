@@ -1,0 +1,24 @@
+version: 2
+# Continuous dependency-vuln alerts + version-bump PRs across every ecosystem in the repo. The
+# weekly cadence keeps the noise low; security updates are raised immediately regardless.
+updates:
+  - package-ecosystem: "uv"            # Python — the hn CLI + lanes (uv.lock)
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"           # the desktop-console webview
+    directory: "/bus-app"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"         # the Tauri shell
+    directory: "/bus-app/src-tauri"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"        # the headless-engine image base
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions" # the CI workflows themselves
+    directory: "/"
+    schedule:
+      interval: "weekly"

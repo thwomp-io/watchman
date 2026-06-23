@@ -1,0 +1,19 @@
+{
+  "title": "Net worth over time",
+  "subtitle": "logged via `hn finance networth --log` · trend (min-max scaled, not 0-baseline)",
+  "yPrefix": "$",
+  "series": [
+    {
+      "label": "Net worth",
+      "points": [
+        { "x": "2026-03-31", "y": 2418000 },
+        { "x": "2026-04-15", "y": 2456000 },
+        { "x": "2026-04-30", "y": 2441500 },
+        { "x": "2026-05-15", "y": 2489000 },
+        { "x": "2026-05-29", "y": 2512300 },
+        { "x": "2026-06-12", "y": 2498700 },
+        { "x": "2026-06-19", "y": 2536400 }
+      ]
+    }
+  ]
+}

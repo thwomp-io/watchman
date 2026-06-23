@@ -1,0 +1,123 @@
+[
+  {
+    "company": "GitLab",
+    "ats": "greenhouse",
+    "total_open": 41,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "GitLab",
+        "title": "Senior Site Reliability Engineer",
+        "url": "https://example.com/gitlab/jobs/1001",
+        "location": "Remote, Americas",
+        "remote": true,
+        "salary": "$172,000 – $228,000",
+        "department": "Infrastructure",
+        "updated": "2026-06-17",
+        "source": "greenhouse"
+      },
+      {
+        "company": "GitLab",
+        "title": "Staff Infrastructure Engineer, Compute",
+        "url": "https://example.com/gitlab/jobs/1002",
+        "location": "Remote, Americas",
+        "remote": true,
+        "salary": "$205,000 – $271,000",
+        "department": "Infrastructure",
+        "updated": "2026-06-15",
+        "source": "greenhouse"
+      }
+    ]
+  },
+  {
+    "company": "HashiCorp",
+    "ats": "greenhouse",
+    "total_open": 28,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "HashiCorp",
+        "title": "Senior Platform Engineer",
+        "url": "https://example.com/hashicorp/jobs/2001",
+        "location": "Remote, US",
+        "remote": true,
+        "salary": "$168,000 – $216,000",
+        "department": "Platform",
+        "updated": "2026-06-18",
+        "source": "greenhouse"
+      },
+      {
+        "company": "HashiCorp",
+        "title": "Principal Security Engineer, Cloud",
+        "url": "https://example.com/hashicorp/jobs/2002",
+        "location": "Remote, US",
+        "remote": true,
+        "salary": null,
+        "department": "Security",
+        "updated": "2026-06-10",
+        "source": "greenhouse"
+      }
+    ]
+  },
+  {
+    "company": "Datadog",
+    "ats": "greenhouse",
+    "total_open": 63,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "Datadog",
+        "title": "Senior Software Engineer, Reliability",
+        "url": "https://example.com/datadog/jobs/3001",
+        "location": "New York, NY",
+        "remote": false,
+        "salary": "$180,000 – $240,000",
+        "department": "Reliability",
+        "updated": "2026-06-16",
+        "source": "greenhouse"
+      },
+      {
+        "company": "Datadog",
+        "title": "Staff Site Reliability Engineer, Observability",
+        "url": "https://example.com/datadog/jobs/3002",
+        "location": "Remote, US",
+        "remote": true,
+        "salary": "$210,000 – $275,000",
+        "department": "Reliability",
+        "updated": "2026-06-12",
+        "source": "greenhouse"
+      }
+    ]
+  },
+  {
+    "company": "MongoDB",
+    "ats": "ashby",
+    "total_open": 35,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "MongoDB",
+        "title": "Senior Kubernetes Platform Engineer",
+        "url": "https://example.com/mongodb/jobs/4001",
+        "location": "Remote, US",
+        "remote": true,
+        "salary": "$165,000 – $215,000",
+        "department": "Cloud",
+        "updated": "2026-06-14",
+        "source": "ashby"
+      }
+    ]
+  },
+  {
+    "company": "Confluent",
+    "ats": "greenhouse",
+    "total_open": 0,
+    "error": null,
+    "skipped": null,
+    "matched": []
+  }
+]

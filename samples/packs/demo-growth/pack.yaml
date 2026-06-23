@@ -1,0 +1,19 @@
+# Weight-pack manifest. A pack is a portable, self-contained bundle of the weights (scoring/
+# preferences/thresholds) + data/state that an app loads to drive a scenario. Swap the loaded pack to
+# re-render the console against a different scenario.
+name: demo-growth
+title: "Demo Growth — a fictional early-career persona"
+description: >-
+  A complete fictional PERSONA (every lane), the contrast to `demo-investor`: an early-career
+  infrastructure engineer — an aggressive ~$185k growth-tilted portfolio (finance), an active platform/SRE
+  job search across public infra companies (career), and a budget trip pipeline from a Denver home base
+  (travel). Load it, then swap to `demo-investor`, to watch the WHOLE console re-render against a different
+  life. Not real data; not advice; the toolkit is read-only.
+# Which lanes this pack provides data for — a persona ships ALL of them so loading it swaps the whole
+# console (an unprovided lane would fall back to the user's real corpus). Each lane has a matching subdir.
+lanes:
+  - finance
+  - career
+  - travel
+# `demo-investor` is the bundled default; this contrasting persona is loaded explicitly to demo swapping.
+default: false

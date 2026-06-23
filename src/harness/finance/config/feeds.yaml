@@ -1,0 +1,31 @@
+# Custom news feeds — aggregated into watch/pulse through the seen-cache.
+# Headlines-only is fine (paywalls don't matter for pulse purposes). Tailor freely; the
+# google-news rss/search URLs are the THESIS-TOPIC layer — tune to the active research program.
+feeds:
+  # --- markets wire (broad financial headlines) ---
+  - name: marketwatch
+    url: https://feeds.content.dowjones.io/public/rss/mw_topstories
+  - name: cnbc-markets
+    url: https://www.cnbc.com/id/100003114/device/rss/rss.html
+  - name: ft-home
+    url: https://www.ft.com/rss/home/international  # was /rss/home — FT 301'd it (2026-06-12)
+  - name: ap
+    url: https://news.google.com/rss/search?q=apnews.com&hl=en-US&gl=US&ceid=US:en  # AP via google-news
+      # source-scope (added 2026-06-22). AP's own RSS is a PAID dev-portal API; the `allinurl:apnews.com`
+      # operator returns EMPTY in gnews RSS (verified) — plain `q=<domain>` is the working keyless path.
+  - name: bloomberg
+    url: https://news.google.com/rss/search?q=bloomberg.com&hl=en-US&gl=US&ceid=US:en  # Bloomberg killed
+      # public RSS; same google-news source-scope path (verified 4 items, Bloomberg.com-sourced).
+  # --- geopolitics / Middle East (relied-on ME coverage; added 2026-06-22) ---
+  - name: aljazeera
+    url: https://www.aljazeera.com/xml/rss/all.xml  # whole-site feed (carries general/sport noise; the ME
+      # signal surfaces via the seen-cache + agent relevance-filter). Verified RSS2.0 2026-06-22. AJ
+      # deprecated most category feeds; scope tighter via a google-news site: topic if the noise grates.
+  - name: dropsite
+    url: https://www.dropsitenews.com/feed  # Drop Site News — independent Middle East / foreign-policy
+      # coverage, low-noise. Verified RSS2.0 2026-06-22.
+  # --- THESIS-TOPIC layer (google-news search; tune to the active research program) ---
+  - name: topic-mideast-conflict
+    url: https://news.google.com/rss/search?q=Iran%20Israel%20Lebanon%20Middle%20East%20ceasefire&hl=en-US&gl=US&ceid=US:en
+  - name: topic-oil-geopolitics
+    url: https://news.google.com/rss/search?q=oil%20prices%20Strait%20of%20Hormuz&hl=en-US&gl=US&ceid=US:en

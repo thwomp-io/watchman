@@ -1,0 +1,154 @@
+{
+  "VTI": {
+    "price": 296.7,
+    "prev_close": 304.27
+  },
+  "VXUS": {
+    "price": 65.3,
+    "prev_close": 64.76
+  },
+  "SCHD": {
+    "price": 27.8,
+    "prev_close": 27.59
+  },
+  "VYM": {
+    "price": 132.5,
+    "prev_close": 133.8
+  },
+  "BND": {
+    "price": 72.4,
+    "prev_close": 72.58
+  },
+  "JNJ": {
+    "price": 152.4,
+    "prev_close": 151.13
+  },
+  "PG": {
+    "price": 169.8,
+    "prev_close": 167.5
+  },
+  "KO": {
+    "price": 62.7,
+    "prev_close": 63.93
+  },
+  "JPM": {
+    "price": 248.1,
+    "prev_close": 250.53
+  },
+  "IBM": {
+    "price": 274.8,
+    "prev_close": 271.54
+  },
+  "O": {
+    "price": 310.38,
+    "prev_close": 315.4
+  },
+  "ABBV": {
+    "price": 245.48,
+    "prev_close": 251.14
+  },
+  "VICI": {
+    "price": 269.88,
+    "prev_close": 263.43
+  },
+  "SPY": {
+    "price": 601.4,
+    "prev_close": 602.58
+  },
+  "QQQ": {
+    "price": 528.7,
+    "prev_close": 517.21
+  },
+  "DIA": {
+    "price": 444.2,
+    "prev_close": 443.51
+  },
+  "IWM": {
+    "price": 233.1,
+    "prev_close": 228.86
+  },
+  "RSP": {
+    "price": 182.6,
+    "prev_close": 180.07
+  },
+  "XLK": {
+    "price": 258.3,
+    "prev_close": 254.45
+  },
+  "XLC": {
+    "price": 109.7,
+    "prev_close": 110.78
+  },
+  "XLY": {
+    "price": 224.5,
+    "prev_close": 224.58
+  },
+  "XLP": {
+    "price": 81.2,
+    "prev_close": 81.53
+  },
+  "XLE": {
+    "price": 92.8,
+    "prev_close": 92.86
+  },
+  "XLF": {
+    "price": 52.4,
+    "prev_close": 53.73
+  },
+  "XLV": {
+    "price": 138.6,
+    "prev_close": 141.54
+  },
+  "XLI": {
+    "price": 146.9,
+    "prev_close": 144.79
+  },
+  "XLB": {
+    "price": 92.1,
+    "prev_close": 93.49
+  },
+  "XLRE": {
+    "price": 42.7,
+    "prev_close": 43.72
+  },
+  "XLU": {
+    "price": 81.5,
+    "prev_close": 81.37
+  },
+  "SMH": {
+    "price": 287.4,
+    "prev_close": 291.66
+  },
+  "SOXX": {
+    "price": 241.8,
+    "prev_close": 243.14
+  },
+  "AAPL": {
+    "price": 229.8,
+    "prev_close": 224.4
+  },
+  "MSFT": {
+    "price": 451.2,
+    "prev_close": 454.85
+  },
+  "GOOGL": {
+    "price": 191.3,
+    "prev_close": 187.35
+  },
+  "AMZN": {
+    "price": 222.6,
+    "prev_close": 221.74
+  },
+  "NVDA": {
+    "price": 138.4,
+    "prev_close": 135.58
+  },
+  "META": {
+    "price": 612.5,
+    "prev_close": 620.55
+  },
+  "TSLA": {
+    "price": 347.9,
+    "prev_close": 343.17
+  }
+}

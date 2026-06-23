@@ -1,0 +1,44 @@
+# Recent Grad — a FICTIONAL finance profile (sample weight pack).
+#
+# Invented for demonstration: a recent CS grad in their first job (~$26k net worth) just starting to
+# invest — a small index core, a first-employer RSU grant (the only concentration), a Roth IRA they just
+# opened, and a thin emergency fund. The youngest/smallest contrast to the other personas.
+#
+# NOT real holdings. NOT financial advice. The toolkit is read-only (observation + research), never execution.
+
+holdings:
+  # --- Taxable brokerage (just getting started: a starter index core) ---
+  - {symbol: VTI,  name: Vanguard Total Stock Market ETF, account: taxable, shares: 22, avg_cost: 268.00, cost_basis: 5896.00, type: etf}
+  - {symbol: VXUS, name: Vanguard Total International ETF, account: taxable, shares: 40, avg_cost: 60.50, cost_basis: 2420.00, type: etf}
+  - {symbol: NVDA, name: NVIDIA Corp (a first individual pick), account: taxable, shares: 8, avg_cost: 120.00, cost_basis: 960.00, type: stock}
+  # --- First-employer RSUs (small grant, the only concentration; per-lot basis) ---
+  - symbol: DDOG
+    name: Datadog (first-employer RSUs)
+    account: taxable
+    shares: 36
+    avg_cost: 128.10
+    cost_basis: 4611.60
+    type: stock
+    lots:
+      - {acquired: "2025-09-15", qty: 18, unit_cost: 121.00}   # first vest (gain)
+      - {acquired: "2026-03-15", qty: 18, unit_cost: 135.20}   # second vest (small loss)
+  # --- Retirement (a freshly opened Roth) ---
+  - {symbol: ROTH-IRA, name: Roth IRA — target-date fund, account: retirement, balance: 7200, type: retirement, as_of: 2026-06-01}
+  # --- Cash (a thin starter emergency fund) ---
+  - {symbol: CASH-EF, name: Emergency fund (HYSA), account: cash, balance: 5400, type: cash, as_of: 2026-06-01}
+
+watchlist:
+  - {symbol: SCHD, note: "dividend ETF — a someday-income tilt"}
+  - {symbol: VOO,  note: "S&P 500 — considering consolidating into it"}
+
+rebalance:
+  VTI: {target: 60, band: 8}
+
+pulse:
+  day_move_pct: 6.0
+  index_move_pct: 1.5
+  trap_proximity_pct: 1.0
+  print_days: 3
+  macro_days: 2
+
+index_watch: [SPY, QQQ]

@@ -1,0 +1,42 @@
+# Demo Investor — a FICTIONAL travel-lane weights file (sample weight pack).
+#
+# Generic premium-leaning weights for an established household with a Minneapolis home base. Every field not
+# set here falls back to the built-in WeightConfig defaults. Replace with your own home + preferences.
+
+synced_from: preferences.md
+
+flight:
+  home_airport: ""
+  comparison_airport: MSP
+  home_airport_note: ""
+  home_airport_bonus: 0.0
+  home_airport_served_iata: []
+  hour_soft_cap: 6.0
+  over_cap_penalty_per_hour: 6.0
+  airline_avoid_iata: []
+
+# Keyless weather/air conditions watch runs against `home`.
+conditions:
+  home: "Minneapolis, MN"
+  horizon_days: 3
+
+# Lodging tilt: this persona reaches for best-in-class where it's available.
+lodging:
+  prefer_best_available_in_area: true
+  top_tier_available_bonus: 10.0
+
+events:
+  centerpiece_subgenres: ["NBA", "NFL"]
+  # Followed teams whose static schedules the reference almanac surfaces (config-drives the schedule
+  # parser). Example: a fictional NFL fandom for the demo persona.
+  followed_teams:
+    - {name: Pioneers, section_match: pioneers, home_venue: "Minneapolis, MN"}
+
+destination_airports:
+  kona: KOA
+  barcelona: BCN
+  napa: SMF
+destination_cities:
+  kona: "Kailua-Kona, HI"
+  barcelona: "Barcelona, ES"
+  napa: "Napa, CA"

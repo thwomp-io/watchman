@@ -1,0 +1,3 @@
+applications:
+  - {company: Stripe, role: "Software Engineer, New Grad", stage: applied, source: "direct apply", next_step: "Awaiting recruiter screen", location: "Remote, US", comp_signal: "$135k–$165k base (posted)", updated: "2026-06-17", url: "https://example.com/stripe/jobs/4001", notes: "Top choice; applied via referral from a bootcamp friend."}
+  - {company: Cloudflare, role: "Associate Platform Engineer", stage: interviewing, source: "recruiter", next_step: "Technical screen scheduled", location: "Austin, TX (hybrid)", comp_signal: "$120k–$150k base (posted)", updated: "2026-06-15", url: "https://example.com/cloudflare/jobs/4002", notes: "Recruiter reached out on LinkedIn."}

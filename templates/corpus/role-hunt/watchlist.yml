@@ -1,0 +1,24 @@
+# Your career watchlist — the career lane's "weights" (companies to scan + your role filters).
+#
+# `hn career openings` scans these companies' public job boards (Greenhouse/Ashby/Workday/Eightfold —
+# keyless) and matches against your filters. Read-only: it never applies. Replace the examples with the
+# companies you'd actually want, and tune the filters to your target roles.
+
+companies: []
+  # - name: Stripe
+  #   ats: greenhouse       # greenhouse | ashby | workday | eightfold | none (manual-watch)
+  #   token: stripe         # the board's slug (the part in the careers URL)
+  #   tier: "Tier 1"        # your own priority banding
+  #   note: "why this company"
+
+filters:
+  # Match a role if its title contains ANY of these (broad net — keywords are weights, not hard gates).
+  title_any:
+    - infrastructure
+    - platform
+    - reliability
+    - sre
+  # Drop obvious noise (titles containing any of these).
+  title_none:
+    - intern
+    - manager

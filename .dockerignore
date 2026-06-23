@@ -1,0 +1,36 @@
+# The headless-engine image needs only the Python project (pyproject + uv.lock + src + README).
+# Everything below is either the desktop-GUI half, build output, or dev cruft — keep it out of the
+# build context so image builds stay fast + lean.
+
+# the desktop console (Tauri GUI) — ships as native bundles, not in this image
+bus-app/
+viz/
+
+# python / build artifacts
+.venv/
+**/__pycache__/
+**/*.pyc
+*.egg-info/
+dist/
+build/
+
+# vcs / ci / editor / os
+.git/
+.github/
+.vscode/
+.obsidian/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.DS_Store
+
+# tests + samples + docs aren't needed at runtime (the engine reads a MOUNTED corpus)
+tests/
+samples/
+docs/
+skills/
+templates/
+scripts/
+
+# local env / secrets
+.env

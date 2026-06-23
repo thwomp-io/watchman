@@ -1,0 +1,41 @@
+# Demo Investor watchlist — a FICTIONAL career-lane sample (sample weight pack).
+#
+# The established-household persona isn't actively job-hunting — just passively watching a few senior /
+# leadership roles at admired companies. A small watchlist + a light pipeline (vs. demo-growth's active
+# search). Companies are real public firms; the openings (in career/discoveries/) are static + illustrative.
+
+companies:
+  - name: Stripe
+    ats: greenhouse
+    token: stripe
+    tier: "Tier 1"
+    note: "infra leadership — passive watch"
+  - name: Snowflake
+    ats: greenhouse
+    token: snowflake
+    tier: "Tier 1"
+    note: "data platform — admired, dream-tier"
+  - name: Cloudflare
+    ats: greenhouse
+    token: cloudflare
+    tier: "Tier 2"
+    note: "edge/network infra"
+
+# Senior/leadership-leaning filter (this persona only looks at higher-altitude roles).
+filters:
+  title_any:
+    - infrastructure
+    - platform
+    - reliability
+    - sre
+    - engineering
+  seniority_any:
+    - staff
+    - principal
+    - director
+    - "head of"
+  title_none:
+    - sales
+    - marketing
+    - recruiter
+    - account
