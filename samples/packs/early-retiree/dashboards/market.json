@@ -1,0 +1,316 @@
+{
+  "lane": "market",
+  "title": "Market",
+  "group": "Finance",
+  "widgets": [
+    {
+      "id": "breadth_ewc",
+      "title": "Breadth · RSP − SPY",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.equal_weight_minus_cap_pct",
+      "prefix": null,
+      "suffix": "%",
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "mag7_avg",
+      "title": "Mag7 avg",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.megacap_avg_pct",
+      "prefix": null,
+      "suffix": "%",
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "take",
+      "title": "Market take",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "finance/market/takes"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "semis_avg",
+      "title": "Semis avg",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.semis_avg_pct",
+      "prefix": null,
+      "suffix": "%",
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "sectors_adv",
+      "title": "Sectors ▲",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.sectors_advancing",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "indices",
+      "title": "Indexes",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "indices",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "day_change_pct",
+        "day_change",
+        "price"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "sectors",
+      "title": "Sectors",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "sectors",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "day_change_pct",
+        "price"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "megacap",
+      "title": "Mega-cap (Mag7)",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "megacap",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "day_change_pct",
+        "price"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "semis",
+      "title": "Semis",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "semis",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "day_change_pct",
+        "price"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "leaders",
+      "title": "Leaders",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "leaders",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "group",
+        "day_change_pct"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "laggards",
+      "title": "Laggards",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "laggards",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "label",
+        "group",
+        "day_change_pct"
+      ],
+      "rows": 1
+    }
+  ]
+}

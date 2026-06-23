@@ -1,0 +1,16 @@
+# Weight-pack manifest. A pack is a portable, self-contained bundle of weights + data an app loads to
+# drive a scenario. Swap the loaded pack to re-render the console against a different life.
+name: early-retiree
+title: "Early Retiree — a fictional ~$2.5M income-tilted household"
+description: >-
+  A complete fictional PERSONA (every lane): an early retiree living off a diversified, income-tilted
+  ~$2.5M portfolio (finance — broad index + dividend equity + a real bond sleeve + a cash runway), a light
+  board/advisory watch rather than an active job hunt (career), and a rich travel pipeline + history from a
+  Scottsdale home base (travel). The third contrast to demo-growth (young/aggressive) and demo-investor
+  (mid/index-anchored). Not real holdings; not advice; the toolkit is read-only.
+lanes:
+  - finance
+  - career
+  - travel
+# A contrasting persona, loaded explicitly to demo swapping — not the bundled default.
+default: false

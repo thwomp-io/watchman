@@ -1,0 +1,6 @@
+[
+  {"company": "Stripe", "ats": "greenhouse", "total_open": 28, "error": null, "skipped": null,
+   "matched": [{"company": "Stripe", "title": "Software Engineer, New Grad", "url": "https://example.com/stripe/jobs/4001", "location": "Remote, US", "remote": true, "salary": "$135,000 – $165,000", "department": "Engineering", "updated": "2026-06-17", "source": "greenhouse"}]},
+  {"company": "Cloudflare", "ats": "greenhouse", "total_open": 19, "error": null, "skipped": null,
+   "matched": [{"company": "Cloudflare", "title": "Associate Platform Engineer", "url": "https://example.com/cloudflare/jobs/4002", "location": "Austin, TX (hybrid)", "remote": false, "salary": "$120,000 – $150,000", "department": "Infrastructure", "updated": "2026-06-15", "source": "greenhouse"}]}
+]

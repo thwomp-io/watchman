@@ -1,0 +1,9 @@
+# Recent Grad — a FICTIONAL career-lane file (sample weight pack).
+# An ACTIVE new-grad / early-career job hunt across tech companies.
+companies:
+  - {name: Stripe,    ats: greenhouse, token: stripe,    tier: "Tier 1", note: "new-grad SWE; strong infra"}
+  - {name: Datadog,   ats: greenhouse, token: datadog,   tier: "Tier 1", note: "current employer — internal mobility too"}
+  - {name: Cloudflare, ats: greenhouse, token: cloudflare, tier: "Tier 2", note: "early-career platform roles"}
+filters:
+  title_any: [software engineer, "new grad", "early career", backend, platform, sre]
+  title_none: [senior, staff, principal, director, manager]

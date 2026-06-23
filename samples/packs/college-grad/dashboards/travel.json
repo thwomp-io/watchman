@@ -1,0 +1,112 @@
+{
+  "lane": "travel",
+  "title": "Command-center",
+  "group": "Travel",
+  "widgets": [
+    {
+      "id": "pipeline",
+      "title": "Trip pipeline — the horizon",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "trips",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "trips",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "weather",
+      "title": "Home-base weather",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "weather",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+4}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": "days",
+      "prefix": null,
+      "suffix": null,
+      "title_path": "location",
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "keydates",
+      "title": "Key dates & sports — next 180d",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "reference",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+180}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "signals",
+      "title": "Travel signals",
+      "kind": "feed",
+      "source": {
+        "type": "bus",
+        "lane": "travel",
+        "limit": 12
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    }
+  ]
+}

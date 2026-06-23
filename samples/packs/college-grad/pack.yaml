@@ -1,0 +1,11 @@
+# Weight-pack manifest. Swap the loaded pack to re-render the console against a different life.
+name: college-grad
+title: "Recent Grad — a fictional early-twenties first-job persona"
+description: >-
+  A complete fictional PERSONA (every lane): a recent CS grad in their first job — a small (~$26k),
+  just-getting-started portfolio (a starter index core + a first-employer RSU grant + a thin cash buffer),
+  an ACTIVE entry-level/new-grad job hunt across tech companies (career), and a budget travel pipeline
+  from an Austin home base (travel). The fourth contrast: youngest + smallest book. Not real holdings;
+  not advice; the toolkit is read-only.
+lanes: [finance, career, travel]
+default: false

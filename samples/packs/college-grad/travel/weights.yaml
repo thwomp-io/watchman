@@ -1,0 +1,17 @@
+# Recent Grad — a FICTIONAL travel-lane weights file. Budget-conscious, weekend-scale.
+synced_from: preferences.md
+flight:
+  home_airport: ""
+  comparison_airport: AUS
+  home_airport_bonus: 0.0
+  hour_soft_cap: 4.0          # budget + PTO-light: keep it short
+  over_cap_penalty_per_hour: 8.0
+conditions:
+  home: "Austin, TX"
+  horizon_days: 3
+lodging:
+  prefer_best_available_in_area: false   # hostels / budget / friends' couches
+events:
+  centerpiece_subgenres: ["NBA"]
+  followed_teams: []
+destination_airports: {}

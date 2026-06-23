@@ -1,0 +1,25 @@
+# Your travel weights — the travel lane's preferences + home base.
+#
+# Drives flight ranking, the home-base conditions watch, lodging tilt, and which live events get
+# surfaced. Every field you omit falls back to the built-in defaults. Set your home base at minimum.
+
+flight:
+  home_airport: ""           # your home IATA code — flights from here get the home bonus
+  home_airport_bonus: 0.0
+  hour_soft_cap: 6.0         # flights longer than this start accruing a penalty
+  over_cap_penalty_per_hour: 6.0
+
+# The keyless weather/air-conditions watch runs against `home`.
+conditions:
+  home: ""                   # "City, ST" — your home base for the conditions watchman
+  horizon_days: 3
+
+# Lodging tilt.
+lodging:
+  prefer_best_available_in_area: true
+
+# Which live events are trip-centerpiece-worthy (vs. perk-tier). Set to your interests.
+events:
+  centerpiece_subgenres: []  # e.g. ["NBA", "NFL"] — leagues/genres you'd plan a trip around
+  followed_teams: []         # teams whose schedules the reference almanac surfaces
+  #   - {name: "Team Name", home_venue: "Venue, City", home_only: false}

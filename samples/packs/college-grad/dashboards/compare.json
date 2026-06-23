@@ -1,0 +1,64 @@
+{
+  "lane": "compare",
+  "title": "Compare",
+  "group": "Finance",
+  "widgets": [
+    {
+      "id": "comparison",
+      "title": "Comparison",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "finance/research/compares"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "metrics",
+      "title": "Metrics — valuation × price × screen",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "compare",
+          "VTI",
+          "VXUS",
+          "NVDA",
+          "DDOG",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "rows",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "price",
+        "day_change_pct",
+        "ps",
+        "pe",
+        "ev_ebitda",
+        "market_cap",
+        "screen"
+      ],
+      "rows": 1
+    }
+  ]
+}
