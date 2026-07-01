@@ -1,0 +1,10 @@
+# Early Retiree — a FICTIONAL career-lane file (sample weight pack).
+#
+# Not an active job hunt — a light board/advisory watch. A retired operator keeping an eye on a couple of
+# companies where a board seat or advisory role would be a fit. Static, illustrative.
+companies:
+  - {name: Brightwell Health, ats: greenhouse, token: brightwell, tier: "Advisory", note: "former-industry; board-friendly"}
+  - {name: Cascade Robotics,  ats: greenhouse, token: cascade,    tier: "Advisory", note: "early-stage; advisory interest"}
+filters:
+  title_any: [board, advisor, director, "non-executive"]
+  title_none: [intern, junior, contract]

@@ -1,0 +1,12 @@
+# A light pipeline — one board conversation in progress (read-rich / execute-gated; you advance stages).
+applications:
+  - company: Brightwell Health
+    role: Independent Board Director (Audit Committee)
+    stage: interviewing
+    source: referral
+    next_step: "Second conversation with the nominating committee"
+    location: "Hybrid — quarterly travel"
+    comp_signal: "$45k–$70k annual retainer + equity"
+    updated: "2026-06-15"
+    url: "https://example.com/brightwell/board"
+    notes: "Referred by a former colleague; strong governance fit."

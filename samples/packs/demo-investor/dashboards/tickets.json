@@ -1,0 +1,141 @@
+{
+  "lane": "tickets",
+  "title": "Tickets",
+  "group": "Finance",
+  "widgets": [
+    {
+      "id": "ticket",
+      "title": "Execution ticket",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "finance/execution"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "orders",
+      "title": "Resting GTC orders",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "orders",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "side",
+        "qty",
+        "limit",
+        "price",
+        "distance_pct"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "nw",
+      "title": "Net worth",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "positions",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "net_worth",
+      "prefix": "$",
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "live",
+      "title": "Live value",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "positions",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "live_value",
+      "prefix": "$",
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "positions",
+      "title": "Positions",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "positions",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "positions",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "symbol",
+        "market_value",
+        "day_change_pct",
+        "unrealized_gl_pct"
+      ],
+      "rows": 1
+    }
+  ]
+}

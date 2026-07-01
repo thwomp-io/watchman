@@ -1,0 +1,16 @@
+# Demo Investor applications — a FICTIONAL career-lane sample (sample weight pack).
+#
+# A light pipeline: this established persona isn't actively searching, just fielding the occasional
+# inbound. Stages: inbound, researching, drafting, applied, screening, interviewing, offer, closed.
+
+applications:
+  - company: Stripe
+    role: Principal Engineer, Infrastructure
+    stage: inbound
+    source: recruiter outreach
+    next_step: "Decide whether it's worth a conversation"
+    location: "Remote / Minneapolis"
+    comp_signal: "—"
+    updated: "2026-06-15"
+    url: "https://example.com/stripe/jobs/9001"
+    notes: "Cold inbound from an in-house recruiter; flattering but not actively looking."

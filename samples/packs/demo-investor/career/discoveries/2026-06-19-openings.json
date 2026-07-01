@@ -1,0 +1,50 @@
+[
+  {
+    "company": "Stripe",
+    "ats": "greenhouse",
+    "total_open": 52,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "Stripe",
+        "title": "Principal Engineer, Infrastructure",
+        "url": "https://example.com/stripe/jobs/9001",
+        "location": "Remote / Minneapolis",
+        "remote": true,
+        "salary": "$280,000 – $360,000",
+        "department": "Infrastructure",
+        "updated": "2026-06-15",
+        "source": "greenhouse"
+      }
+    ]
+  },
+  {
+    "company": "Snowflake",
+    "ats": "greenhouse",
+    "total_open": 47,
+    "error": null,
+    "skipped": null,
+    "matched": [
+      {
+        "company": "Snowflake",
+        "title": "Director, Platform Reliability",
+        "url": "https://example.com/snowflake/jobs/9101",
+        "location": "Minneapolis, MN",
+        "remote": false,
+        "salary": "$300,000 – $390,000",
+        "department": "Engineering",
+        "updated": "2026-06-11",
+        "source": "greenhouse"
+      }
+    ]
+  },
+  {
+    "company": "Cloudflare",
+    "ats": "greenhouse",
+    "total_open": 0,
+    "error": null,
+    "skipped": null,
+    "matched": []
+  }
+]

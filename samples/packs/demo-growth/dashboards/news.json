@@ -1,0 +1,33 @@
+{
+  "lane": "news",
+  "title": "News",
+  "group": "Finance",
+  "widgets": [
+    {
+      "id": "reader",
+      "title": "Broad-market wire",
+      "kind": "news",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "wire",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 3
+    }
+  ]
+}

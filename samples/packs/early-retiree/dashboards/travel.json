@@ -1,0 +1,106 @@
+{
+  "lane": "travel",
+  "title": "Planning",
+  "group": "Travel",
+  "widgets": [
+    {
+      "id": "active",
+      "title": "Active trips",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "trips",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 1,
+      "value_path": "count",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "decision",
+      "title": "Active decision — candidate radar",
+      "kind": "viz",
+      "source": {
+        "type": "file",
+        "path": "travel/trips/sample-trip/visuals/compare-data.json"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 2
+    },
+    {
+      "id": "pipeline",
+      "title": "Trip pipeline — the horizon",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "trips",
+          "--kind",
+          "trip",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "trips",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "when",
+        "date",
+        "status",
+        "destination",
+        "anchor",
+        "who",
+        "doc"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "signals",
+      "title": "Travel signals",
+      "kind": "feed",
+      "source": {
+        "type": "bus",
+        "lane": "travel",
+        "limit": 12
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    }
+  ]
+}

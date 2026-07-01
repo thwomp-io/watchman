@@ -1,0 +1,22 @@
+# Early Retiree — a FICTIONAL travel-lane weights file (sample weight pack). Premium-leaning, time-rich.
+synced_from: preferences.md
+flight:
+  home_airport: ""
+  comparison_airport: PHX
+  home_airport_note: ""
+  home_airport_bonus: 0.0
+  home_airport_served_iata: []
+  hour_soft_cap: 9.0          # retired + time-rich: long hauls are fine for the right destination
+  over_cap_penalty_per_hour: 2.5
+  airline_avoid_iata: []
+conditions:
+  home: "Scottsdale, AZ"
+  horizon_days: 3
+lodging:
+  prefer_best_available_in_area: true
+  top_tier_available_bonus: 14.0
+events:
+  centerpiece_subgenres: ["MLB", "NBA"]
+  followed_teams:
+    - {name: Diamondbacks, section_match: diamondbacks, home_venue: "Phoenix, AZ"}
+destination_airports: {}

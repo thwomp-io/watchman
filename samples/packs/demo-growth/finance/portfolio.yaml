@@ -1,0 +1,162 @@
+# Demo Growth — a FICTIONAL finance profile (sample weight pack).
+#
+# Everything here is invented for demonstration: a younger, early-career investor (~$185k net worth)
+# running an aggressive, growth-tilted portfolio — no bonds, concentrated single-stock + thematic-ETF
+# convictions, a thin cash buffer, and a modest retirement balance. It exists to CONTRAST the
+# `demo-investor` pack: load one, swap to the other, and watch the finance dashboards re-render against
+# a different scenario (the weight-pack swap demo).
+#
+# NOT real holdings. NOT financial advice. The toolkit is read-only (observation + research), never
+# execution.
+#
+# Schema notes (same as demo-investor):
+#   - `holdings` are grouped by `account` (a logical bucket: taxable / retirement / cash).
+#   - Market positions (`type: etf|stock`) are valued from LIVE public prices — no `last_price` needed.
+#   - Mutual funds (`type: mutual_fund`) don't price intraday → valued from a manually-synced `last_price`.
+#   - Non-market balances (`type: retirement|cash`) are valued from a static `balance`, with an `as_of`.
+
+holdings:
+  # --- Taxable brokerage (aggressive, thematic + single-stock tilt) ---
+  - symbol: QQQ
+    name: Invesco QQQ Trust (Nasdaq-100)
+    account: taxable
+    shares: 140
+    avg_cost: 462.00
+    cost_basis: 64680.00
+    type: etf
+  - symbol: NVDA
+    name: NVIDIA Corp
+    account: taxable
+    shares: 120
+    avg_cost: 138.50
+    cost_basis: 16620.00
+    type: stock
+  - symbol: AMZN
+    name: Amazon.com Inc
+    account: taxable
+    shares: 70
+    avg_cost: 196.00
+    cost_basis: 13720.00
+    type: stock
+  - symbol: SMH
+    name: VanEck Semiconductor ETF
+    account: taxable
+    shares: 35
+    avg_cost: 268.00
+    cost_basis: 9380.00
+    type: etf
+  # --- Concentrated employer RSUs (the unwind story: vested grants, per-lot basis) ---
+  - symbol: CRWD
+    name: CrowdStrike Holdings (employer RSUs)
+    account: taxable
+    shares: 210
+    avg_cost: 339.40
+    cost_basis: 71274.00
+    type: stock
+    lots:
+      - {acquired: "2024-08-15", qty: 60, unit_cost: 210.00}   # deep gain lot
+      - {acquired: "2025-02-15", qty: 55, unit_cost: 340.00}   # gain lot
+      - {acquired: "2025-08-15", qty: 50, unit_cost: 395.00}   # small loss (TLH inventory)
+      - {acquired: "2026-02-15", qty: 45, unit_cost: 420.00}   # loss lot
+  - symbol: SPAXX
+    name: Government Money Market (core sweep / dry powder)
+    account: taxable
+    balance: 6500.00
+    type: cash
+    as_of: "2026-06-19"
+
+  # --- Retirement (static balance; not individually quotable) ---
+  - symbol: ROTH-IRA
+    name: Roth IRA — aggressive index + growth funds
+    account: retirement
+    balance: 61000.00
+    type: retirement
+    as_of: "2026-06-19"
+
+  # --- Cash (outside the brokerage) ---
+  - symbol: CASH-EF
+    name: Emergency fund (high-yield savings — being built)
+    account: cash
+    balance: 13000.00
+    type: cash
+    as_of: "2026-06-19"
+
+# An optional, illustrative values screen — exclude lists are checked by `hn finance screen <SYMBOL>`.
+# Customize (or delete) freely; this is just an example of the feature, not a recommendation.
+values_screen:
+  exclude:
+    tobacco: [MO, PM]
+  positive_tilts: [semiconductors, cloud_software]
+
+# Resting good-til-canceled orders (the GTC ledger). Tickets reference this; `pulse` computes
+# distance-to-limit. Example: a resting dip-catch below support on the concentrated semi name.
+open_orders:
+  - symbol: NVDA
+    side: buy
+    qty: 15
+    limit: 150.00
+    placed: 2026-06-19
+    expires: 2026-12-19
+    note: example resting add below a prior swing-low shelf
+
+# Pulse flag thresholds — deterministic detection; the agent only narrates/escalates. (A more
+# volatile book runs tighter day-move + trap thresholds than the diversified demo-investor.)
+pulse:
+  day_move_pct: 4.0        # |holding day move| >= this -> flag
+  trap_proximity_pct: 1.0  # price within this % of an open order's limit -> flag
+  print_days: 3            # days-to-earnings <= this -> flag
+  index_move_pct: 1.5      # |index day move| >= this -> flag
+  macro_days: 2            # macro event <= this many days out -> flag
+
+# The broad tape (not just held symbols) — a single macro move can shift everything.
+index_watch: [SPY, QQQ, SOXX]
+
+# Macro calendar — approximate dates; verify against primary sources (federalreserve.gov / bls.gov)
+# as each nears. Drives the `macro_soon` pulse flag.
+macro_events:
+  - {date: 2026-07-02, label: "Jobs report (Jun — approx)"}
+  - {date: 2026-07-14, label: "CPI (Jun data — approx)"}
+  - {date: 2026-07-29, label: "FOMC decision (Jul meeting — approx)"}
+  - {date: 2026-08-06, label: "Jobs report (Jul — approx)"}
+  - {date: 2026-08-13, label: "CPI (Jul data — approx)"}
+  - {date: 2026-09-04, label: "Jobs report (Aug — approx)"}
+  - {date: 2026-09-11, label: "CPI (Aug data — approx)"}
+  - {date: 2026-09-16, label: "FOMC decision (Sep meeting — approx)"}
+  - {date: 2026-10-14, label: "CPI (Sep data — approx)"}
+  - {date: 2026-10-28, label: "FOMC decision (Oct meeting — approx)"}
+  - {date: 2026-12-09, label: "FOMC decision (Dec meeting — approx)"}
+
+# Rebalance bands — % of the TAXABLE brokerage account. A symbol without a band is not drift-checked.
+# (Aggressive book: wide bands, single-name concentration explicitly tolerated.)
+rebalance_bands:
+  QQQ: {min: 40.0, max: 65.0}
+  NVDA: {min: 5.0, max: 25.0}
+
+# Watchlist — non-held symbols tracked for day moves + news in `watch`.
+watchlist:
+  - {symbol: AVGO, note: "broadcom — semis/AI infrastructure"}
+  - {symbol: PLTR, note: "high-beta software — on the radar (values-screen check first)"}
+  - {symbol: ARM, note: "chip IP — thematic add candidate"}
+
+# Strategic TARGET allocation — illustrative growth-tilted plan for the taxable pool. Drives the Target
+# pie in `hn finance allocation`; the Current pie is derived live from holdings. Values ~$k; the pie
+# self-normalizes to 100%.
+allocation_target:
+  caption: "~$120k taxable pool · illustrative growth-tilted target"
+  slices:
+    - {label: "Core index (QQQ/SMH)", value: 70}
+    - {label: "Single-stock convictions", value: 35}
+    - {label: "Cash / dry powder", value: 15}
+
+# Dated tax actions — drives the `tax_deadline` pulse flag. Illustrative estimated-tax cadence.
+tax_events:
+  - {date: 2026-09-15, label: "1040-ES Q3 estimated tax due (illustrative)"}
+  - {date: 2027-01-15, label: "1040-ES Q4 estimated tax due (illustrative)"}
+
+# Employer-RSU vest calendar (the concentrated CRWD position above) — upcoming vests continuing the
+# ~quarterly grant schedule. Drives the Unwind-tab vest timeline + the wash-sale windows in `watch`
+# (each vest poisons a loss-sale of the same stock ±30 days). units = shares vesting.
+vest_calendar:
+  - {date: "2026-08-15", units: 45}
+  - {date: "2026-11-15", units: 45}
+  - {date: "2027-02-15", units: 45}

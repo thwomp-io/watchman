@@ -1,0 +1,11 @@
+# Your applications pipeline — the roles you're actively pursuing (the career dashboard reads this).
+#
+# Hand-maintained (read-rich / execute-gated: advancing a stage is your edit, never the tool's). Add a
+# row per role you're pursuing; the dashboard renders the pipeline.
+
+applications: []
+  # - company: Example Co
+  #   role: Senior Infrastructure Engineer
+  #   stage: applied        # watching | applied | screen | onsite | offer | closed
+  #   next_step: "follow up w/ recruiter"
+  #   updated: 2026-01-15

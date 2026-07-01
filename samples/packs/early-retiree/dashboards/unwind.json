@@ -1,0 +1,241 @@
+{
+  "lane": "unwind",
+  "title": "Unwind",
+  "group": "Finance",
+  "widgets": [
+    {
+      "id": "price",
+      "title": "Price",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "price",
+      "prefix": "$",
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "day",
+      "title": "Day",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "day_change_pct",
+      "prefix": null,
+      "suffix": "%",
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "gl",
+      "title": "Unrealized G/L",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "position.unrealized_gl_pct",
+      "prefix": null,
+      "suffix": "%",
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "harvest",
+      "title": "Harvestable loss",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "tlh.harvestable_loss",
+      "prefix": "$",
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "vests",
+      "title": "Vest calendar — sell-planning timeline",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": "vest_timeline",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "price_chart",
+      "title": "Price vs cost-basis band",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": "price_chart",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "lot_split",
+      "title": "Lots — gain (anytime) vs loss (wash-gated)",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "lot_split",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "tlh_split",
+      "title": "Sellability split",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "tlh_split",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "ladder",
+      "title": "Lot ladder",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": "lots",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+# Demo Investor — a FICTIONAL finance profile (sample weight pack).
+#
+# Everything here is invented for demonstration: a ~$1M-net-worth household with a diversified,
+# index-anchored portfolio plus a few single-stock convictions. It exists so the finance lane and the
+# Watchman finance dashboards run out-of-the-box with realistic-looking data — load a different pack to
+# see the console re-render against a different scenario.
+#
+# NOT real holdings. NOT financial advice. The toolkit is read-only (observation + research), never
+# execution.
+#
+# Schema notes:
+#   - `holdings` are grouped by `account` (a logical bucket: taxable / retirement / cash).
+#   - Market positions (`type: etf|stock`) are valued from LIVE public prices — no `last_price` needed.
+#   - Mutual funds (`type: mutual_fund`) don't price intraday → valued from a manually-synced `last_price`.
+#   - Non-market balances (`type: retirement|cash`) are valued from a static `balance`, with an `as_of`.
+
+holdings:
+  # --- Taxable brokerage (the active, thesis-expressing account) ---
+  - symbol: VTI
+    name: Vanguard Total Stock Market ETF
+    account: taxable
+    shares: 900
+    avg_cost: 238.40
+    cost_basis: 214560.00
+    type: etf
+  - symbol: VXUS
+    name: Vanguard Total International Stock ETF
+    account: taxable
+    shares: 1200
+    avg_cost: 57.90
+    cost_basis: 69480.00
+    type: etf
+  - symbol: BND
+    name: Vanguard Total Bond Market ETF
+    account: taxable
+    shares: 700
+    avg_cost: 72.10
+    cost_basis: 50470.00
+    type: etf
+  - symbol: AAPL
+    name: Apple Inc
+    account: taxable
+    shares: 200
+    avg_cost: 168.25
+    cost_basis: 33650.00
+    type: stock
+  - symbol: MSFT
+    name: Microsoft Corp
+    account: taxable
+    shares: 80
+    avg_cost: 372.00
+    cost_basis: 29760.00
+    type: stock
+  - symbol: COST
+    name: Costco Wholesale Corp
+    account: taxable
+    shares: 30
+    avg_cost: 705.00
+    cost_basis: 21150.00
+    type: stock
+  # --- A legacy concentrated position being diversified down (the unwind story; per-lot basis) ---
+  - symbol: ORCL
+    name: Oracle Corp (legacy single-stock from a prior employer)
+    account: taxable
+    shares: 520
+    avg_cost: 96.80
+    cost_basis: 50336.00
+    type: stock
+    lots:
+      - {acquired: "2019-05-20", qty: 200, unit_cost: 52.30}    # deep long-term gain
+      - {acquired: "2021-09-10", qty: 180, unit_cost: 88.40}    # gain
+      - {acquired: "2024-03-15", qty: 90,  unit_cost: 118.60}   # gain (smaller)
+      - {acquired: "2025-07-01", qty: 50,  unit_cost: 205.00}   # loss lot (TLH inventory)
+  - symbol: SPAXX
+    name: Government Money Market (core sweep / dry powder)
+    account: taxable
+    balance: 24000.00
+    type: cash
+    as_of: "2026-06-19"
+
+  # --- Retirement (static balances; not individually quotable) ---
+  - symbol: 401K
+    name: Employer 401(k) — target-date index fund
+    account: retirement
+    balance: 382000.00
+    type: retirement
+    as_of: "2026-06-19"
+  - symbol: ROTH-IRA
+    name: Roth IRA — broad index funds
+    account: retirement
+    balance: 86000.00
+    type: retirement
+    as_of: "2026-06-19"
+
+  # --- Cash (outside the brokerage) ---
+  - symbol: CASH-EF
+    name: Emergency fund (high-yield savings)
+    account: cash
+    balance: 40000.00
+    type: cash
+    as_of: "2026-06-19"
+
+# An optional, illustrative values screen — exclude lists are checked by `hn finance screen <SYMBOL>`.
+# Customize (or delete) freely; this is just an example of the feature, not a recommendation.
+values_screen:
+  exclude:
+    tobacco: [MO, PM]
+    gambling: [LVS, DKNG]
+  positive_tilts: [renewables, broad_index]
+
+# Resting good-til-canceled orders (the GTC ledger). Tickets reference this; `pulse` computes
+# distance-to-limit. Example: a single resting dip-catch below support.
+open_orders:
+  - symbol: VTI
+    side: buy
+    qty: 20
+    limit: 280.00
+    placed: 2026-06-19
+    expires: 2026-12-19
+    note: example resting dip-catch below a round-number support level
+
+# Pulse flag thresholds — deterministic detection; the agent only narrates/escalates.
+pulse:
+  day_move_pct: 5.0        # |holding day move| >= this -> flag
+  trap_proximity_pct: 1.0  # price within this % of an open order's limit -> flag
+  print_days: 3            # days-to-earnings <= this -> flag
+  index_move_pct: 1.5      # |index day move| >= this -> flag
+  macro_days: 2            # macro event <= this many days out -> flag
+
+# The broad tape (not just held symbols) — a single macro move can shift everything.
+index_watch: [SPY, QQQ]
+
+# Macro calendar — approximate dates; verify against primary sources (federalreserve.gov / bls.gov)
+# as each nears. Drives the `macro_soon` pulse flag + the Core macro-calendar widget.
+macro_events:
+  - {date: 2026-07-02, label: "Jobs report (Jun — approx)"}
+  - {date: 2026-07-14, label: "CPI (Jun data — approx)"}
+  - {date: 2026-07-29, label: "FOMC decision (Jul meeting — approx)"}
+  - {date: 2026-08-06, label: "Jobs report (Jul — approx)"}
+  - {date: 2026-08-13, label: "CPI (Jul data — approx)"}
+  - {date: 2026-09-04, label: "Jobs report (Aug — approx)"}
+  - {date: 2026-09-11, label: "CPI (Aug data — approx)"}
+  - {date: 2026-09-16, label: "FOMC decision (Sep meeting — approx)"}
+  - {date: 2026-10-02, label: "Jobs report (Sep — approx)"}
+  - {date: 2026-10-14, label: "CPI (Sep data — approx)"}
+  - {date: 2026-10-28, label: "FOMC decision (Oct meeting — approx)"}
+  - {date: 2026-11-06, label: "Jobs report (Oct — approx)"}
+  - {date: 2026-12-09, label: "FOMC decision (Dec meeting — approx)"}
+
+# Rebalance bands — % of the TAXABLE brokerage account. A symbol without a band is not drift-checked.
+rebalance_bands:
+  VTI: {min: 35.0, max: 55.0}
+  VXUS: {min: 10.0, max: 25.0}
+  BND: {min: 5.0, max: 20.0}
+
+# Watchlist — non-held symbols tracked for day moves + news in `watch`.
+watchlist:
+  - {symbol: NVDA, note: "megacap semis — AI bellwether"}
+  - {symbol: BRK.B, note: "diversified compounder — on the wishlist"}
+  - {symbol: SCHD, note: "dividend-quality ETF — a possible income tilt"}
+  - {symbol: VNQ, note: "REIT index — a possible real-assets sleeve"}
+  - {symbol: JPM, note: "money-center bank — quality financials"}
+  - {symbol: UNH, note: "managed care — defensive healthcare"}
+  - {symbol: XOM, note: "integrated energy — inflation hedge (watch-only)"}
+  - {symbol: TLT, note: "long-duration Treasuries — rate barometer"}
+
+# Strategic TARGET allocation — the illustrative end-state plan for the taxable pool. Drives the Target
+# pie in `hn finance allocation` (the Current pie is derived live from holdings). Config-stored judgment:
+# the allocation *decision*, synced when the strategy changes (rare), NOT per-fill. Values ~$k; each pie
+# self-normalizes to 100%.
+allocation_target:
+  caption: "~$490k taxable pool · illustrative index-anchored target"
+  slices:
+    - {label: "Core index (VTI/VXUS/BND)", value: 300}
+    - {label: "Single-stock convictions", value: 90}
+    - {label: "Legacy ORCL (diluting)", value: 20}
+    - {label: "Cash / dry powder", value: 40}
+
+# Dated tax actions — drives the `tax_deadline` pulse flag. Illustrative estimated-tax cadence.
+tax_events:
+  - {date: 2026-09-15, label: "1040-ES Q3 estimated tax due (illustrative)"}
+  - {date: 2027-01-15, label: "1040-ES Q4 estimated tax due (illustrative)"}

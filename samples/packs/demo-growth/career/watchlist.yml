@@ -1,0 +1,76 @@
+# Demo Job-Hunter watchlist — a FICTIONAL career-lane sample (sample weight pack).
+#
+# A generic infrastructure / platform engineer's target list: well-known public infra companies. The
+# companies are real (and most run public Greenhouse/Ashby boards), but in this sample the openings are
+# served from a static scan twin (career/discoveries/), so the `token`s here are illustrative — the
+# lane reads the bundled twin rather than hitting a live board. Swap to your own watchlist + run
+# `hn career openings --write` to scan real boards.
+#
+# Schema: each company has an `ats` (greenhouse | ashby | workday | eightfold | none) + a board `token`,
+# a `tier` label (grouping in the shortlist), and an optional `note`. `filters` is the default
+# title/seniority matching.
+
+companies:
+  - name: GitLab
+    ats: greenhouse
+    token: gitlab
+    tier: "Tier 1"
+    note: "all-remote; platform + infra + SRE surface"
+  - name: HashiCorp
+    ats: greenhouse
+    token: hashicorp
+    tier: "Tier 1"
+    note: "IaC / Terraform / Vault — infra-tooling native"
+  - name: Datadog
+    ats: greenhouse
+    token: datadog
+    tier: "Tier 1"
+    note: "observability platform; strong SRE culture"
+  - name: Cloudflare
+    ats: greenhouse
+    token: cloudflare
+    tier: "Tier 2"
+    note: "edge / network infra at scale"
+  - name: Confluent
+    ats: greenhouse
+    token: confluent
+    tier: "Tier 2"
+    note: "streaming data infra (Kafka)"
+  - name: MongoDB
+    ats: ashby
+    token: mongodb
+    tier: "Tier 2"
+    note: "database platform; cloud + on-prem"
+  - name: Elastic
+    ats: greenhouse
+    token: elastic
+    tier: "Tier 3"
+    note: "search / observability; distributed, all-remote"
+
+# Default matching: an opening matches if ANY title keyword hits the title-or-department, AND ANY
+# seniority keyword hits the title, AND NO exclusion keyword hits either. `title_none` is noise
+# control (non-engineering functions riding domain words), not role-shape narrowing.
+filters:
+  title_any:
+    - infrastructure
+    - platform
+    - sre
+    - "site reliability"
+    - reliability
+    - devops
+    - systems
+    - cloud
+    - kubernetes
+    - observability
+  seniority_any:
+    - senior
+    - staff
+    - principal
+    - lead
+  title_none:
+    - manager
+    - director
+    - sales
+    - marketing
+    - recruiter
+    - account

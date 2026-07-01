@@ -1,0 +1,72 @@
+[project]
+name = "harness"
+version = "0.2.0"
+description = "A personal agentic-harness toolkit — one CLI of domain lanes (finance, career, travel). Provider-abstracted, corpus-aware, exposed via MCP + CLI."
+requires-python = ">=3.12"
+dependencies = [
+    "serpapi",
+    "mcp[cli]",
+    "typer",
+    "rich",
+    "pydantic",
+    "pydantic-settings",
+    "python-frontmatter",
+    "jinja2",
+    "httpx",
+    "pyyaml",
+    "pillow",
+]
+
+[project.scripts]
+harness = "harness.cli:app"
+hn = "harness.cli:app"
+harness-mcp = "harness.mcp_server:main"
+
+[dependency-groups]
+dev = ["pytest", "pytest-mock", "respx", "ruff", "mypy", "types-PyYAML"]
+# Provider posture per domain (the abstraction stays so a viable alternative could slot in later):
+#   travel  — SerpAPI sole provider. Amadeus (free tier decommissioned 2026-07-17) + Duffel
+#             (enterprise-only) were both evaluated + dropped as non-viable for an individual dev.
+#   finance — Alpaca sole market-data provider (free: real-time IEX + 15-min-delayed SIP). READ-ONLY
+#             by design; programmatic trading/execution stays parked in.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/harness"]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that hit a real API (require a real key in env); skipped otherwise",
+]
+testpaths = ["tests"]
+# importlib mode: the two domains have same-basename test files (test_settings.py, etc.) under
+# tests/travel + tests/finance; importlib disambiguates without needing __init__.py packages.
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 120  # shared harness convention (raised from 100; see the operator skill)
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# typer's documented pattern uses these as parameter defaults (they return sentinels, not shared
+# mutable state) — exempt from B008, incl. for list/dict-typed options (e.g. a repeatable --city).
+extend-immutable-calls = ["typer.Option", "typer.Argument"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["harness"]
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["serpapi", "serpapi.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["PIL", "PIL.*"]
+ignore_missing_imports = true

@@ -1,0 +1,220 @@
+{
+  "lane": "career",
+  "title": "Board",
+  "group": "Career",
+  "widgets": [
+    {
+      "id": "openings",
+      "title": "Matched openings",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 1,
+      "value_path": "summary.total",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "leadership",
+      "title": "Leadership (Shape A)",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 1,
+      "value_path": "summary.leadership",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "ic_infra",
+      "title": "IC / infra (Shape B)",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 1,
+      "value_path": "summary.ic_infra",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "shortlist",
+      "title": "Shortlist — high-priority roles",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 2,
+      "value_path": "roles",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "company",
+        "tier",
+        "shape",
+        "title",
+        "salary",
+        "url"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "shape_bar",
+      "title": "Openings by role shape",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 2,
+      "value_path": "shape_bar",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "pipeline",
+      "title": "Pipeline — applications & inbound",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "applications",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": "applications",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [
+        "company",
+        "role",
+        "stage",
+        "next_step",
+        "updated"
+      ],
+      "rows": 1
+    },
+    {
+      "id": "scans",
+      "title": "Openings scans",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "role-hunt/discoveries"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "matrix",
+      "title": "Hiring map — company × role shape",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 2,
+      "value_path": "matrix",
+      "prefix": null,
+      "suffix": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 3
+    }
+  ]
+}
