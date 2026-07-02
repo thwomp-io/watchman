@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="493" height="58" viewBox="0 0 493 58">
 <rect width="493" height="58" fill="#f4f6fb"/>
 <rect x="373" y="0" width="120" height="58" fill="#08090c"/>
-<image xlink:href="../icons/128x128.png" x="437" y="9" width="40" height="40"/>
+<image xlink:href="icon-128.png" x="437" y="9" width="40" height="40"/>
 <rect x="0" y="54" width="493" height="4" fill="#ffd13d"/>
 </svg>

@@ -61,9 +61,8 @@ pub struct AppConfig {
 }
 
 /// The real user home, cross-platform. `HOME` is the unix env; **Windows doesn't set it** —
-/// `USERPROFILE` is the Windows equivalent (the Windows-support fix: before this, every
-/// home-derived path on Windows silently fell back to `/`). Checked in that order so a unix-style
-/// `HOME` override (tests, sandboxes) still wins everywhere.
+/// `USERPROFILE` is the Windows equivalent. Checked in that order so a unix-style `HOME`
+/// override (tests, sandboxes) still wins everywhere.
 fn home() -> PathBuf {
     std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
@@ -133,11 +132,9 @@ const PATH_LIST_SEP: char = ':';
 /// (Cross-language twin of the career `render` texbin PATH-extend; same rationale: long-lived
 /// / non-interactive launch contexts don't inherit the dirs.)
 ///
-/// Cross-platform: candidates are platform-gated — unix gets the homebrew/local tool dirs;
-/// Windows gets uv's default per-user install dir (`%USERPROFILE%\.local\bin` — uv uses the same
-/// relative path on Windows by its own convention) + cargo's. Windows GUI launches inherit a fuller
-/// PATH than launchd's minimal one, but startup-registered launches can still miss per-user tool
-/// dirs, so the same belt applies on every platform.
+/// Candidates are platform-gated: unix gets the homebrew/local tool dirs; Windows gets uv's
+/// per-user install dir (`%USERPROFILE%\.local\bin`) and cargo's. Startup-registered launches on
+/// any platform can miss per-user tool dirs, so the same belt applies everywhere.
 pub fn augmented_path() -> String {
     #[cfg(not(windows))]
     let candidates = [
@@ -208,9 +205,9 @@ mod tests {
 
     #[test]
     fn windows_semicolon_separator_never_splits_drive_colons() {
-        // The Windows regression this guards: splitting a Windows PATH on ':' shreds
-        // `C:\…` entries. With ';' the drive colons survive intact. Existing dir = "/" so the
-        // candidate passes the is_dir() check on any test host; the SEPARATOR is what's under test.
+        // Splitting a Windows PATH on ':' would shred `C:\…` entries; with ';' the drive colons
+        // survive. Existing dir = "/" so the candidate passes is_dir() on any test host; the
+        // SEPARATOR is what's under test.
         let candidates = ["/".to_string()];
         let win_path = r"C:\Windows\system32;C:\Users\u\.local\bin";
         let out = augment_path_with(win_path, &candidates, ';');
@@ -289,9 +286,7 @@ pub fn set_resource_packs_dir(dir: Option<PathBuf>) {
     let _ = RESOURCE_PACKS_DIR.set(dir);
 }
 
-/// Where the sample weight packs live. Two-stage resolution (the demo-experience fix — a fresh
-/// installed app has NO cloned repo, so the old repo-only path yielded an empty PACK dropdown on
-/// every fresh Windows/Linux install):
+/// Where the sample weight packs live. Two-stage resolution:
 ///   1. the harness REPO checkout (`{harness_home}/projects/harness/samples/packs`) when present —
 ///      the dev daily-driver + the sandboxed-launcher case (packs symlinked under `HARNESS_HOME`);
 ///   2. else the packs bundled INTO the app itself (`tauri.conf.json bundle.resources` ships

@@ -10,7 +10,7 @@ style (bg `#08090c` · ink `#f4f6fb` · amber `#ffd13d` · teal `#37e0d8`, Menlo
 - `wix-dialog.{svg,bmp}` (493×312) — MSI welcome/finish background. ⚠ installer text lives on the
   RIGHT two-thirds → right stays light; noir art strip left.
 
-SVG is the SOURCE (icon referenced from `../icons/128x128.png`); BMP is what WiX/NSIS consume
+SVG is the source (icon = `icon-128.png`, a same-dir copy — librsvg does not load image refs outside the SVG's own directory); BMP is what WiX/NSIS consume
 (24-bit, exact dimensions). Regenerate:
 
     rsvg-convert -o /tmp/x.png <name>.svg

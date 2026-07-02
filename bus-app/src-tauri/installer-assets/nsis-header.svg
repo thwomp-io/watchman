@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="150" height="57" viewBox="0 0 150 57">
 <rect width="150" height="57" fill="#08090c"/>
 <text x="10" y="34" font-family="Menlo, 'Courier New', monospace" font-size="13" font-weight="bold" fill="#ffd13d" letter-spacing="2">WATCHMAN</text>
-<image xlink:href="../icons/128x128.png" x="102" y="8" width="40" height="40"/>
+<image xlink:href="icon-128.png" x="102" y="8" width="40" height="40"/>
 <rect x="0" y="53" width="150" height="4" fill="#37e0d8"/>
 </svg>

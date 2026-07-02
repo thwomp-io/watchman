@@ -2,7 +2,7 @@
 <rect width="493" height="312" fill="#f4f6fb"/>
 <rect x="0" y="0" width="166" height="312" fill="#08090c"/>
 <circle cx="83" cy="96" r="50" fill="#37e0d8" opacity="0.08"/>
-<image xlink:href="../icons/128x128.png" x="39" y="52" width="88" height="88"/>
+<image xlink:href="icon-128.png" x="39" y="52" width="88" height="88"/>
 <text x="83" y="180" font-family="Menlo, 'Courier New', monospace" font-size="15" font-weight="bold" fill="#f4f6fb" text-anchor="middle" letter-spacing="2">WATCHMAN</text>
 <text x="83" y="199" font-family="Menlo, 'Courier New', monospace" font-size="10" fill="#37e0d8" text-anchor="middle" letter-spacing="1">console</text>
 <text x="83" y="290" font-family="Menlo, 'Courier New', monospace" font-size="8" fill="#aab2c2" text-anchor="middle">watch the watchman</text>

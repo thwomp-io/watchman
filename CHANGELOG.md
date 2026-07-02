@@ -3,6 +3,17 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.2] - 2026-07-02
+
+### Fixed
+- **The engine now runs on Windows** — added `tzdata` (Python's `zoneinfo` has no system timezone
+  database on Windows). If you hit `ZoneInfoNotFoundError`: `git pull` and `uv sync`.
+- **Windows installer branding** — the wizard art now renders the app icon.
+
+### Added
+- **Windows CI smoke** — every push proves the engine imports and runs a keyless sample-pack
+  command on `windows-latest`.
+
 ## [0.3.1] - 2026-07-01
 
 Fresh-install polish from the first Windows field test.
