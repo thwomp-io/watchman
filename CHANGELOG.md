@@ -3,6 +3,31 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-07-01
+
+Cross-platform: Windows and Linux, first-class. A fresh clone — or a prebuilt installer — now runs the
+console and the demo personas on any desktop OS.
+
+### Added
+- **Prebuilt installers on Releases**: Windows (`.exe`/`.msi`) and Linux (`.deb`/`.AppImage`), built,
+  bundled, and attached by CI on every release tag.
+- **README platform-support matrix** with a Windows (PowerShell) quickstart and Linux system-dependency
+  notes for building the console from source.
+
+### Fixed
+- **Windows home-directory resolution** — the app read only the unix `HOME` env (unset on Windows), so
+  every home-derived path (config, bus db, sample packs) silently broke; it now falls back to
+  `USERPROFILE`.
+- **Windows PATH handling for spawned tools** — the engine-spawn PATH helper split on `:`, which shreds
+  Windows drive-lettered entries; it now uses the platform's list separator and Windows-appropriate
+  per-user tool dirs (uv's install dir, cargo's bin).
+
+### Changed
+- **macOS builds from a fresh clone no longer require a signing identity** — the config no longer pins
+  one; Tauri falls back to ad-hoc signing for local builds.
+- **Per-file release history** — releases now land as regular commits, so `git log <file>` and diffs
+  between releases are browsable.
+
 ## [0.2.0] - 2026-07-01
 
 A curated batch of finance-lane depth, a broad news wire, and a second bundled skill.

@@ -1,6 +1,6 @@
 [package]
 name = "bus-app"
-version = "0.2.0"
+version = "0.3.0"
 description = "Watchman — tray inbox + notifications for the harness message bus (docs/BUS.md)"
 authors = ["thwomp-io"]
 edition = "2021"

@@ -83,6 +83,38 @@ npm run tauri dev # needs Rust (rustup) + platform build tools
 In the console, use the **PACK dropdown** in the masthead to load a sample persona, then swap to another —
 the whole dashboard set re-renders from the pack. Use **Load Weight Pack…** to point it at your own.
 
+### Platform support
+
+| Platform | Engine (`hn` CLI) | Desktop console |
+|---|---|---|
+| **macOS** | ✅ | ✅ build from source (`npm run tauri build`) |
+| **Windows 10/11** | ✅ (uv is first-class on Windows) | ✅ prebuilt `.exe`/`.msi` installers on [Releases](../../releases) (v0.3.0+) — or build from source |
+| **Linux** | ✅ (or use the container, below) | ✅ prebuilt `.deb`/`.AppImage` on [Releases](../../releases) (v0.3.0+) — or build from source |
+
+**Windows quickstart** (PowerShell): install [uv](https://docs.astral.sh/uv/) and run the same commands —
+the env-var syntax is the only difference:
+
+```powershell
+uv sync
+uv run hn finance networth --pack samples/packs/demo-investor
+# or for the session:
+$env:WEIGHTS_PACK = "samples/packs/demo-investor"
+uv run hn finance networth
+```
+
+For the console on Windows, grab the installer from Releases and use the **PACK dropdown** — no toolchain
+needed. Building from source needs Node + Rust with the MSVC build tools rustup installs (WebView2 ships
+with Windows 10/11).
+
+**Linux console** needs the Tauri v2 system libraries before `npm run tauri dev`/`build`
+(Debian/Ubuntu: `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
+libsoup-3.0-dev patchelf`; the tray icon wants an appindicator extension on GNOME).
+
+> Platform notes: the **standing agents** (scheduled headless runs) are macOS-`launchd` today —
+> Task Scheduler / systemd ports are on the roadmap. On Windows/Linux the console renders a calm
+> *standby* state for them until configured. All state lives under `~/.local/state/harness` and
+> `~/.config/harness` on every platform (yes, dot-dirs on Windows too — one convention everywhere).
+
 ## Run as a container
 
 The **headless engine** (the `hn` CLI + standing agents + bus) also ships as a container image — a portable

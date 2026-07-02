@@ -6,6 +6,8 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+  # Manual runs let a bundle build be exercised without cutting a tag (the cross-platform bundle lane).
+  workflow_dispatch:
 
 # Least privilege by default; the image job opts up to packages:write for GHCR.
 permissions:
@@ -99,6 +101,74 @@ jobs:
             -e TRIVY_PASSWORD="${{ secrets.GITHUB_TOKEN }}" \
             aquasec/trivy:0.65.0 fs \
               --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress /scan
+
+  # ---- Desktop bundles: Windows + Linux installers (cross-platform support) ----------------------
+  # The slow lane — runs on release tags + manual dispatch only (the rust/frontend jobs already gate
+  # correctness on every push; rebuilding installers per-push would burn wall-clock for nothing).
+  # Windows: NSIS .exe + WiX .msi (WiX fetched by tauri-cli on the runner). Linux: .deb + .AppImage
+  # (same apt dep set the rust job uses). macOS bundles stay LOCAL-build-only for now: CI artifacts
+  # would be unsigned (no cert in CI) → Gatekeeper-quarantined downloads, worse than build-from-source.
+  bundle:
+    name: bundle (${{ matrix.platform }})
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [frontend, rust]
+    permissions:
+      contents: write   # gh release upload (attach installers to the Release page)
+    strategy:
+      fail-fast: false  # a Windows bundler hiccup shouldn't kill the Linux artifacts, or vice versa
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            bundles: "nsis/*.exe msi/*.msi"
+          - platform: linux
+            os: ubuntu-latest
+            bundles: "deb/*.deb appimage/*.AppImage"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: bus-app
+        shell: bash   # one script dialect across both runners (bash ships on windows-latest)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tauri v2 system deps (linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev libsoup-3.0-dev patchelf
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: bus-app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: bus-app/src-tauri
+      - run: npm ci
+      - name: tauri build
+        run: npm run tauri build
+      - name: Collect installers
+        # One flat dir regardless of platform; if-no-files-found below turns a bundler path drift
+        # into a loud red instead of a silently-empty artifact.
+        run: |
+          mkdir -p dist-bundles
+          for pat in ${{ matrix.bundles }}; do
+            cp src-tauri/target/release/bundle/$pat dist-bundles/ || true
+          done
+          ls -la dist-bundles/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watchman-${{ matrix.platform }}
+          path: bus-app/dist-bundles/*
+          if-no-files-found: error
+      - name: Attach to the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF#refs/tags/}" dist-bundles/* --clobber
 
   # ---- Image: build the headless-engine container, scan + smoke-test it, publish to GHCR --------
   image:

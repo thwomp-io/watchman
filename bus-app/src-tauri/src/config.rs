@@ -60,8 +60,15 @@ pub struct AppConfig {
     pub live_viz: Vec<LiveViz>,
 }
 
+/// The real user home, cross-platform. `HOME` is the unix env; **Windows doesn't set it** —
+/// `USERPROFILE` is the Windows equivalent (the Windows-support fix: before this, every
+/// home-derived path on Windows silently fell back to `/`). Checked in that order so a unix-style
+/// `HOME` override (tests, sandboxes) still wins everywhere.
 fn home() -> PathBuf {
-    PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| "/".into()))
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/"))
 }
 
 /// The harness STATE root — `HARNESS_HOME` env (for an isolated test / CI instance) else `$HOME`.
@@ -108,6 +115,14 @@ pub fn resolve_cwd(cwd: &str) -> PathBuf {
     }
 }
 
+/// The PATH *list* separator (`:` on unix, `;` on Windows — NOT the dir separator).
+/// A Windows path itself contains a drive colon (`C:\…`), so splitting a Windows PATH on `:`
+/// would shred every entry — the platform const is load-bearing, not cosmetic.
+#[cfg(windows)]
+const PATH_LIST_SEP: char = ';';
+#[cfg(not(windows))]
+const PATH_LIST_SEP: char = ':';
+
 /// A PATH for spawned subprocesses that survives the GUI launch context.
 ///
 /// `Command::new("uv")` resolves a bare program name via the process PATH — but a launchd
@@ -117,20 +132,37 @@ pub fn resolve_cwd(cwd: &str) -> PathBuf {
 /// tool dirs deterministically, dir-existence-checked + dedup'd against the inherited PATH.
 /// (Cross-language twin of the career `render` texbin PATH-extend; same rationale: long-lived
 /// / non-interactive launch contexts don't inherit the dirs.)
+///
+/// Cross-platform: candidates are platform-gated — unix gets the homebrew/local tool dirs;
+/// Windows gets uv's default per-user install dir (`%USERPROFILE%\.local\bin` — uv uses the same
+/// relative path on Windows by its own convention) + cargo's. Windows GUI launches inherit a fuller
+/// PATH than launchd's minimal one, but startup-registered launches can still miss per-user tool
+/// dirs, so the same belt applies on every platform.
 pub fn augmented_path() -> String {
+    #[cfg(not(windows))]
     let candidates = [
         "/opt/homebrew/bin".to_string(),
         "/usr/local/bin".to_string(),
         home().join(".local/bin").to_string_lossy().into_owned(),
     ];
-    augment_path_with(&std::env::var("PATH").unwrap_or_default(), &candidates)
+    #[cfg(windows)]
+    let candidates = [
+        home().join(".local").join("bin").to_string_lossy().into_owned(),
+        home().join(".cargo").join("bin").to_string_lossy().into_owned(),
+    ];
+    augment_path_with(
+        &std::env::var("PATH").unwrap_or_default(),
+        &candidates,
+        PATH_LIST_SEP,
+    )
 }
 
 /// Pure core of [`augmented_path`]: prepend each existing-on-disk candidate dir that isn't
 /// already present, preserving the inherited PATH as the suffix. Split out for testability
-/// (no global-env mutation in tests).
-fn augment_path_with(current: &str, candidates: &[String]) -> String {
-    let existing: Vec<&str> = current.split(':').collect();
+/// (no global-env mutation in tests); the list separator is a PARAMETER so tests pin both
+/// platforms' behavior on any host (the platform const feeds it in [`augmented_path`]).
+fn augment_path_with(current: &str, candidates: &[String], sep: char) -> String {
+    let existing: Vec<&str> = current.split(sep).collect();
     let mut prefix: Vec<String> = Vec::new();
     for dir in candidates {
         if PathBuf::from(dir).is_dir() && !existing.contains(&dir.as_str()) && !prefix.contains(dir)
@@ -138,10 +170,11 @@ fn augment_path_with(current: &str, candidates: &[String]) -> String {
             prefix.push(dir.clone());
         }
     }
+    let sep_s = sep.to_string();
     match (prefix.is_empty(), current.is_empty()) {
         (true, _) => current.to_string(),
-        (false, true) => prefix.join(":"),
-        (false, false) => format!("{}:{}", prefix.join(":"), current),
+        (false, true) => prefix.join(&sep_s),
+        (false, false) => format!("{}{}{}", prefix.join(&sep_s), sep_s, current),
     }
 }
 
@@ -155,9 +188,9 @@ mod tests {
         let candidates = ["/".to_string()];
         // Already present -> no change.
         let already = "/usr/bin:/:/bin";
-        assert_eq!(augment_path_with(already, &candidates), already);
+        assert_eq!(augment_path_with(already, &candidates, ':'), already);
         // Absent -> prepended, original preserved as suffix, exactly once.
-        let out = augment_path_with("/usr/bin:/bin", &candidates);
+        let out = augment_path_with("/usr/bin:/bin", &candidates, ':');
         assert_eq!(out, "/:/usr/bin:/bin");
         assert_eq!(out.split(':').filter(|p| *p == "/").count(), 1);
     }
@@ -165,12 +198,26 @@ mod tests {
     #[test]
     fn nonexistent_candidates_are_skipped() {
         let candidates = ["/no/such/dir/xyzzy".to_string()];
-        assert_eq!(augment_path_with("/usr/bin", &candidates), "/usr/bin");
+        assert_eq!(augment_path_with("/usr/bin", &candidates, ':'), "/usr/bin");
     }
 
     #[test]
     fn empty_inherited_path_yields_bare_prefix() {
-        assert_eq!(augment_path_with("", &["/".to_string()]), "/");
+        assert_eq!(augment_path_with("", &["/".to_string()], ':'), "/");
+    }
+
+    #[test]
+    fn windows_semicolon_separator_never_splits_drive_colons() {
+        // The Windows regression this guards: splitting a Windows PATH on ':' shreds
+        // `C:\…` entries. With ';' the drive colons survive intact. Existing dir = "/" so the
+        // candidate passes the is_dir() check on any test host; the SEPARATOR is what's under test.
+        let candidates = ["/".to_string()];
+        let win_path = r"C:\Windows\system32;C:\Users\u\.local\bin";
+        let out = augment_path_with(win_path, &candidates, ';');
+        assert_eq!(out, format!(r"/;{win_path}"));
+        // And a candidate already present under ';' isn't re-prepended.
+        let already = format!(r"/;{win_path}");
+        assert_eq!(augment_path_with(&already, &candidates, ';'), already);
     }
 
     #[test]
