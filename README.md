@@ -23,6 +23,12 @@ and a resident desktop console. It's built on one thesis:
 
 ![How Watchman works](docs/assets/architecture.svg)
 
+> **Try the demo console in one click** — prebuilt, loads a fictional sample persona out of the box:
+> **[⬇ Windows](../../releases/latest/download/Watchman-Setup-x64.exe)** ·
+> **[⬇ Linux .deb](../../releases/latest/download/watchman-amd64.deb)** ·
+> **[⬇ Linux AppImage](../../releases/latest/download/Watchman-x86_64.AppImage)** ·
+> [all releases](../../releases) — details in [Download the console](#download-the-console--one-click-no-toolchain).
+
 ## See it move
 
 A weight **pack is a persona** — a complete sample profile across every lane. Loading one swaps the *whole*
@@ -83,16 +89,28 @@ npm run tauri dev # needs Rust (rustup) + platform build tools
 In the console, use the **PACK dropdown** in the masthead to load a sample persona, then swap to another —
 the whole dashboard set re-renders from the pack. Use **Load Weight Pack…** to point it at your own.
 
-### Platform support
+### Download the console — one click, no toolchain
 
-| Platform | Engine (`hn` CLI) | Desktop console |
+The full demo console, prebuilt. Download, install, pick a persona from the **PACK dropdown** — done:
+
+| Platform | Direct download | Notes |
 |---|---|---|
-| **macOS** | ✅ | ✅ build from source (`npm run tauri build`) |
-| **Windows 10/11** | ✅ (uv is first-class on Windows) | ✅ prebuilt `.exe`/`.msi` installers on [Releases](../../releases) (v0.3.0+) — or build from source |
-| **Linux** | ✅ (or use the container, below) | ✅ prebuilt `.deb`/`.AppImage` on [Releases](../../releases) (v0.3.0+) — or build from source |
+| **Windows 10/11** | **[⬇ Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** · [.msi](../../releases/latest/download/Watchman-x64.msi) | unsigned — see SmartScreen note below |
+| **Linux (deb)** | **[⬇ watchman-amd64.deb](../../releases/latest/download/watchman-amd64.deb)** | `sudo apt install ./watchman-amd64.deb` |
+| **Linux (portable)** | **[⬇ Watchman-x86_64.AppImage](../../releases/latest/download/Watchman-x86_64.AppImage)** | `chmod +x` and run |
+| **macOS** | build from source (below) | prebuilt bundles are on the roadmap |
 
-**Windows quickstart** (PowerShell): install [uv](https://docs.astral.sh/uv/) and run the same commands —
-the env-var syntax is the only difference:
+**Windows install, start to finish:**
+
+1. Download **[Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** and run it.
+2. SmartScreen will warn — the installer is open-source but **unsigned** (no paid code-signing cert).
+   Click **More info → Run anyway**. (Audit the source right here if you'd rather build it yourself:
+   Node + Rust with the MSVC build tools rustup installs; WebView2 ships with Windows 10/11.)
+3. Launch **Watchman** — it opens on a bundled **fictional sample persona**, live out of the box.
+4. Swap personas from the **PACK dropdown** in the masthead; the whole console re-renders.
+
+The engine CLI on Windows (PowerShell) — install [uv](https://docs.astral.sh/uv/), then the same
+commands as above; the env-var syntax is the only difference:
 
 ```powershell
 uv sync
@@ -102,11 +120,7 @@ $env:WEIGHTS_PACK = "samples/packs/demo-investor"
 uv run hn finance networth
 ```
 
-For the console on Windows, grab the installer from Releases and use the **PACK dropdown** — no toolchain
-needed. Building from source needs Node + Rust with the MSVC build tools rustup installs (WebView2 ships
-with Windows 10/11).
-
-**Linux console** needs the Tauri v2 system libraries before `npm run tauri dev`/`build`
+**Linux console from source** needs the Tauri v2 system libraries before `npm run tauri dev`/`build`
 (Debian/Ubuntu: `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
 libsoup-3.0-dev patchelf`; the tray icon wants an appindicator extension on GNOME).
 

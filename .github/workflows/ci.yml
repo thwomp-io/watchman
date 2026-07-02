@@ -153,11 +153,21 @@ jobs:
       - name: Collect installers
         # One flat dir regardless of platform; if-no-files-found below turns a bundler path drift
         # into a loud red instead of a silently-empty artifact.
+        #
+        # VERSION-STABLE ALIASES: each versioned bundle also gets a copy under a permanent name
+        # (Watchman-Setup-x64.exe, Watchman-x64.msi, watchman-amd64.deb, Watchman-x86_64.AppImage),
+        # so the README can embed one-click `releases/latest/download/<stable-name>` links that
+        # never rot when the version in Tauri's artifact filenames changes.
         run: |
           mkdir -p dist-bundles
           for pat in ${{ matrix.bundles }}; do
             cp src-tauri/target/release/bundle/$pat dist-bundles/ || true
           done
+          shopt -s nullglob
+          for f in dist-bundles/*-setup.exe; do cp "$f" dist-bundles/Watchman-Setup-x64.exe; done
+          for f in dist-bundles/*.msi;       do cp "$f" dist-bundles/Watchman-x64.msi; done
+          for f in dist-bundles/*.deb;       do cp "$f" dist-bundles/watchman-amd64.deb; done
+          for f in dist-bundles/*.AppImage;  do cp "$f" dist-bundles/Watchman-x86_64.AppImage; done
           ls -la dist-bundles/
       - uses: actions/upload-artifact@v4
         with:
@@ -168,7 +178,17 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF#refs/tags/}" dist-bundles/* --clobber
+        # Create-if-missing FIRST (ordering belt): if a bare tag was pushed before the Release page
+        # existed, the upload would otherwise fail — and a Release page must never sit asset-less
+        # claiming installers exist (the v0.3.0 lesson: notes shipped ~20 min before the bundles).
+        # Curated notes still come from the publish runbook; this fallback creates a placeholder
+        # the runbook's `gh release edit` fills in.
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag \
+              --title "$TAG" --notes "Installers are attached by CI; full notes incoming."
+          gh release upload "$TAG" dist-bundles/* --clobber -R "$GITHUB_REPOSITORY"
 
   # ---- Image: build the headless-engine container, scan + smoke-test it, publish to GHCR --------
   image:
