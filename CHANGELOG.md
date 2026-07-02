@@ -24,6 +24,13 @@ personas run live with no repository clone. [uv](https://docs.astral.sh/uv/) is 
 - A development checkout is now only preferred by dev builds; installed (release) builds always run
   their own bundled engine, so an install behaves identically on every machine.
 
+### Fixed
+- **The demo seal extends to the notification bus** — while a sample persona is active, the inbox
+  and agent-status surfaces render a clean standby state rather than any real bus activity on the
+  machine.
+- **The settings registry is crash-safe** — saves are atomic (temp-file-then-rename), and an
+  unreadable registry is preserved as `.json.bak` instead of being silently replaced.
+
 ## [0.3.2] - 2026-07-02
 
 ### Fixed

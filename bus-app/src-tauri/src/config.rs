@@ -265,6 +265,12 @@ mod tests {
 
 /// Same resolution order as the Python side: explicit config > HARNESS_BUS_DB > default.
 pub fn db_path(cfg: &AppConfig) -> PathBuf {
+    // Demo-pack full seal: the Inbox/badge/poller read a demo-scoped (empty) bus while a bundled
+    // demo persona is active — real standing-agent events never render in demo mode. Trumps every
+    // other resolution source by design.
+    if active_bundled_pack(cfg).is_some() {
+        return demo_seal_state_dir().join("bus.db");
+    }
     if let Some(p) = &cfg.db_path {
         return expand_home(p);
     }
@@ -281,13 +287,18 @@ fn config_path() -> PathBuf {
 }
 
 /// Persist the config (used by the scenario-switcher to remember the active pack across launches).
+/// Atomic: written to a sibling temp file, then renamed over — an in-place truncate-and-write
+/// leaves a zeroed registry if the process dies mid-save, and a zeroed registry reads as corrupt
+/// on the next launch (losing the user's producers/pack selection to a reseed).
 pub fn save(cfg: &AppConfig) -> Result<(), String> {
     let path = config_path();
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
     let body = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
-    fs::write(&path, body).map_err(|e| e.to_string())
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, body).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
 /// The app-bundle resource packs dir (`<resource_dir>/packs`), set once at Tauri setup — the
@@ -404,6 +415,13 @@ pub fn vault_root(cfg: &AppConfig) -> PathBuf {
     active_bundled_pack(cfg).unwrap_or_else(|| tracker_path(cfg))
 }
 
+/// Writable state root for demo mode — the bus db and any spawned-tool state (pulse log, seen
+/// caches) land here while a bundled demo pack is active, so the Inbox/status surfaces render a
+/// clean standby instead of the machine's real standing-agent activity.
+pub fn demo_seal_state_dir() -> PathBuf {
+    harness_home().join(".local/state/harness/demo-seal")
+}
+
 /// Pure predicate: does a `pack.yaml` mark itself the bundled default (`default: true`)? Tolerates
 /// trailing comments + indentation; split out so the scan is unit-testable without a YAML parser
 /// (same "enough without a parser" ethos as `list_packs`).
@@ -507,6 +525,9 @@ pub fn load() -> AppConfig {
         if let Ok(cfg) = serde_json::from_str::<AppConfig>(&text) {
             return cfg;
         }
+        // An existing-but-unreadable registry is preserved for inspection, never silently
+        // replaced — the reseed below then treats this launch as a first run.
+        let _ = fs::rename(&path, path.with_extension("json.bak"));
     }
     let mut cfg = default_config();
     // First run (no config on disk): default to the bundled fictional pack so a fresh / published
@@ -514,9 +535,6 @@ pub fn load() -> AppConfig {
     // state). Fires ONLY when the config file is absent — an existing user/dev config is returned
     // verbatim above, so the dev daily-driver (pack-less = real corpus) is untouched.
     cfg.active_pack = default_pack_dir().map(|p| p.to_string_lossy().into_owned());
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    let _ = fs::write(&path, serde_json::to_string_pretty(&cfg).unwrap_or_default());
+    let _ = save(&cfg);
     cfg
 }

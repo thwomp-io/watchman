@@ -52,7 +52,12 @@ pub(crate) fn tool_command(cmd: &str, args: &[String], cwd: &str) -> Command {
     // real corpus that may exist on this machine. Personal packs keep lane-fallback semantics
     // (applied per-widget in run_json_command, never to producers).
     if let Some(pack) = config::active_bundled_pack(&config::load()) {
-        command.env("TRACKER_PATH", &pack).env("WEIGHTS_PACK", &pack);
+        let seal_state = config::demo_seal_state_dir();
+        command
+            .env("TRACKER_PATH", &pack)
+            .env("WEIGHTS_PACK", &pack)
+            .env("HARNESS_STATE_DIR", &seal_state)
+            .env("HARNESS_BUS_DB", seal_state.join("bus.db"));
     }
     command
 }

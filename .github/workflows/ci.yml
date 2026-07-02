@@ -96,6 +96,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: bus-app/src-tauri
+      - name: stage bundled engine
+        # The Tauri build script validates bundle.resources at compile time; the app build stages
+        # the engine automatically, but bare cargo runs need it staged first.
+        run: node ../scripts/stage-engine.mjs
       - name: clippy
         # advisory for now (runs + reports, doesn't gate on warnings); cleaning the pre-existing
         # lints + restoring `-- -D warnings` is a tracked follow-up. `cargo test` still gates.
