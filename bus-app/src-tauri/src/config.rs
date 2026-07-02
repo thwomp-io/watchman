@@ -3,7 +3,7 @@
 //! not code, so adding a producer (career watchman) is a JSON edit (OSS seam).
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -50,7 +50,8 @@ pub struct AppConfig {
     pub tracker_path: Option<String>,
     /// The active weight pack (a scenario bundle dir). When set, on-demand panel reads inject it as
     /// WEIGHTS_PACK so the console renders the pack's data (the scenario-switcher). None/empty = the
-    /// user's real corpus. The standing producers are a separate spawn path and never see this.
+    /// user's real corpus. Producers see it only when the pack is a BUNDLED demo persona (the
+    /// demo-pack full seal routes every spawn through the pack); personal packs never touch them.
     #[serde(default)]
     pub active_pack: Option<String>,
     pub producers: Vec<Producer>,
@@ -106,12 +107,18 @@ pub fn expand_home(path: &str) -> PathBuf {
 /// `expand_home`); sandbox-correct in prod. The leak this closes: a published app on a machine that
 /// HAS the real corpus would otherwise `cd . && uv run hn …` and read it live.
 /// Absolute / non-`~/` cwds pass through unchanged.
+///
+/// A resolved dir that doesn't exist falls back to [`harness_home`]: an installed console has no
+/// repo checkout, and spawning with a nonexistent working directory fails before the child ever
+/// runs. The engine project is pinned per-spawn via `--project` (see [`engine`]), so the cwd
+/// carries no resolution semantics of its own.
 pub fn resolve_cwd(cwd: &str) -> PathBuf {
-    if let Some(rest) = cwd.strip_prefix("~/") {
+    let dir = if let Some(rest) = cwd.strip_prefix("~/") {
         harness_home().join(rest)
     } else {
         PathBuf::from(cwd)
-    }
+    };
+    if dir.is_dir() { dir } else { harness_home() }
 }
 
 /// The PATH *list* separator (`:` on unix, `;` on Windows — NOT the dir separator).
@@ -245,6 +252,15 @@ mod tests {
             PathBuf::from("/tmp/sb")
         );
     }
+
+    #[test]
+    fn bundled_pack_detection_gates_the_demo_seal() {
+        // A pack under the repo samples dir is bundled (the demo-pack full seal engages)…
+        let bundled = samples_packs_dir().join("demo-investor");
+        assert!(is_bundled_pack(&bundled));
+        // …a personal pack anywhere else is not (blend semantics stay).
+        assert!(!is_bundled_pack(Path::new("/somewhere/else/my-pack")));
+    }
 }
 
 /// Same resolution order as the Python side: explicit config > HARNESS_BUS_DB > default.
@@ -303,6 +319,89 @@ pub fn samples_packs_dir() -> PathBuf {
         }
     }
     repo // neither exists → the repo path (callers already treat a missing dir as "no packs")
+}
+
+/// The app-bundle engine dir (`<resource_dir>/engine`), set once at Tauri setup — the
+/// installed-app fallback for [`engine`]. Same `OnceLock` rationale as [`RESOURCE_PACKS_DIR`].
+static RESOURCE_ENGINE_DIR: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+
+/// Called once from the app `setup` hook, BEFORE any command can run.
+pub fn set_resource_engine_dir(dir: Option<PathBuf>) {
+    let _ = RESOURCE_ENGINE_DIR.set(dir);
+}
+
+/// The uv project console spawns run `hn` against, and whether it's the bundled copy.
+pub struct Engine {
+    pub project_dir: PathBuf,
+    /// true → the engine shipped inside the app resources (read-only install dir); its venv must
+    /// live in the user-writable state dir ([`engine_venv_dir`]) instead of `<project>/.venv`.
+    pub bundled: bool,
+}
+
+/// Where the `hn` engine lives. Two candidates, mirroring [`samples_packs_dir`]:
+///   - the engine bundled INTO the app itself (`bundle.resources` ships a staged copy of the uv
+///     project → `<resource_dir>/engine`; see `scripts/stage-engine.mjs`);
+///   - a development checkout at the conventional `{harness_home}/projects/harness`, when present.
+///
+/// The order is build-profile-dependent, and that's the product contract: a RELEASE build is a
+/// self-contained install — it prefers its own bundled engine on every platform, so an installed
+/// console runs the exact engine its version shipped with, never whatever state a repo checkout
+/// happens to be in. A DEV build (`tauri dev`) prefers the repo so engine edits reflect without a
+/// rebuild. Each falls back to the other; None when neither exists.
+pub fn engine() -> Option<Engine> {
+    let repo = harness_home().join("projects/harness");
+    let repo_engine = repo
+        .join("pyproject.toml")
+        .is_file()
+        .then_some(Engine { project_dir: repo, bundled: false });
+    let bundled_engine = match RESOURCE_ENGINE_DIR.get() {
+        Some(Some(dir)) if dir.join("pyproject.toml").is_file() => {
+            Some(Engine { project_dir: dir.clone(), bundled: true })
+        }
+        _ => None,
+    };
+    if cfg!(debug_assertions) {
+        repo_engine.or(bundled_engine)
+    } else {
+        bundled_engine.or(repo_engine)
+    }
+}
+
+/// The venv for the bundled engine — user-writable, survives app upgrades, never touches the
+/// read-only install dir. Passed to uv via `UV_PROJECT_ENVIRONMENT`.
+pub fn engine_venv_dir() -> PathBuf {
+    harness_home().join(".local/state/harness/engine-venv")
+}
+
+/// Is this pack dir one of the BUNDLED demo packs (vs. a personal pack the user loaded)?
+/// Checked against both bundled-pack homes (repo `samples/packs` + the app-resource copy).
+pub fn is_bundled_pack(dir: &Path) -> bool {
+    if dir.starts_with(samples_packs_dir()) {
+        return true;
+    }
+    matches!(RESOURCE_PACKS_DIR.get(), Some(Some(packs)) if dir.starts_with(packs))
+}
+
+/// The active pack — but only when it's a bundled demo pack. This is the demo-pack full seal's
+/// gate: while a bundled sample persona is loaded, the console must render NOTHING but that pack —
+/// no lane fallback, no vault browse, no producer read may reach a real corpus that happens to
+/// exist on the machine. Personal packs (loaded via "Load Weight Pack…") keep blend semantics:
+/// lanes the pack lacks fall back to the real corpus, by design.
+pub fn active_bundled_pack(cfg: &AppConfig) -> Option<PathBuf> {
+    let dir = cfg
+        .active_pack
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(expand_home)?;
+    is_bundled_pack(&dir).then_some(dir)
+}
+
+/// The root every vault read (VAULT browser, viz discovery, File widget fallback) resolves
+/// against: the demo pack itself while one is active (the pack IS the whole corpus — a missing
+/// file reads empty, never the real vault), else the real tracker path.
+pub fn vault_root(cfg: &AppConfig) -> PathBuf {
+    active_bundled_pack(cfg).unwrap_or_else(|| tracker_path(cfg))
 }
 
 /// Pure predicate: does a `pack.yaml` mark itself the bundled default (`default: true`)? Tolerates

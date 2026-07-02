@@ -37,7 +37,11 @@ fn relevant(ev: &notify::Event) -> bool {
 
 pub fn spawn<R: Runtime>(app: AppHandle<R>) {
     std::thread::spawn(move || {
-        let vault = config::tracker_path(&config::load());
+        // vault_root: with a bundled demo pack active AT STARTUP the fs-watch targets the pack,
+        // not a real vault (demo-pack seal). The root is fixed for the process lifetime — a
+        // runtime pack switch doesn't re-arm the watch (it only emits refresh pings; the reads
+        // those trigger resolve through the sealed paths).
+        let vault = config::vault_root(&config::load());
         let (tx, rx) = channel();
         let mut watcher = match notify::recommended_watcher(move |res| {
             let _ = tx.send(res);

@@ -82,6 +82,30 @@ pub fn run() {
             // ONCE here — before any command can run — so samples_packs_dir() falls back to the
             // packs shipped inside the bundle when no cloned repo exists on the machine.
             config::set_resource_packs_dir(app.path().resource_dir().ok().map(|d| d.join("packs")));
+            // Bundled-engine fallback (same shape): an installed console with no repo checkout
+            // runs `hn` from the engine staged into the bundle resources.
+            config::set_resource_engine_dir(app.path().resource_dir().ok().map(|d| d.join("engine")));
+            // Warm the bundled engine's venv in the background: the first `uv run` on a fresh
+            // machine downloads a Python + resolves the lockfile (a minute-scale one-time cost).
+            // Doing it once at startup keeps the first widget paint from eating that latency;
+            // uv's own project lock serializes any widget spawns that race it.
+            if let Some(engine) = config::engine() {
+                if engine.bundled {
+                    std::thread::spawn(move || {
+                        let mut warm = std::process::Command::new("uv");
+                        warm.args(["sync", "--frozen", "--no-dev", "--project"])
+                            .arg(&engine.project_dir)
+                            .env("UV_PROJECT_ENVIRONMENT", config::engine_venv_dir())
+                            .env("PATH", config::augmented_path());
+                        #[cfg(windows)]
+                        {
+                            use std::os::windows::process::CommandExt;
+                            warm.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+                        }
+                        let _ = warm.output();
+                    });
+                }
+            }
             tray::init(&app.handle().clone())?;
             poller::spawn(app.handle().clone());
             watcher::spawn(app.handle().clone()); // VAULT live-refresh: fs-watch → vault-changed

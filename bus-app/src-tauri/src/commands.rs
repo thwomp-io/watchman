@@ -10,6 +10,64 @@ use tauri::{AppHandle, Runtime};
 
 use crate::{bus, config, dash, poller, viz};
 
+/// Build a console-spawned tool Command with the shared spawn environment (augmented PATH +
+/// the corpus/state seal — see [`run_json_command`] for the sealing rationale).
+///
+/// `uv run` invocations get the engine project pinned explicitly (`--project`): discovering the
+/// project from the working directory is launch-context fragile, and an installed console has no
+/// repo checkout at all — there the engine resolves to the copy bundled in the app resources,
+/// `--frozen` against its shipped lockfile, with the venv redirected to the user-writable state
+/// dir (`UV_PROJECT_ENVIRONMENT`). uv creates that venv on first use.
+pub(crate) fn tool_command(cmd: &str, args: &[String], cwd: &str) -> Command {
+    let mut command = Command::new(cmd);
+    let mut args = args.to_vec();
+    if cmd == "uv" && args.first().map(String::as_str) == Some("run") {
+        if let Some(engine) = config::engine() {
+            let mut pin = vec!["--project".to_string(), engine.project_dir.display().to_string()];
+            if engine.bundled {
+                // --no-dev must match the warm-up sync exactly: `uv run` defaults to the dev
+                // group, and a flag mismatch makes the first widget spawn re-sync the venv.
+                pin.splice(0..0, ["--frozen".to_string(), "--no-dev".to_string()]);
+                command.env("UV_PROJECT_ENVIRONMENT", config::engine_venv_dir());
+            }
+            args.splice(1..1, pin);
+        }
+    }
+    // Console-subsystem children (uv/python) must not flash a console window per spawn
+    // (CREATE_NO_WINDOW) — self-refreshing dashboards spawn constantly.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+    command
+        .args(&args)
+        .current_dir(config::resolve_cwd(cwd))
+        .env("PATH", config::augmented_path())
+        .env("TRACKER_PATH", config::harness_home().join("projects/corpus"))
+        .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness"));
+    // Demo-pack full seal: while a BUNDLED sample persona is active, every spawn — widget,
+    // live viz, producer — reads the pack and nothing else. TRACKER_PATH points at the pack
+    // itself, so a lane the pack doesn't provide resolves empty instead of falling back to a
+    // real corpus that may exist on this machine. Personal packs keep lane-fallback semantics
+    // (applied per-widget in run_json_command, never to producers).
+    if let Some(pack) = config::active_bundled_pack(&config::load()) {
+        command.env("TRACKER_PATH", &pack).env("WEIGHTS_PACK", &pack);
+    }
+    command
+}
+
+/// Spawn-failure text the widget error zones render. uv missing gets an actionable message —
+/// it's the console's one runtime prerequisite.
+pub(crate) fn spawn_error(cmd: &str, e: &std::io::Error) -> String {
+    if e.kind() == std::io::ErrorKind::NotFound && cmd == "uv" {
+        return "uv not found — the console's one prerequisite. Install it from \
+                https://docs.astral.sh/uv/ and restart Watchman."
+            .into();
+    }
+    format!("{cmd} failed to start: {e}")
+}
+
 #[tauri::command]
 pub fn list_events(
     unread_only: bool,
@@ -72,14 +130,9 @@ pub fn run_producer<R: Runtime>(app: AppHandle<R>, id: String) -> Result<String,
         .find(|p| p.id == id)
         .ok_or_else(|| format!("unknown producer: {id}"))?
         .clone();
-    let out = Command::new(&producer.cmd)
-        .args(&producer.args)
-        .current_dir(config::resolve_cwd(&producer.cwd))
-        .env("PATH", config::augmented_path())
-        .env("TRACKER_PATH", config::harness_home().join("projects/corpus")) // seal corpus (see run_json_command)
-        .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness")) // seal pulse.log/state
+    let out = tool_command(&producer.cmd, &producer.args, &producer.cwd)
         .output()
-        .map_err(|e| format!("{} failed to start: {e}", producer.cmd))?;
+        .map_err(|e| spawn_error(&producer.cmd, &e))?;
     poller::poll_once(&app); // deliver anything the run just published
     Ok(format!(
         "{} → exit {}",
@@ -134,33 +187,26 @@ pub async fn run_surface(id: String) -> Result<String, String> {
 fn run_json_command(cmd: &str, args: &[String], cwd: &str, label: &str) -> Result<String, String> {
     let args = substitute_dates(args);
     let cfg = config::load();
-    let mut command = Command::new(cmd);
-    command
-        .args(&args)
-        .current_dir(config::resolve_cwd(cwd))
-        .env("PATH", config::augmented_path())
-        // Seal the corpus to harness_home. The spawned `hn` (Python) does NOT honor HARNESS_HOME (it's
-        // a Rust concept), so without this it falls back to the REAL ~/projects/corpus even in a
-        // sandbox — the "Real data"/no-pack path then reads the real corpus on a machine that has one
-        // (a populated real corpus, vs the sandbox's empty one). `hn` honors `TRACKER_PATH` (the one place
-        // every lane resolves the corpus root), so set it explicitly: a sandboxed instance reads its
-        // OWN (absent → empty) corpus, the published app never reaches real data. Behavior-preserving
-        // in dev (harness_home == $HOME). This is the Rust↔Python bridge HARNESS_HOME couldn't cross.
-        .env("TRACKER_PATH", config::harness_home().join("projects/corpus"))
-        .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness")); // seal pulse.log/state
+    // tool_command seals the corpus to harness_home: the spawned `hn` (Python) does NOT honor
+    // HARNESS_HOME (it's a Rust concept), so without the seal it falls back to the REAL
+    // ~/projects/corpus even in a sandbox — the "Real data"/no-pack path then reads the real
+    // corpus on a machine that has one. `hn` honors `TRACKER_PATH` (the one place every lane
+    // resolves the corpus root), so it's set explicitly: a sandboxed instance reads its OWN
+    // (absent → empty) corpus, the published app never reaches real data. Behavior-preserving in
+    // dev (harness_home == $HOME). TRACKER_PATH is the only corpus-root env the Python side
+    // honors; HARNESS_HOME is a Rust-side concept.
+    let mut command = tool_command(cmd, &args, cwd);
     // Scenario-switcher: when a weight pack is active, every on-demand panel read (`hn … --json`)
     // renders that pack's data. `hn` honors WEIGHTS_PACK lane-by-lane (a pack only overrides the
     // lanes it provides; others fall back to the real corpus), so it's safe to set globally here.
     if let Some(pack) = cfg.active_pack.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         command.env("WEIGHTS_PACK", config::expand_home(pack));
     }
-    let out = command
-        .output()
-        .map_err(|e| format!("{cmd} failed to start: {e}"))?;
+    let out = command.output().map_err(|e| spawn_error(cmd, &e))?;
     if !out.status.success() {
         let err = String::from_utf8_lossy(&out.stderr);
         return Err(format!("{label} exited {:?}: {}", out.status.code(),
-                           err.chars().take(300).collect::<String>()));
+                           err.chars().take(800).collect::<String>()));
     }
     let stdout = String::from_utf8_lossy(&out.stdout).to_string();
     let trimmed = stdout.trim();
@@ -307,9 +353,11 @@ fn active_pack_base(cfg: &config::AppConfig, path: &str) -> Option<(PathBuf, Str
 
 fn resolve_vault_path(path: &str) -> Result<PathBuf, String> {
     let cfg = config::load();
+    // vault_root, not tracker_path: while a bundled demo pack is active the fallback base is the
+    // pack itself (demo-pack full seal) — a lane the pack lacks reads empty, never the real vault.
     let (base, rel) = match active_pack_base(&cfg, path) {
         Some(pair) => pair,
-        None => (config::tracker_path(&cfg), path.to_string()),
+        None => (config::vault_root(&cfg), path.to_string()),
     };
     let canon = base.join(&rel).canonicalize().map_err(|e| format!("{path}: {e}"))?;
     let base_canon = base.canonicalize().map_err(|e| e.to_string())?;
@@ -338,7 +386,7 @@ pub fn list_viz() -> Result<Vec<viz::VizEntry>, String> {
             supported: true,
         })
         .collect();
-    entries.extend(viz::discover(&config::tracker_path(&cfg)));
+    entries.extend(viz::discover(&config::vault_root(&cfg)));
     Ok(entries)
 }
 
@@ -440,7 +488,7 @@ fn walk_docs(dir: &Path, depth: usize, vault: &Path, out: &mut Vec<VaultDoc>) {
 pub async fn list_vault_docs() -> Result<Vec<VaultDoc>, String> {
     tauri::async_runtime::spawn_blocking(|| {
         let cfg = config::load();
-        let vault = config::tracker_path(&cfg);
+        let vault = config::vault_root(&cfg);
         let mut out = Vec::new();
         walk_docs(&vault, 0, &vault, &mut out);
         out.sort_by(|a, b| a.path.cmp(&b.path));
@@ -566,13 +614,7 @@ pub fn refresh_all_producers<R: Runtime>(app: AppHandle<R>) {
     for p in cfg.producers {
         let app = app.clone();
         std::thread::spawn(move || {
-            let _ = Command::new(&p.cmd)
-                .args(&p.args)
-                .current_dir(config::resolve_cwd(&p.cwd))
-                .env("PATH", config::augmented_path())
-                .env("TRACKER_PATH", config::harness_home().join("projects/corpus")) // seal corpus
-                .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness")) // seal state
-                .output();
+            let _ = tool_command(&p.cmd, &p.args, &p.cwd).output();
             poller::poll_once(&app);
         });
     }

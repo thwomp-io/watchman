@@ -23,11 +23,11 @@ and a resident desktop console. It's built on one thesis:
 
 ![How Watchman works](docs/assets/architecture.svg)
 
-> **Try the demo console in one click** — prebuilt, loads a fictional sample persona out of the box:
+> **Try the demo console** — prebuilt and self-contained (engine bundled; just install
+> [uv](https://docs.astral.sh/uv/) first), loads a fictional sample persona out of the box:
 > **[⬇ Windows](../../releases/latest/download/Watchman-Setup-x64.exe)** ·
 > **[⬇ Linux .deb](../../releases/latest/download/watchman-amd64.deb)** ·
-> **[⬇ Linux AppImage](../../releases/latest/download/Watchman-x86_64.AppImage)** ·
-> [all releases](../../releases) — details in [Download the console](#download-the-console--one-click-no-toolchain).
+> [all releases](../../releases) — details in [Download the console](#download-the-console--one-prerequisite-no-toolchain).
 
 ## See it move
 
@@ -89,25 +89,31 @@ npm run tauri dev # needs Rust (rustup) + platform build tools
 In the console, use the **PACK dropdown** in the masthead to load a sample persona, then swap to another —
 the whole dashboard set re-renders from the pack. Use **Load Weight Pack…** to point it at your own.
 
-### Download the console — one click, no toolchain
+### Download the console — one prerequisite, no toolchain
 
-The full demo console, prebuilt. Download, install, pick a persona from the **PACK dropdown** — done:
+The full demo console, prebuilt and **self-contained**: each installer carries the engine inside it
+(no clone, no `npm`, no Rust). The one prerequisite is [uv](https://docs.astral.sh/uv/), which manages
+the console's Python runtime — on first launch the console prepares its environment (about a minute,
+one time). Download, install, pick a persona from the **PACK dropdown** — done:
 
 | Platform | Direct download | Notes |
 |---|---|---|
 | **Windows 10/11** | **[⬇ Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** · [.msi](../../releases/latest/download/Watchman-x64.msi) | unsigned — see SmartScreen note below |
 | **Linux (deb)** | **[⬇ watchman-amd64.deb](../../releases/latest/download/watchman-amd64.deb)** | `sudo apt install ./watchman-amd64.deb` |
-| **Linux (portable)** | **[⬇ Watchman-x86_64.AppImage](../../releases/latest/download/Watchman-x86_64.AppImage)** | `chmod +x` and run |
 | **macOS** | build from source (below) | prebuilt bundles are on the roadmap |
 
 **Windows install, start to finish:**
 
-1. Download **[Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** and run it.
-2. SmartScreen will warn — the installer is open-source but **unsigned** (no paid code-signing cert).
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (PowerShell:
+   `irm https://astral.sh/uv/install.ps1 | iex`).
+2. Download **[Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** and run it.
+3. SmartScreen will warn — the installer is open-source but **unsigned** (no paid code-signing cert).
    Click **More info → Run anyway**. (Audit the source right here if you'd rather build it yourself:
    Node + Rust with the MSVC build tools rustup installs; WebView2 ships with Windows 10/11.)
-3. Launch **Watchman** — it opens on a bundled **fictional sample persona**, live out of the box.
-4. Swap personas from the **PACK dropdown** in the masthead; the whole console re-renders.
+4. Launch **Watchman** — it opens on a bundled **fictional sample persona**. The first launch spends
+   about a minute preparing the bundled engine's Python environment; the dashboards go live as it
+   completes.
+5. Swap personas from the **PACK dropdown** in the masthead; the whole console re-renders.
 
 The engine CLI on Windows (PowerShell) — install [uv](https://docs.astral.sh/uv/), then the same
 commands as above; the env-var syntax is the only difference:
@@ -210,6 +216,13 @@ you](skills/corpus-operator/SKILL.md) from conversation — but they stay plain 
 - **Privacy by construction.** Every outbound call carries a tool-only `User-Agent` (no name/email). Your
   real corpus stays out of the repo. The finance lane reads public prices and a local file — no brokerage
   credentials, no account in the loop.
+- **Demo mode is sealed.** While a bundled sample persona is active, the console renders *only* that
+  pack — widgets, producers, the vault browser, everything. A lane the pack doesn't cover reads empty;
+  it never falls back to a real corpus that happens to exist on the machine. (Packs you load yourself
+  keep blend semantics: their lanes override, the rest reads your corpus.)
+- **First launch fetches packages.** The installed console prepares the bundled engine's Python
+  environment once via uv (standard package-manager traffic against the shipped lockfile — no personal
+  data leaves the machine).
 - **Corpus is the source of truth; live data disciplines it.** The machine-readable weights are kept in
   *manual* sync with the human-edited narrative; the prose is never parsed for numbers.
 - **Deterministic core, agent periphery.** Detection, thresholds, and dashboards are model-free at runtime;

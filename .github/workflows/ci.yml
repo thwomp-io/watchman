@@ -124,7 +124,7 @@ jobs:
   # ---- Desktop bundles: Windows + Linux installers (cross-platform support) ----------------------
   # The slow lane — runs on release tags + manual dispatch only (the rust/frontend jobs already gate
   # correctness on every push; rebuilding installers per-push would burn wall-clock for nothing).
-  # Windows: NSIS .exe + WiX .msi (WiX fetched by tauri-cli on the runner). Linux: .deb + .AppImage
+  # Windows: NSIS .exe + WiX .msi (WiX fetched by tauri-cli on the runner). Linux: .deb
   # (same apt dep set the rust job uses). macOS bundles stay LOCAL-build-only for now: CI artifacts
   # would be unsigned (no cert in CI) → Gatekeeper-quarantined downloads, worse than build-from-source.
   bundle:
@@ -140,9 +140,11 @@ jobs:
           - platform: windows
             os: windows-latest
             bundles: "nsis/*.exe msi/*.msi"
+            build_args: ""
           - platform: linux
             os: ubuntu-latest
-            bundles: "deb/*.deb appimage/*.AppImage"
+            bundles: "deb/*.deb"
+            build_args: "-- --bundles deb"   # deb only — the AppImage isn't shipped
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -168,7 +170,7 @@ jobs:
           workspaces: bus-app/src-tauri
       - run: npm ci
       - name: tauri build
-        run: npm run tauri build
+        run: npm run tauri build ${{ matrix.build_args }}
       - name: Collect installers
         # One flat dir regardless of platform; if-no-files-found below turns a bundler path drift
         # into a loud red instead of a silently-empty artifact.
@@ -184,7 +186,6 @@ jobs:
           for f in dist-bundles/*-setup.exe; do cp "$f" dist-bundles/Watchman-Setup-x64.exe; done
           for f in dist-bundles/*.msi;       do cp "$f" dist-bundles/Watchman-x64.msi; done
           for f in dist-bundles/*.deb;       do cp "$f" dist-bundles/watchman-amd64.deb; done
-          for f in dist-bundles/*.AppImage;  do cp "$f" dist-bundles/Watchman-x86_64.AppImage; done
           ls -la dist-bundles/
       - uses: actions/upload-artifact@v4
         with:

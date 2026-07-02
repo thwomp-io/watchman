@@ -3,6 +3,27 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-07-02
+
+The self-contained console. Installers now carry the engine — download, install, and the demo
+personas run live with no repository clone. [uv](https://docs.astral.sh/uv/) is the one prerequisite.
+
+### Added
+- **The engine ships inside the app** — each installer bundles the engine project; the console runs
+  it via uv with an explicitly pinned project and a user-writable environment. First launch prepares
+  the environment in the background (about a minute, one time).
+- **Demo mode is fully sealed** — while a bundled sample persona is active, every surface (widgets,
+  producers, the vault browser, visualizations) renders only that pack. A lane the pack doesn't
+  cover reads empty; nothing ever falls back to other data on the machine. Packs you load yourself
+  keep blend semantics.
+- **Actionable setup errors** — if uv is missing, widgets say exactly that (with the install link)
+  instead of a raw spawn error.
+
+### Changed
+- **Linux ships the `.deb` only** — the AppImage target is discontinued.
+- A development checkout is now only preferred by dev builds; installed (release) builds always run
+  their own bundled engine, so an install behaves identically on every machine.
+
 ## [0.3.2] - 2026-07-02
 
 ### Fixed
@@ -105,5 +126,9 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.4.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.4.0
+[0.3.2]: https://github.com/thwomp-io/watchman/releases/tag/v0.3.2
+[0.3.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.3.1
+[0.3.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.3.0
 [0.2.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.2.0
 [0.1.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.1.0
