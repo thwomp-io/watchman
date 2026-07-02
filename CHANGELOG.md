@@ -3,6 +3,20 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-07-01
+
+Fresh-install polish from the first Windows field test.
+
+### Added
+- **Sample personas now ship inside the app** — the PACK dropdown works on a fresh install with no
+  cloned repository (packs resolve from the app bundle's resources; a repo checkout still wins for
+  development).
+- **Branded Windows installers** — the NSIS and MSI wizards now carry the console's noir theme.
+
+### Known limitations
+- Live data widgets still require the engine: [uv](https://docs.astral.sh/uv/) plus a repository
+  clone (`uv sync`). A guided first-run setup and a fully bundled engine are on the roadmap.
+
 ## [0.3.0] - 2026-07-01
 
 Cross-platform: Windows and Linux, first-class. A fresh clone — or a prebuilt installer — now runs the

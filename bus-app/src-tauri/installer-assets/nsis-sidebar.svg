@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="164" height="314" viewBox="0 0 164 314">
+<rect width="164" height="314" fill="#08090c"/>
+<rect x="12" y="12" width="140" height="290" fill="#10131a" rx="6"/>
+<circle cx="82" cy="100" r="54" fill="#37e0d8" opacity="0.08"/>
+<image xlink:href="../icons/128x128.png" x="34" y="52" width="96" height="96"/>
+<text x="82" y="186" font-family="Menlo, 'Courier New', monospace" font-size="17" font-weight="bold" fill="#f4f6fb" text-anchor="middle" letter-spacing="3">WATCHMAN</text>
+<text x="82" y="206" font-family="Menlo, 'Courier New', monospace" font-size="11" fill="#37e0d8" text-anchor="middle" letter-spacing="2">console</text>
+<text x="82" y="286" font-family="Menlo, 'Courier New', monospace" font-size="9" fill="#aab2c2" text-anchor="middle">deterministic core</text>
+<rect x="0" y="306" width="164" height="4" fill="#37e0d8"/>
+<rect x="0" y="310" width="164" height="4" fill="#ffd13d"/>
+</svg>

@@ -277,12 +277,37 @@ pub fn save(cfg: &AppConfig) -> Result<(), String> {
     fs::write(&path, body).map_err(|e| e.to_string())
 }
 
-/// Where the bundled sample weight packs live (matches the harness-repo `cwd` the widget commands
-/// run in). Keyed off [`harness_home`] so a sandboxed test instance finds the packs the launcher
-/// places under it. KNOWN GAP (OSS): still assumes a `projects/harness/...` layout under the home —
-/// a future multi-machine build resolves packs relative to the app's own install instead.
+/// The app-bundle resource packs dir (`<resource_dir>/packs`), set once at Tauri setup — the
+/// installed-app fallback for [`samples_packs_dir`]. An `OnceLock` because resource-dir resolution
+/// needs the Tauri `AppHandle`, which the free config functions deliberately don't take (they're
+/// called from `load()` paths with no handle in reach).
+static RESOURCE_PACKS_DIR: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+
+/// Called once from the app `setup` hook, BEFORE any command can run, so every later
+/// [`samples_packs_dir`] call sees the bundled location.
+pub fn set_resource_packs_dir(dir: Option<PathBuf>) {
+    let _ = RESOURCE_PACKS_DIR.set(dir);
+}
+
+/// Where the sample weight packs live. Two-stage resolution (the demo-experience fix — a fresh
+/// installed app has NO cloned repo, so the old repo-only path yielded an empty PACK dropdown on
+/// every fresh Windows/Linux install):
+///   1. the harness REPO checkout (`{harness_home}/projects/harness/samples/packs`) when present —
+///      the dev daily-driver + the sandboxed-launcher case (packs symlinked under `HARNESS_HOME`);
+///   2. else the packs bundled INTO the app itself (`tauri.conf.json bundle.resources` ships
+///      `samples/packs` → `<resource_dir>/packs`; see [`set_resource_packs_dir`]).
+/// The repo wins when both exist so dev edits to packs reflect without a rebuild.
 pub fn samples_packs_dir() -> PathBuf {
-    harness_home().join("projects/harness/samples/packs")
+    let repo = harness_home().join("projects/harness/samples/packs");
+    if repo.is_dir() {
+        return repo;
+    }
+    if let Some(Some(bundled)) = RESOURCE_PACKS_DIR.get() {
+        if bundled.is_dir() {
+            return bundled.clone();
+        }
+    }
+    repo // neither exists → the repo path (callers already treat a missing dir as "no packs")
 }
 
 /// Pure predicate: does a `pack.yaml` mark itself the bundled default (`default: true`)? Tolerates

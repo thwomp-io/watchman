@@ -78,6 +78,10 @@ pub fn run() {
                 use tauri_plugin_notification::NotificationExt;
                 let _ = app.notification().request_permission();
             }
+            // Bundled-packs fallback (the fresh-install demo fix): resolve the app resource dir
+            // ONCE here — before any command can run — so samples_packs_dir() falls back to the
+            // packs shipped inside the bundle when no cloned repo exists on the machine.
+            config::set_resource_packs_dir(app.path().resource_dir().ok().map(|d| d.join("packs")));
             tray::init(&app.handle().clone())?;
             poller::spawn(app.handle().clone());
             watcher::spawn(app.handle().clone()); // VAULT live-refresh: fs-watch → vault-changed
