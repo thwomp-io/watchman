@@ -330,23 +330,27 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 
 /* ————— baseplate ———————————————————————————————————————————————————————————————————————————— */
 
+/* Amber-toned throughout — the ink-faint footer was low-contrast enough to get missed in use
+   (notably the remote-bus indicator). The path carries the payload (what bus this console
+   reads) → full amber; label + build stamp ride a dimmer amber so the plate reads as one warm
+   strip without competing with the status. */
 .baseplate {
   display: flex; align-items: center; gap: 9px;
   padding: 7px 16px;
   border-top: var(--hairline);
   background: var(--graphite-1);
-  color: var(--ink-faint);
+  color: rgba(232, 163, 61, 0.78);
   font-size: 9.5px; letter-spacing: 0.12em;
 }
 .led-ok { width: 6px; height: 6px; border-radius: 50%; background: var(--pos);
           box-shadow: 0 0 6px var(--pos); }
-.baseplate .path { color: var(--ink-faint); opacity: 0.7; }
+.baseplate .path { color: var(--amber); }
 .baseplate .status { color: var(--amber); }
-/* build stamp — an engraved serial on the baseplate: quiet (never amber/active),
+/* build stamp — an engraved serial on the baseplate: quieter than the live indicators,
    hairline-delineated, tabular so the version sits still across rerenders */
 .baseplate .build {
   padding-left: 12px; border-left: var(--hairline);
-  color: var(--ink-faint); opacity: 0.75;
+  color: rgba(232, 163, 61, 0.62);
   letter-spacing: 0.16em; font-variant-numeric: tabular-nums;
 }
 

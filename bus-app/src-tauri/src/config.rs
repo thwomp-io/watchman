@@ -46,6 +46,18 @@ pub struct LiveViz {
 pub struct AppConfig {
     #[serde(default)]
     pub db_path: Option<String>,
+    /// Remote bus (docs/BUS.md "Serving the bus over HTTP"): base URL of an `hn bus serve`
+    /// instance — prefer the MagicDNS name (e.g. `http://my-mini.mesh.internal:8787`;
+    /// survives node re-enrollment) over the tailnet IP (stable but registration-bound).
+    /// Absent/blank = local rusqlite, unchanged — the OOTB default. Multi-device is an opt-in
+    /// layer; no sample pack ever sets this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bus_url: Option<String>,
+    /// Bearer token for `bus_url` (the server's `~/.config/harness/bus-token` value). Same
+    /// threat model as the toolkit's .env keys: the mesh/ACL is the perimeter, this is
+    /// defense-in-depth. Required whenever `bus_url` is set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bus_token: Option<String>,
     #[serde(default)]
     pub tracker_path: Option<String>,
     /// The active weight pack (a scenario bundle dir). When set, on-demand panel reads inject it as
@@ -260,6 +272,80 @@ mod tests {
         assert!(is_bundled_pack(&bundled));
         // …a personal pack anywhere else is not (blend semantics stay).
         assert!(!is_bundled_pack(Path::new("/somewhere/else/my-pack")));
+    }
+
+    #[test]
+    fn bus_endpoint_resolves_local_remote_and_seal() {
+        let mut cfg = default_config();
+        // Default: local file (OOTB unchanged).
+        assert!(matches!(bus_endpoint(&cfg), BusEndpoint::Local(_)));
+        // bus_url set → remote; trailing slash normalized; token rides along.
+        cfg.bus_url = Some("http://my-mini.mesh.internal:8787/".into());
+        cfg.bus_token = Some(" secret ".into());
+        assert_eq!(
+            bus_endpoint(&cfg),
+            BusEndpoint::Remote { url: "http://my-mini.mesh.internal:8787".into(), token: "secret".into() }
+        );
+        // Missing token stays REMOTE (empty token) — the client errors actionably, never a
+        // silent local fallback the user opted out of.
+        cfg.bus_token = None;
+        assert_eq!(
+            bus_endpoint(&cfg),
+            BusEndpoint::Remote { url: "http://my-mini.mesh.internal:8787".into(), token: String::new() }
+        );
+        // Blank url = unset.
+        cfg.bus_url = Some("   ".into());
+        assert!(matches!(bus_endpoint(&cfg), BusEndpoint::Local(_)));
+        // Demo seal trumps remote: bundled pack active → the sealed local bus, never the mesh.
+        cfg.bus_url = Some("http://my-mini.mesh.internal:8787".into());
+        cfg.active_pack = Some(samples_packs_dir().join("demo-investor").display().to_string());
+        assert_eq!(
+            bus_endpoint(&cfg),
+            BusEndpoint::Local(demo_seal_state_dir().join("bus.db"))
+        );
+    }
+
+    #[test]
+    fn demo_seal_covers_the_bus_db() {
+        // The seal must reach the Inbox's direct bus.db read, not just spawns/file reads —
+        // a bundled pack active means a demo-scoped bus, never the real one.
+        let mut cfg = default_config();
+        cfg.active_pack = Some(samples_packs_dir().join("demo-investor").display().to_string());
+        assert_eq!(db_path(&cfg), demo_seal_state_dir().join("bus.db"));
+        // No pack (or a personal pack) → the normal resolution chain.
+        cfg.active_pack = None;
+        assert_ne!(db_path(&cfg), demo_seal_state_dir().join("bus.db"));
+        cfg.active_pack = Some("/somewhere/else/my-pack".into());
+        assert_ne!(db_path(&cfg), demo_seal_state_dir().join("bus.db"));
+    }
+}
+
+/// Where the app's bus lives: the local SQLite file (default) or a served bus over HTTP.
+#[derive(Clone, Debug, PartialEq)]
+pub enum BusEndpoint {
+    Local(PathBuf),
+    Remote { url: String, token: String },
+}
+
+/// Resolve the bus endpoint. Three rules, in order:
+/// 1. **Demo seal trumps remote** — while a bundled demo pack is active the console renders its
+///    sealed (empty) bus and nothing else; a configured mesh bus is real state and must not leak
+///    into demo mode.
+/// 2. `bus_url` set (non-blank) → remote. The token rides along even when missing/blank — the
+///    remote client surfaces "token missing" as an actionable error instead of silently falling
+///    back to a local file the user explicitly opted out of (a silent fallback would render an
+///    EMPTY local bus and read as "no events" — worse than an error).
+/// 3. Otherwise the local file via [`db_path`] — the unchanged OOTB path.
+pub fn bus_endpoint(cfg: &AppConfig) -> BusEndpoint {
+    if active_bundled_pack(cfg).is_some() {
+        return BusEndpoint::Local(db_path(cfg));
+    }
+    match cfg.bus_url.as_deref().map(str::trim) {
+        Some(url) if !url.is_empty() => BusEndpoint::Remote {
+            url: url.trim_end_matches('/').to_string(),
+            token: cfg.bus_token.as_deref().map(str::trim).unwrap_or_default().to_string(),
+        },
+        _ => BusEndpoint::Local(db_path(cfg)),
     }
 }
 
@@ -501,6 +587,8 @@ fn default_live_viz() -> Vec<LiveViz> {
 fn default_config() -> AppConfig {
     AppConfig {
         db_path: None,
+        bus_url: None,
+        bus_token: None,
         tracker_path: None,
         active_pack: None,
         producers: vec![Producer {

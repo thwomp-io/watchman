@@ -320,8 +320,10 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "serpapi" },
+    { name = "starlette" },
     { name = "typer" },
     { name = "tzdata" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -346,8 +348,10 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "serpapi" },
+    { name = "starlette" },
     { name = "typer" },
     { name = "tzdata", specifier = ">=2026.2" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata.requires-dev]

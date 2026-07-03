@@ -68,6 +68,8 @@ export interface Surface {
 
 export interface AppConfig {
   db_path: string;
+  /** What the Inbox actually reads: "remote: <bus_url>" in remote mode, else the local db path. */
+  bus_source: string;
   producers: Producer[];
 }
 

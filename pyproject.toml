@@ -16,6 +16,10 @@ dependencies = [
     "pyyaml",
     "pillow",
     "tzdata>=2026.2",
+    # bus server (hn bus serve) — both already ride mcp[cli]; declared so the dependency is
+    # honest rather than transitive-by-luck. Zero growth to the installed tree.
+    "starlette",
+    "uvicorn",
 ]
 
 [project.scripts]

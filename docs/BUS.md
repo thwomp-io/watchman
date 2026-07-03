@@ -72,10 +72,13 @@ uniqueness.
 ## `delivered_via` — transport markers
 
 Each delivery transport appends **only its own marker** after delivering: the tray app appends
-`"desktop"` after posting the native notification; a future ntfy transport appends `"ntfy"`.
+`"desktop"` after posting the native notification; a watchman in `bus_url` remote mode appends a
+**per-device** marker `"desktop:{hostname}"` (each device is its own transport instance — every
+device notifies exactly once, independently); a future ntfy transport appends `"ntfy"`.
 Rules: a transport delivers events that are **unread AND missing its marker**; markers are never
 removed; `read_at` is orthogonal (delivered ≠ read). This is what makes adding a transport purely
-additive — no schema change, no producer change.
+additive — no schema change, no producer change. Local transports write their marker directly
+(rusqlite); remote transports write it via `POST /api/bus/delivered` (below).
 
 ## Producing events
 
@@ -101,3 +104,58 @@ additive — no schema change, no producer change.
 the **did-it-run audit** (every run,
 quiet or not, plus bus publish counts: `[bus: 2 published, 1 dup]`). The bus holds only
 **human-worthy events**. A quiet run writes a log line and zero bus rows.
+
+## Serving the bus over HTTP — `hn bus serve` (v0.73.0, multi-device S-A)
+
+The local `bus.db` contract above is complete on the machine the watchmen run on. For every OTHER
+device, the always-on node serves the same bus over a small HTTP API — **centralize, don't sync**:
+one authoritative db, every remote surface a client. **Purely additive**: nothing starts or
+requires this server; the local-file path stays the default; sample packs never configure it (the
+out-of-box demo is mesh-free by design — multi-device is an opt-in layer with its own setup doc).
+
+- `hn bus serve [--host 127.0.0.1] [--port 8787] [--token-file ~/.config/harness/bus-token]`
+- **Auth**: every `/api/*` route requires `Authorization: Bearer <token>` (constant-time compare);
+  the token auto-generates to a 0600 file on first run. `/health` is open (liveness + version only)
+  so reachability probes need no secret. Transport privacy (private mesh / ACLs / TLS) is the
+  deployment's responsibility — the token is defense-in-depth, not the perimeter.
+- **Endpoints** (thin adapters over `BusService`; identical semantics to the CLI verbs):
+  - `GET /api/bus/events?unread=1&lane=&kind=&since=&limit=` → `{"events": […]}` (newest-first)
+  - `POST /api/bus/events` — body = one draft object or `{"events": [drafts…]}` →
+    `{"results": [{status: published|duplicate, …}]}` — **idempotency keys dedup exactly as
+    local publish does**; remote producers inherit once-per-day semantics for free
+  - `POST /api/bus/ack` — `{"ids": [1,2]}` or `{"all": true, "lane"?: "finance"}` → `{"acked": N}`
+  - `POST /api/bus/delivered` *(v0.74.0)* — `{"id": N, "marker": "desktop:winbox"}` →
+    `{"id", "delivered_via"}` — a remote transport's half of the delivered_via contract
+    (append-own-marker-only; idempotent; 404 on unknown id)
+  - `GET /api/bus/stats` → the `BusStats` shape (remote consoles also derive unread counts and
+    lane/kind filter sets from this — no dedicated meta route needed)
+- **Seal-honoring**: the served db resolves via `HARNESS_BUS_DB`/`HARNESS_STATE_DIR` like every
+  other consumer — a sealed (demo/CI) instance serves its sealed bus, never the real one.
+- **Consumers**: the watchman app's **`bus_url` remote mode (bus-app 0.5.0 — live)** and the
+  future web console. `create_app()` is a mountable Starlette app so the eventual web-console
+  server hosts the same routes — one server, one token, one bind.
+
+### The watchman in remote mode — `bus_url` (bus-app 0.5.0, multi-device client half)
+
+Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file to a served bus:
+
+```json
+{
+  "bus_url": "http://my-mini.mesh.internal:8787",
+  "bus_token": "<the server's ~/.config/harness/bus-token value>"
+}
+```
+
+- **Prefer the MagicDNS name over the tailnet IP**: the overlay IP (`100.64.0.1`) is stable across
+  reboots and public-IP rotations (it's registration-bound, not DHCP), but a node delete +
+  re-enroll reassigns it; the MagicDNS name follows the node. Fall back to the IP only if the
+  client's MagicDNS doesn't resolve.
+- Absent/blank `bus_url` = local rusqlite, unchanged — the OOTB default; no sample pack sets it.
+  `bus_url` without `bus_token` is an actionable error, never a silent local fallback.
+- The remote watchman runs the full local loop — Inbox, tray badge, filter chips, acks, native
+  notifications — under its own per-device marker (`desktop:{hostname}`). Acks are global
+  (`read_at`), so acking on one device clears badges everywhere within a poll tick (30s).
+- **Demo seal trumps remote**: while a bundled demo pack is active the console renders its sealed
+  local bus; a configured mesh bus never leaks into demo mode.
+- Failure shape: a dead mesh is a skipped poll tick (badge/menu keep last state) or an inline
+  error in the Inbox — hard 4s/10s HTTP timeouts, never a hung UI.

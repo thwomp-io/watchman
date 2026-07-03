@@ -8,7 +8,7 @@ use std::process::Command;
 use serde::Serialize;
 use tauri::{AppHandle, Runtime};
 
-use crate::{bus, config, dash, poller, viz};
+use crate::{backend, bus, config, dash, poller, viz};
 
 /// Build a console-spawned tool Command with the shared spawn environment (augmented PATH +
 /// the corpus/state seal — see [`run_json_command`] for the sealing rationale).
@@ -80,33 +80,27 @@ pub fn list_events(
     kind: Option<String>,
     limit: Option<i64>,
 ) -> Result<Vec<bus::Event>, String> {
-    let cfg = config::load();
-    let conn = bus::open(&config::db_path(&cfg))?;
-    bus::list_events(&conn, unread_only, lane.as_deref(), kind.as_deref(), limit.unwrap_or(100))
+    let handle = backend::open(&config::load())?;
+    handle.list_events(unread_only, lane.as_deref(), kind.as_deref(), limit.unwrap_or(100))
 }
 
 #[tauri::command]
 pub fn ack_events<R: Runtime>(app: AppHandle<R>, ids: Vec<i64>) -> Result<usize, String> {
-    let cfg = config::load();
-    let conn = bus::open(&config::db_path(&cfg))?;
-    let n = bus::ack(&conn, &ids)?;
-    drop(conn);
+    let handle = backend::open(&config::load())?;
+    let n = handle.ack(&ids)?;
+    drop(handle);
     poller::poll_once(&app); // badge/menu reflect the ack immediately
     Ok(n)
 }
 
 #[tauri::command]
 pub fn unread_count() -> Result<i64, String> {
-    let cfg = config::load();
-    let conn = bus::open(&config::db_path(&cfg))?;
-    bus::unread_count(&conn)
+    backend::open(&config::load())?.unread_count()
 }
 
 #[tauri::command]
 pub fn distinct_meta() -> Result<bus::DistinctMeta, String> {
-    let cfg = config::load();
-    let conn = bus::open(&config::db_path(&cfg))?;
-    bus::distinct_meta(&conn)
+    backend::open(&config::load())?.distinct_meta()
 }
 
 /// The running binary's version — `env!` reads `CARGO_PKG_VERSION` at COMPILE time, so it is
@@ -120,8 +114,15 @@ pub fn app_version() -> String {
 #[tauri::command]
 pub fn get_config() -> Result<serde_json::Value, String> {
     let cfg = config::load();
+    // bus_source: what the Inbox is actually reading — the remote URL in bus_url mode, else the
+    // local db path. Surfaced (token never included) so a remote-mode console is self-evident.
+    let bus_source = match config::bus_endpoint(&cfg) {
+        config::BusEndpoint::Remote { url, .. } => format!("remote: {url}"),
+        config::BusEndpoint::Local(path) => path.to_string_lossy().into_owned(),
+    };
     Ok(serde_json::json!({
         "db_path": config::db_path(&cfg).to_string_lossy(),
+        "bus_source": bus_source,
         "producers": cfg.producers,
     }))
 }

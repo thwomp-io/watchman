@@ -1,8 +1,11 @@
 """BusService — the core capability (CLI/MCP/producers are thin adapters over this).
 
-Read+publish+ack only. ``mark_delivered`` is deliberately ABSENT from the Python API: delivery
-markers are transport-side writes (the Tauri app appends "desktop" via rusqlite; spec in
-docs/BUS.md). Python's job ends at durable publish; surfaces own their own delivery state.
+Read+publish+ack, plus ``mark_delivered`` for the HTTP adapter. Delivery markers remain
+transport-OWNED semantically (each transport appends only its own marker; spec in docs/BUS.md),
+and a local transport still writes its marker directly (the Tauri app via rusqlite). But a
+REMOTE transport (a watchman in ``bus_url`` mode, a future ntfy relay) has no file access —
+the served bus must proxy that same write, so the service carries it. No producer or CLI verb
+calls it; it exists for transports reaching the bus over HTTP.
 """
 
 from __future__ import annotations
@@ -116,6 +119,28 @@ class BusService:
         cur = self._conn.execute(sql, params)
         self._conn.commit()
         return cur.rowcount
+
+    # -- delivery markers --------------------------------------------------------------------------
+
+    def mark_delivered(self, event_id: int, marker: str) -> list[str] | None:
+        """Append a transport's delivery marker to one event (idempotent; never touches other
+        transports' markers — the docs/BUS.md delivered_via rule). Returns the updated marker
+        list, or None for an unknown event id. Identical semantics to the Rust app's local
+        ``mark_delivered``; exists so remote transports can make the same write over HTTP."""
+        row = self._conn.execute(
+            "SELECT delivered_via FROM events WHERE id = ?", (event_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        markers: list[str] = json.loads(row["delivered_via"]) if row["delivered_via"] else []
+        if marker not in markers:
+            markers.append(marker)
+            self._conn.execute(
+                "UPDATE events SET delivered_via = ? WHERE id = ?",
+                (json.dumps(markers), event_id),
+            )
+            self._conn.commit()
+        return markers
 
     # -- hygiene ---------------------------------------------------------------------------------
 

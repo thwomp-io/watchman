@@ -151,3 +151,37 @@ def purge(
         bound = cutoff.isoformat(timespec="seconds")
     n = BusService().purge(bound, keep_unread=not include_unread)
     console.print(f"purged {n} (before {bound})")
+
+
+@app.command()
+def serve(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Bind address. Default localhost; bind a mesh/tailnet address (or 0.0.0.0) "
+        "deliberately — every /api route requires the bearer token regardless.",
+    ),
+    port: int = typer.Option(8787, "--port"),
+    token_file: Path = typer.Option(
+        Path("~/.config/harness/bus-token"),
+        "--token-file",
+        help="Bearer-token file; auto-generated (0600) on first run. Clients send "
+        "'Authorization: Bearer <token>'.",
+    ),
+) -> None:
+    """Serve the bus over HTTP (the multi-device 'centralize, don't sync' layer).
+
+    Purely additive: nothing else in the harness starts or needs this server. Run it on the
+    always-on node; remote consoles/producers point at it. Spec: docs/BUS.md (Serving section).
+    """
+    import uvicorn
+
+    from harness.bus.server import create_app, resolve_token
+    from harness.bus.store import default_db_path
+
+    resolved_file = token_file.expanduser()
+    token = resolve_token(resolved_file)
+    console.print(f"bus db: {default_db_path()}")
+    console.print(f"token:  {resolved_file} (send as 'Authorization: Bearer …')")
+    console.print(f"listen: http://{host}:{port}  (health: /health · api: /api/bus/*)")
+    uvicorn.run(create_app(token=token), host=host, port=port, log_level="info")

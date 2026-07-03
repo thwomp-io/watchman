@@ -573,7 +573,7 @@ export default function App() {
 
       <footer className="baseplate">
         <span className="led-ok" /> <span>BUS.DB ONLINE</span>
-        <span className="path">{config?.db_path ?? ""}</span>
+        <span className="path">{config?.bus_source ?? config?.db_path ?? ""}</span>
         <div className="spacer" />
         <span className="status">{status}</span>
         <span className="build">BUS-APP v{version || "—"}</span>

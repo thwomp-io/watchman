@@ -1,10 +1,12 @@
 //! Watchman — menu-bar-resident inbox + native notifications for the harness message bus.
 //! The delivery surface for the harness message bus (contract: ../docs/BUS.md). Deterministic; zero model anywhere.
 
+mod backend;
 mod bus;
 mod commands;
 mod config;
 mod poller;
+mod remote;
 mod dash;
 mod tray;
 mod viz;

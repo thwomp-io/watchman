@@ -70,3 +70,22 @@ Autostart-at-login is enabled from the app (tauri-plugin-autostart, LaunchAgent 
 
 `db_path` (or the `HARNESS_BUS_DB` env var) relocates the bus; default
 `~/.local/state/harness/bus.db` matches the Python side.
+
+### Remote bus — `bus_url` mode (0.5.0)
+
+A watchman on any device can read a served bus (`hn bus serve` on the always-on node —
+docs/BUS.md "Serving the bus over HTTP") instead of a local file:
+
+```json
+{
+  "bus_url": "http://my-mini.mesh.internal:8787",
+  "bus_token": "<the server's ~/.config/harness/bus-token value>"
+}
+```
+
+Absent/blank `bus_url` = local rusqlite, unchanged. Prefer the MagicDNS name over the tailnet IP
+(survives node re-enrollment). The remote console runs the full loop — Inbox, badge, filters,
+acks, its own native notifications under a per-device `desktop:{hostname}` marker; acks are
+global, so reading on one device clears badges everywhere. A bundled demo pack active always
+trumps `bus_url` (the demo seal renders sealed local state, never the mesh). A dead mesh degrades
+to a skipped poll tick / an inline Inbox error (4s/10s timeouts), never a hung UI.
