@@ -1,6 +1,6 @@
 [project]
 name = "harness"
-version = "0.4.0"
+version = "0.5.0"
 description = "A personal agentic-harness toolkit — one CLI of domain lanes (finance, career, travel). Provider-abstracted, corpus-aware, exposed via MCP + CLI."
 requires-python = ">=3.12"
 dependencies = [
