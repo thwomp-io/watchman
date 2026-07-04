@@ -104,7 +104,7 @@ def finance_fundamentals(symbol: str, cik: str | None = None, recent: int = 6) -
     operating income, gross profit, R&D, per fiscal period (quarter + annual), newest-first. Figures
     LAG real-time (newest = most recent 10-Q/10-K filing). A concept with no facts wasn't reported
     under the us-gaap tags tried (XBRL varies by issuer). `cik` overrides the ticker→CIK map for
-    symbols it can't resolve. READ-ONLY observation — surfaces the numbers; the judgment is the maintainer's."""
+    symbols it can't resolve. READ-ONLY observation — surfaces the numbers; the judgment is the user's."""
     return _svc().fundamentals(symbol.upper(), cik=cik, recent=recent).model_dump()
 
 
@@ -120,7 +120,7 @@ def finance_multiples(symbol: str, cik: str | None = None, recent: int = 8) -> d
     never a fabricated figure. TTM = sum of the 4 most-recent discrete quarters (fallback: most-recent
     annual). Only the price is real-time; reported figures LAG (newest = most recent 10-Q/10-K). `cik`
     overrides the ticker→CIK map for symbols it can't resolve. READ-ONLY observation — surfaces the
-    math; the judgment is the maintainer's. Serves the screened-core engine + research profiles."""
+    math; the judgment is the user's. Serves the screened-core engine + research profiles."""
     return _svc().multiples(symbol.upper(), cik=cik, recent=recent).model_dump()
 
 
@@ -133,7 +133,7 @@ def finance_compare(symbols: list[str], recent: int = 8) -> dict[str, Any]:
     "unavailable" un-tagged); a per-row note flags a failed resolve or the mega-cap P/S sanity-guard
     (TTM mis-tag). Reported figures LAG (newest 10-Q/10-K); only price/day move are live.
     The interpretive comparison (which wins, why) is the agent's separate written artifact, not this.
-    READ-ONLY observation — surfaces the side-by-side; the judgment is the maintainer's."""
+    READ-ONLY observation — surfaces the side-by-side; the judgment is the user's."""
     return _svc().compare([s.upper() for s in symbols], recent=recent).model_dump()
 
 
@@ -162,7 +162,7 @@ def finance_research(symbol: str, months: int = 6, threshold: float = 3.0) -> st
     """Event-anchored deep-dive for a symbol: ~N months of bars -> big-move days -> date-windowed
     headlines per move-day + per month + material filings + next-print estimate. Writes the
     catch-up artifact to finance/research/{SYM}/ and returns its path — read the artifact and
-    synthesize the narrative arc for the maintainer (the tool gathers; the agent narrates). Slow (~30s,
+    synthesize the narrative arc for the user (the tool gathers; the agent narrates). Slow (~30s,
     self-paced keyless calls)."""
     from harness.finance.config.settings import get_settings
     from harness.finance.research import write_research_report
@@ -176,7 +176,7 @@ def finance_research(symbol: str, months: int = 6, threshold: float = 3.0) -> st
 @mcp.tool()
 def finance_watch(mark_seen: bool = True, news_limit: int = 4) -> dict[str, Any]:
     """One-shot standing-watch digest: live day moves + rebalance-band drift
-    (SCAFFOLD bands until the allocation decision) + the wash-sale window (known vests only)
+    (bands are illustrative until targets are set) + the wash-sale window (known vests only)
     + days-to-print estimates + ONLY-new headlines via the local seen-cache. READ-ONLY observation;
     set mark_seen=False to peek without consuming the news delta."""
     return _svc().watch(mark_seen=mark_seen, news_limit=news_limit).model_dump()
@@ -184,7 +184,7 @@ def finance_watch(mark_seen: bool = True, news_limit: int = 4) -> dict[str, Any]
 
 @mcp.tool()
 def finance_screen(symbol: str) -> dict[str, Any]:
-    """Check a ticker against the maintainer's values screen (corpus-only, no network). Returns
+    """Check a ticker against the configured values screen (corpus-only, no network). Returns
     excluded (+category) or clean."""
     return _svc().screen(symbol).model_dump()
 

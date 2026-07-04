@@ -1,5 +1,5 @@
 // Domain dashboards — DD/APM-style observability pages over harness live data.
-// A dashboard = config'd grid of widgets (source × kind × layout). Refresh discipline (the maintainer-
+// A dashboard = config'd grid of widgets (source × kind × layout). Refresh discipline (operator-
 // ratified): NOWHERE NEAR DD-realtime — market10m widgets auto-refresh every 10 min ONLY
 // inside US market hours (provider politeness); local60s for bus/file sources; REFRESH ALL
 // always available; every widget carries AS-OF + took chrome.
@@ -142,7 +142,7 @@ function FeedBody({ events }: { events: BusEvent[] }) {
 // RSS summaries are external (untrusted) HTML → render as SANITIZED PLAIN TEXT: strip every tag (never
 // inserted into the live DOM) + decode entities via a detached textarea (its content is not parsed as
 // elements, so it's XSS-safe + needs no sanitizer dependency). Block-closers become newlines so multi-
-// paragraph bodies (the full-content feeds — e.g. Al Jazeera) stay readable; `.news-detail-body`
+// paragraph bodies (feeds that ship full article bodies) stay readable; `.news-detail-body`
 // renders them with `white-space: pre-wrap`. The full formatted (often paywalled) article is one
 // "open original ↗" click away.
 function htmlToText(html: string): string {
@@ -372,7 +372,7 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
   const expandable = widget.kind === "viz";
 
   return (
-    <section className={`widget bezel span-${widget.span} rows-${widget.rows ?? 1}`}>
+    <section className={`widget bezel span-${widget.span} rows-${widget.rows ?? 1} kind-${widget.kind}`}>
       <header>
         <span className={`widget-title${expandable ? " linkable" : ""}`}
               {...(expandable
@@ -465,7 +465,7 @@ function DocSeriesCard({ widget, forceTick }: { widget: Widget; forceTick: numbe
 
   // Re-list on a pack swap (forceTick bumps). The source dir path is pack-INVARIANT (resolved
   // pack-aware Rust-side), so neither `relist`'s dep nor onVaultChanged fires on a swap — without this
-  // the panel shows the PREVIOUS persona's docs (e.g. the real openings scan) until a manual ⟳.
+  // the panel shows the PREVIOUS persona's docs (the real corpus bleeding into a demo) until a manual ⟳.
   useEffect(() => {
     if (forceTick > 0) relist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -565,7 +565,7 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
   }, [group, lane]);
 
   // (Re)fetch the dashboard LAYOUT — not just the data. A weight pack can now DESCRIBE the dashboards
-  // (b15.8 v2), so the tab structure itself changes on a pack swap; refetching only widget data would
+  // (v2), so the tab structure itself changes on a pack swap; refetching only widget data would
   // leave a stale layout whose tabs/widgets no longer resolve ("unknown widget"). `preserve` keeps the
   // active group + subtab when they still exist in the new set (sit on Finance, swap personas → stay on
   // Finance Core), else falls back to the first group/lane (a vanished tab like Unwind → Core).

@@ -1,6 +1,6 @@
 [project]
 name = "harness"
-version = "0.5.0"
+version = "0.6.0"
 description = "A personal agentic-harness toolkit — one CLI of domain lanes (finance, career, travel). Provider-abstracted, corpus-aware, exposed via MCP + CLI."
 requires-python = ">=3.12"
 dependencies = [
@@ -33,7 +33,7 @@ dev = ["pytest", "pytest-mock", "respx", "ruff", "mypy", "types-PyYAML"]
 #   travel  — SerpAPI sole provider. Amadeus (free tier decommissioned 2026-07-17) + Duffel
 #             (enterprise-only) were both evaluated + dropped as non-viable for an individual dev.
 #   finance — Alpaca sole market-data provider (free: real-time IEX + 15-min-delayed SIP). READ-ONLY
-#             by design; programmatic trading/execution stays parked in.
+#             by design; programmatic trading/execution is deliberately out of scope.
 
 [build-system]
 requires = ["hatchling"]

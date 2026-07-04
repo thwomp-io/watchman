@@ -17,9 +17,9 @@ from pydantic import BaseModel
 
 from harness.bus.store import harness_state_dir
 
-# The finance-pulse launchd schedule — 9 runs per market day, Mon-Fri, local time.
-# (Slots track US market hours; retune the StartCalendarInterval for your own timezone.)
-# MANUAL-SYNC with scripts/io.thwomp.watchman.pulse.plist (the StartCalendarInterval slots).
+# The finance-pulse schedule — 9 runs per market day, Mon-Fri, local time.
+# (Illustrative slots for a 9-run market day; set the StartCalendarInterval to your market + timezone.)
+# MANUAL-SYNC with the launchd plist (its StartCalendarInterval slots).
 PULSE_SCHEDULE: list[time] = [
     time(6, 48), time(7, 33), time(8, 18),
     time(9, 33), time(10, 33), time(11, 18),

@@ -1,4 +1,4 @@
-// The VAULT zone: the tracker/ corpus, browsable read-only inside the console.
+// The VAULT zone: the vault corpus, browsable read-only inside the console.
 // Left rail = a recursive folder tree (mirrors the Obsidian vault, folder-notes collapsed). Main =
 // the selected doc rendered (frontmatter drawer + GFM markdown). Complements Obsidian (editing +
 // graph stay there) — this is the read/operate surface.
@@ -300,7 +300,7 @@ function VaultZone({ target }: { target?: string }) {
     });
   }, []);
 
-  // near-real-time: the Rust fs-watcher emits `vault-changed` on any tracker/ doc/image add/remove/edit
+  // near-real-time: the Rust fs-watcher emits `vault-changed` on any vault doc/image add/remove/edit
   useEffect(() => {
     const un = onVaultChanged(reload);
     return () => {
@@ -394,7 +394,7 @@ function VaultZone({ target }: { target?: string }) {
               <article className="vault-md">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  // the vault is the maintainer's own trusted local content — identity transform so our custom
+                  // the vault is the user's own trusted local content — identity transform so our custom
                   // `wiki:` + `vaultimg:` schemes survive (react-markdown strips unknown protocols)
                   urlTransform={(url) => url}
                   components={{

@@ -71,8 +71,8 @@ holdings:
       - {acquired: "2021-09-10", qty: 180, unit_cost: 88.40}    # gain
       - {acquired: "2024-03-15", qty: 90,  unit_cost: 118.60}   # gain (smaller)
       - {acquired: "2025-07-01", qty: 50,  unit_cost: 205.00}   # loss lot (TLH inventory)
-  - symbol: SPAXX
-    name: Government Money Market (core sweep / dry powder)
+  - symbol: MMKT
+    name: Money market (core sweep / dry powder)
     account: taxable
     balance: 24000.00
     type: cash

@@ -268,7 +268,7 @@ def find_food(
     """Eateries near a place — two-tier food discovery (what exists + optionally what's good).
     Default tier is OSM Overpass (KEYLESS/free): every mapped eatery with name/cuisine/hours —
     enumeration from data, not memory. live_ratings=True merges Google ratings/price via SerpAPI
-    (QUOTA: ~1 search of the shared 250/mo, day-cached — CONFIRM with the maintainer before spending).
+    (QUOTA: ~1 search of the shared 250/mo, day-cached — confirm before spending).
     Returns {location, count, eateries:[{name, category, cuisine, rating, reviews, price,
     opening_hours, address, website, sources}], notes}."""
     return _svc().find_food(near, radius_m=radius_m, live_ratings=live_ratings).model_dump()

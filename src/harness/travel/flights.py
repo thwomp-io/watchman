@@ -17,10 +17,9 @@ from pathlib import Path
 from harness.travel.media import dest_dir_parts
 from harness.travel.models import FlightItinerary, FlightSearch
 
-# First-class-upgrade calibration (travel/preferences.md). The mechanism values legroom, but the
-# preference is **duration-dependent**: first really matters on LONG flights (~4h+, cross-country); on
-# SHORT hops it's a nice-to-have only for a modest upcharge. Calibration band (thresholds from config):
-# on a short hop, a modest upcharge is taken; a large one declined.
+# First-class-upgrade calibration. The mechanism values legroom, but the preference is
+# **duration-dependent**: first really matters on LONG flights (~4h+, cross-country); on SHORT hops
+# it's a nice-to-have only for a modest upcharge. The bands below are tunable defaults, not laws.
 _LONG_HAUL_MIN = 240  # minutes (~4h) — at/over this, first is a high preference (the broad band below)
 # LONG-haul band: first ≤ ~2× economy / within a few hundred $ = worth it; ≥3× or ≥$1500 = rational-pause.
 _UPGRADE_MAX_ABS = 1050.0
@@ -74,7 +73,7 @@ def _dedup(seq: list[str]) -> list[str]:
 def short_aircraft(name: str) -> str:
     """Compact a verbose aircraft string for the table. 'Boeing 737-700 (Scimitar Winglets) Pax' →
     '737-700'; 'Embraer 175' → 'E175'; 'Boeing 737MAX 9 Passenger' → '737MAX 9'. (Aircraft is a real
-    signal — the calibration prefers mainline narrowbodies over smaller regional jets like the E175.)"""
+    signal — mainline narrowbody vs. smaller regional jet.)"""
     if not name:
         return "—"
     n = re.sub(r"\(.*?\)", "", name)  # drop parentheticals

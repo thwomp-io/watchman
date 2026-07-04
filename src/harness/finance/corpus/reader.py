@@ -154,7 +154,7 @@ class PortfolioSeed:
     # strategic TARGET allocation (config-stored judgment; the Current pie is derived from holdings)
     allocation_target: AllocationTarget | None = None
     # standing-watch inputs: scaffold drift bands (% of the brokerage account;
-    # real targets are the open allocation decision) + vest dates (manual-sync w/ a vesting calendar)
+    # real targets are user-set) + vest dates (manual-sync w/ a vesting calendar)
     rebalance_bands: dict[str, dict[str, float]] = field(default_factory=dict)
     vest_dates: list[str] = field(default_factory=list)  # dates only (the existing wash-sale input)
     vest_calendar: list[VestEvent] = field(default_factory=list)  # dates + units ($-sizing, timeline)

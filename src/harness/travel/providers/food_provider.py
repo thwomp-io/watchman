@@ -7,7 +7,7 @@ Open-source data, no key, no quota: aligned with the privacy/self-hosted bias.
 
 Tier 2 — **SerpAPI google_maps local results, QUOTA (opt-in)**: ratings / review counts / price
 for the same area — "what's good". 1 search per query against the shared 250/mo budget, date-keyed
-cache like hotels (re-views cost 0). Callers confirm with the maintainer before spending (hotels/flights
+cache like hotels (re-views cost 0). Callers confirm before spending (hotels/flights
 discipline).
 
 The service merges: OSM enumeration enriched with Google ratings on normalized-name match; Google-

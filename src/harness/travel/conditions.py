@@ -73,7 +73,7 @@ def compute_flags(
             flags.append(ConditionFlag(
                 kind="heat", scope=scope, place=place, date=d.date,
                 message=f"{place}: {d.temp_max:.0f}°{tunit} high {d.date} "
-                        f"— above your {th.heat_high_f:.0f}° line (a personal comfort threshold)",
+                        f"— above the configured {th.heat_high_f:.0f}° heat threshold",
             ))
         wet_hours = d.precip_hours is not None and d.precip_hours >= th.wet_day_hours
         wet_sum = d.precip_sum is not None and d.precip_sum >= th.wet_day_sum_in

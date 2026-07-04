@@ -26,7 +26,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_notification::init())
         // dialog: the native folder picker behind "Load Weight Pack…" (browse to ANY pack dir). A
-        // modal dialog, NOT a menu — safe for an Accessory app (the 0.1.30 no-Builder-menu lesson).
+        // modal dialog, NOT a menu — safe for an Accessory app (a Builder menu is not).
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -60,13 +60,12 @@ pub fn run() {
             // opened to browse (DASH/VAULT/VIZ/takes), not an Accessory background utility.
             // Standing-watchman delivery is preserved because CloseRequested (below) HIDES the
             // window instead of quitting — so closing keeps the process resident + the tray alive,
-            // and the Dock icon re-shows it (Reopen, below). (Was Accessory since 0.1.0; dock-icon
-            // suppression had been flaky with a visible window historically, so the app appeared on
-            // the dock until a Tauri/macOS bump made suppression actually bite — fixed forward.)
+            // and the Dock icon re-shows it (Reopen, below). Regular (not Accessory): the console is
+            // a full browse surface, not a background-only utility.
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Regular);
             // standing-agent requirement: survive reboots. Release bundles only — a dev binary
-            // must never register itself as a login item (caught 2026-06-12, pre-P3-acceptance).
+            // must never register itself as a login item (a dev binary must never masquerade as the installed one).
             #[cfg(not(debug_assertions))]
             {
                 use tauri_plugin_autostart::ManagerExt;
@@ -74,8 +73,8 @@ pub fn run() {
             }
             // Explicitly request notification authorization — without this the plugin never
             // registers with Notification Center (no prompt, no Settings entry) and falls back
-            // to script-style delivery under the wrong identity (caught live 2026-06-12:
-            // the installed bundle's first notification rode Script Editor's old whitelist).
+            // to script-style delivery under the wrong identity (otherwise the first
+            // notification can ride a stale script-runner whitelist).
             {
                 use tauri_plugin_notification::NotificationExt;
                 let _ = app.notification().request_permission();

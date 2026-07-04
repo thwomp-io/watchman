@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { isTauri } from "./transport";
 import "./App.css";
 import {
   ackEvents, appVersion, distinctMeta, getActivePack, getConfig, listEvents, listPacks, listSurfaces,
@@ -20,7 +21,7 @@ type Health = "green" | "amber" | "red";
 
 const SEV: Record<string, string> = { alert: "sev-alert", warn: "sev-warn", info: "sev-info" };
 
-// ————— Triage bands (2026-06-30) — the Inbox groups by the verdict the data ALREADY carries
+// ————— Triage bands — the Inbox groups by the verdict the data ALREADY carries
 // (severity + kind), promoting it from a dot to a hierarchy. ACT/WATCH are the "clear these" inbox;
 // CATALYST WIRE is a skim-stream of single-name catalysts (info `catalyst` events, bus option B);
 // FILINGS is the primary-source rail. Empty bands hide.
@@ -38,7 +39,7 @@ const BANDS: { key: Band; label: string; accent: string }[] = [
   { key: "filings", label: "FILINGS", accent: "sev-file" },
 ];
 // Urgency = the "needs you" tiers (alert+warn). Info catalysts are wire — a skim-stream, not a
-// to-do — so they never drive the tab badge or the ambient health (decision A, 2026-06-30).
+// to-do — so they never drive the tab badge or the ambient health (decision A).
 const isUrgent = (e: BusEvent): boolean => e.severity !== "info";
 
 function relTime(iso: string): string {
@@ -123,7 +124,7 @@ function WatchmenBand({ wm, health }: { wm: WatchmenStatus | null; health: Healt
   );
 }
 
-// The always-on status header (2026-06-30) — promotes the standing-state summary (next pulse /
+// The always-on status header — promotes the standing-state summary (next pulse /
 // print / vest wash / last flag + the urgent headline) out of the "nothing selected" inspector into
 // a persistent strip, so system state is glanceable without clearing the pane.
 function StatusStrip({ wm, agenda, health, urgent }: {
@@ -329,8 +330,8 @@ function Inbox({ onUnread }: { onUnread: (n: number) => void }) {
 function SurfaceCard({ surface, state, now, onRun }: {
   surface: Surface; state: SurfaceState; now: Date; onRun: () => void;
 }) {
-  // honest elapsed counter — a 30s ATS scan must read as "chugging", never "crashed"
-  // (the maintainer's first-run report: the sweep alone wasn't enough signal for long acquisitions)
+  // honest elapsed counter — a 30s multi-board scan must read as "chugging", never "crashed"
+  // (first-run feedback: the sweep alone wasn't enough signal for long acquisitions)
   const elapsed = state.status === "running"
     ? Math.max(0, Math.round((now.getTime() - state.startedAt.getTime()) / 1000))
     : 0;
@@ -475,7 +476,7 @@ export default function App() {
   }, []);
 
   // "Load Weight Pack…": a native folder picker (the dialog plugin — a modal, NOT a menu, so it's safe
-  // for this Accessory app; the 0.1.30 no-Builder-menu lesson). Browse to ANY pack dir — a user's own
+  // for this Accessory app; a Builder menu is not). Browse to ANY pack dir — a user's own
   // pack lives OUTSIDE the app (set_active_pack accepts any path), so the published app never has to
   // bundle or be aware of personal data. On pick, reuse selectPack to persist + reload in place.
   const loadPackFromDir = useCallback(async () => {
@@ -514,6 +515,7 @@ export default function App() {
           <h1>WATCHMAN</h1>
           <span className="model-no">WATCHMAN CONSOLE · v{version || "—"}</span>
         </div>
+        {isTauri() && (
         <div className={"pack-switch" + (pack ? " active" : "")}
              title="Load a weight pack (a scenario) — a bundled sample, your own folder, or your real data">
           <label>PACK</label>
@@ -532,6 +534,7 @@ export default function App() {
           <button className="pack-load" onClick={() => void loadPackFromDir()}
                   title="Load Weight Pack — browse to any folder containing a pack">Load…</button>
         </div>
+        )}
         <div className="navhist">
           <button className="navhist-btn" disabled={!nav.canGoBack} onClick={back} title="Back">◀</button>
           <button className="navhist-btn" disabled={!nav.canGoForward} onClick={forward} title="Forward">▶</button>

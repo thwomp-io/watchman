@@ -1,11 +1,15 @@
-// invoke() wrappers — the webview's only surface onto the Rust shell (custom commands; no
-// plugin permissions needed in the webview).
+// Backend-call wrappers — the webview's only surface onto the backend. Every call routes through the
+// transport seam (src/transport.ts): the Tauri IPC bridge in the native console, an HTTP client in the
+// browser-served web console. Consumers import these typed wrappers and never touch the
+// transport directly — keep it that way; the single door is what keeps the two form-factors in parity.
 
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { transport, type Unlisten } from "./transport";
 import type {
   AppConfig, BusEvent, Dashboard, DirDoc, DistinctMeta, Surface, VaultDoc, VizEntry, WatchmenStatus,
 } from "./types";
+
+const invoke = <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> =>
+  transport().invoke<T>(cmd, args);
 
 export async function listEvents(opts: {
   unreadOnly?: boolean;
@@ -55,9 +59,11 @@ export const getActivePack = (): Promise<string | null> => invoke("get_active_pa
 export const setActivePack = (pack: string | null): Promise<void> =>
   invoke("set_active_pack", { pack });
 
-export const onBusUpdated = (cb: (unread: number) => void): Promise<UnlistenFn> =>
-  listen<number>("bus-updated", (e) => cb(e.payload));
-export const onBusSelect = (cb: (id: number) => void): Promise<UnlistenFn> =>
-  listen<number>("bus-select", (e) => cb(e.payload));
-export const onVaultChanged = (cb: () => void): Promise<UnlistenFn> =>
-  listen("vault-changed", () => cb());
+// Push-event subscriptions ride the same transport (Tauri events natively; the web console's refresh
+// emulation is the polling seam). UnlistenFn-compatible: callers keep treating the result as `() => void`.
+export const onBusUpdated = (cb: (unread: number) => void): Promise<Unlisten> =>
+  transport().listen("bus-updated", (payload) => cb(payload as number));
+export const onBusSelect = (cb: (id: number) => void): Promise<Unlisten> =>
+  transport().listen("bus-select", (payload) => cb(payload as number));
+export const onVaultChanged = (cb: () => void): Promise<Unlisten> =>
+  transport().listen("vault-changed", () => cb());

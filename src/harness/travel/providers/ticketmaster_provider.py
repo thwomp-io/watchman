@@ -108,7 +108,7 @@ class TicketmasterEventProvider:
                 "TICKETMASTER_KEY is not set — cannot search events. Add it to .env "
                 "(Consumer Key from developer.ticketmaster.com)."
             )
-        # Discovery's date filter is UTC; the maintainer thinks in local trip dates. End-pad the UTC query +1
+        # Discovery's date filter is UTC; users think in local trip dates. End-pad the UTC query +1
         # day so a late-last-day local event (e.g. 6/22 PM local = 6/23 UTC) is still caught, then
         # local-date-filter below. Do NOT start-pad: it only pulls evening-before-local events we'd
         # filter out anyway, AND with sort=date,asc it lets a busy city's pad-day consume the whole

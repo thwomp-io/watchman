@@ -223,7 +223,7 @@ fn run_json_command(cmd: &str, args: &[String], cwd: &str, label: &str) -> Resul
 
 #[tauri::command]
 pub fn list_dashboards() -> Result<Vec<dash::Dashboard>, String> {
-    // Pack-described dashboards (b15.8 v2): an active pack that ships a `dashboards/` dir owns the
+    // Pack-described dashboards (v2): an active pack that ships a `dashboards/` dir owns the
     // whole tab-set (full-set override). No pack → the real console's compiled defaults.
     let cfg = config::load();
     let pack = cfg
@@ -299,7 +299,7 @@ pub async fn run_widget(
         .map(config::expand_home);
     // spawn_blocking: subprocess work must NEVER sit on the main thread — sync Tauri commands
     // run on the event loop, and nine widgets queueing there beachballed the whole window
-    // (the maintainer's first-load lockup). Async + blocking pool = true widget concurrency.
+    // on first load. Async + blocking pool = true widget concurrency.
     tauri::async_runtime::spawn_blocking(move || {
         let widget = dash::find_widget_for(pack.as_deref(), &lane, &id)
             .ok_or_else(|| format!("unknown widget: {lane}/{id}"))?;

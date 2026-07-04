@@ -186,7 +186,7 @@ def fetch_edgar_filing_feed(cik: str, symbol: str, *, limit: int = 3) -> list[Ne
 
     An 8-K is the company speaking on the record; fresh entries here beat any wire.
 
-    v0.34.1: replaced the www.sec.gov browse-edgar Atom feed — which WAF-403s
+    Replaced the www.sec.gov browse-edgar Atom feed — which WAF-403s
     undeclared tools, the EXACT trap this module's header already documented — with the same
     data.sec.gov submissions endpoint the rest of the lane uses. One host, no UA-policy conflict;
     the 8-K `items` codes (e.g. 2.02 results-of-operations) ride the same response for free."""

@@ -7,7 +7,7 @@ import {
   stageEmptyWidgetSources, symbolWidget,
 } from "./test/mockTauri";
 
-describe("Dash — pack-described dashboards (b15.8 v2)", () => {
+describe("Dash — pack-described dashboards", () => {
   beforeEach(() => {
     mockTauri.reset();
     stageEmptyWidgetSources();
@@ -55,7 +55,7 @@ describe("Dash — pack-described dashboards (b15.8 v2)", () => {
     expect(screen.getByRole("button", { name: "Travel" })).toBeInTheDocument();
   });
 
-  // THE REGRESSION (bug 2, the eyeball 2026-06-20): a bars/position widget keeps its selected-symbol
+  // THE REGRESSION (bug 2): a bars/position widget keeps its selected-symbol
   // STATE across a pack swap (same widget id → same component instance). Without reconciliation it
   // refetches with the prior persona's ticker against the new portfolio → "<sym> not in config". The
   // fix: effSymbol snaps to a valid symbol for the current widget + the refetch tick fires AFTER the new
@@ -86,10 +86,10 @@ describe("Dash — pack-described dashboards (b15.8 v2)", () => {
     expect(screen.queryByText(/not in config/)).not.toBeInTheDocument();
   });
 
-  // THE REGRESSION (bug 1, same eyeball): a doc_series widget (openings scan / market take) never
+  // THE REGRESSION (bug 1, same eyeball): a doc_series widget (a scan report / market take) never
   // re-listed on a pack swap — its source dir is pack-INVARIANT (resolved pack-aware Rust-side) so
   // neither its dep nor onVaultChanged fired, and it received no refetch tick. It showed the PREVIOUS
-  // persona's docs (a real-data leak) until a manual ⟳. The fix threads forceTick in + re-lists on it.
+  // persona's docs (real data bleeding into a demo) until a manual ⟳. The fix threads forceTick in + re-lists on it.
   it("re-lists a doc_series widget on a pack swap (drops the prior persona's docs)", async () => {
     mockTauri.setValue("list_dashboards",
       [oneWidgetDash("career", "Career", "Board", docSeriesWidget("openings", "career/discoveries"))]);

@@ -2,7 +2,7 @@
 date: 2026-06-16
 tags: [finance, research, compare, sample, fictional]
 ---
-# Compare — VTI · VXUS · NVDA · DDOG (2026-06-16)
+# Compare — VTI · VXUS · NVDA · DDOG
 
 *FICTIONAL sample comparison. Not advice.*
 

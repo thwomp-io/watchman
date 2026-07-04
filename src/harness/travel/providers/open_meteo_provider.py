@@ -1,8 +1,8 @@
 """Open-Meteo weather provider — KEYLESS, free, global.
 
 The harness's weather *sense*: a live daily forecast for a window, so recommendations reason about
-the *actual* conditions on the trip dates rather than climate-averages (which the corpus has repeatedly
-over-hardened into a "weather-as-write-off" filter). Two keyless endpoints:
+the *actual* conditions on the trip dates rather than climate-averages alone (an average is a prior,
+never a write-off). Two keyless endpoints:
   - geocoding-api.open-meteo.com/v1/search  → city name → lat/lon
   - api.open-meteo.com/v1/forecast          → daily forecast for lat/lon over a date window
 

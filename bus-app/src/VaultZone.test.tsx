@@ -12,8 +12,8 @@ import VaultZone from "./VaultZone";
 // through nav.navigate(), which stacks the source doc so Back returns. This test pins that.
 
 const TRIP: VaultDoc = {
-  path: "travel/trips/a companion/a companion.md", area: "travel", dir: "travel/trips/a companion",
-  name: "a companion", title: "a companion trip", kind: "doc",
+  path: "travel/trips/summer-trip/summer-trip.md", area: "travel", dir: "travel/trips/summer-trip",
+  name: "summer-trip", title: "A trip", kind: "doc",
 };
 const CITY: VaultDoc = {
   path: "travel/destinations/us-domestic/major-metropolis/chicago/chicago.md",

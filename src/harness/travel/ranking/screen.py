@@ -2,7 +2,7 @@
 
 hard_no  -> candidate filtered OUT entirely.
 in_screen -> penalize-but-KEEP, and surface the corpus calibration prose as data-pushback
-             (implements the no-enabling-acknowledged-irrational-anxiety rule).
+             (data informs the screen; the screen never silently filters).
 clean    -> no penalty.
 """
 
@@ -30,7 +30,7 @@ def score_screen(status: ScreenStatus, weights: ScreenWeights) -> ScreenResult:
     ):
         if verdict == "hard_no":
             result.filtered_out = True
-            result.rationale.append(f"{axis_name}: hard-no (current life-phase) — excluded")
+            result.rationale.append(f"{axis_name}: hard-no — excluded")
         elif verdict == "in_screen":
             result.penalty += axis_w.in_screen_penalty
             result.rationale.append(

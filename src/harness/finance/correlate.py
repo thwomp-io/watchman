@@ -2,12 +2,12 @@
 hard-data surface.
 
 PURE function over aligned closes: daily simple returns → pairwise Pearson correlation matrix +
-per-symbol annualized vol; optionally a designated equal-weight FACTOR (e.g. the AI sleeve) → each
+per-symbol annualized vol; optionally a designated equal-weight FACTOR (e.g. an AI-names basket) → each
 symbol's correlation + beta to it + the top days the FOCAL name (the first symbol) DIVERGED from the
 factor (what moved independently).
 
 Determinism doctrine (same as `market.build_overview` / `compare.build_compare`): the math lives here
-and is unit-tested over fixtures; the INTERPRETATION ("this name decorrelates the tech book") is the agent's
+and is unit-tested over fixtures; the INTERPRETATION ("this decorrelates the rest of the book") is the agent's
 narrative, written into the research, never computed. No network here — the service gathers the bars.
 """
 

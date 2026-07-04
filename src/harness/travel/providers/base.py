@@ -79,7 +79,7 @@ class EventProvider(Protocol):
     ) -> list[EventResult]:
         """Return events in `city` within [start_date, end_date], chronological.
 
-        Raw + classified; the maintainer's centerpiece/perk tiering is applied downstream
+        Raw + classified; the configured centerpiece/perk tiering is applied downstream
         (EventWeights.tier_for), so the provider stays a generic events source.
         """
         ...

@@ -120,7 +120,7 @@ class NetWorthGroup(BaseModel):
 
 
 class NetWorth(BaseModel):
-    """The full-picture net-worth rollup — the harness's grasp on the maintainer's total wealth.
+    """The full-picture net-worth rollup — every tracked account in one read.
 
     Aggregates everything in the corpus: live-quoted brokerage + last-known mutual-fund NAV +
     static retirement/cash balances. Honest about staleness (per-group `as_of` + valuation basis).
@@ -483,7 +483,7 @@ class CorrelationReport(BaseModel):
     end: str = ""
     matrix: list[list[float]] = Field(default_factory=list)  # symbols × symbols Pearson correlation
     vol_annual: dict[str, float] = Field(default_factory=dict)  # per-symbol annualized vol % (×√252)
-    factor: list[str] | None = None  # the equal-weight factor basket (e.g. the AI sleeve), if requested
+    factor: list[str] | None = None  # the equal-weight factor basket (e.g. an AI-names basket), if requested
     factor_corr: dict[str, float] | None = None  # sym → correlation to the factor
     factor_beta: dict[str, float] | None = None  # sym → beta to the factor (cov/var)
     divergence_days: list[DivergenceDay] | None = None  # focal vs factor, biggest-gap days

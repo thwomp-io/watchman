@@ -1,9 +1,9 @@
 """Applications-pipeline corpus loader — `corpus/role-hunt/applications.yaml` is the source of truth.
 
-The Phase-2 application/opportunity pipeline as domain state (the maintainer-ratified corpus YAML, painting-
-doctrine adjacent — hand-edited, not tool-written). The CAREER dashboard's PIPELINE table reads this
-via `hn career applications --json`. Read-only here; advancing a stage is the maintainer's edit, never the
-tool's act (the read-rich / execute-gated doctrine — applying/contacting is the maintainer's act).
+The application/opportunity pipeline as domain state (hand-edited corpus YAML — the tool
+reads it, never writes it). The CAREER dashboard's PIPELINE table reads this
+via `hn career applications --json`. Read-only here; advancing a stage is the user's edit, never the
+tool's act (the read-rich / execute-gated doctrine — applying/contacting is the user's act).
 """
 
 from __future__ import annotations

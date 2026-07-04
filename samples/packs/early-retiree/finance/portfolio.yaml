@@ -39,7 +39,7 @@ holdings:
       - {acquired: "2024-09-01", qty: 50,  unit_cost: 285.00}   # loss lot (TLH inventory)
   # --- Retirement (penalty-locked; valued from a synced balance, not a live price) ---
   - {symbol: ROLLOVER-IRA, name: Rollover IRA (Vanguard),    account: retirement, balance: 912000, type: retirement, as_of: 2026-06-01}
-  - {symbol: ROTH-IRA,     name: Roth IRA (Fidelity),        account: retirement, balance: 418000, type: retirement, as_of: 2026-06-01}
+  - {symbol: ROTH-IRA,     name: Roth IRA,                   account: retirement, balance: 418000, type: retirement, as_of: 2026-06-01}
   # --- Cash (the runway: a few years of expenses out of the market) ---
   - {symbol: CASH-HYSA,    name: High-Yield Savings,         account: cash, balance: 145000, type: cash, as_of: 2026-06-01}
 

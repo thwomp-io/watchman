@@ -79,7 +79,7 @@ def events_from_pulse(
 ) -> list[EventDraft]:
     """One EventDraft per flag. The idempotency key is left blank → the bus derives
     ``finance.pulse:{kind}:{symbol}:{date}`` — exactly the once-per-day-per-(kind,symbol)
-    semantics pulse-flags.json enforced producer-side (which Phase 3 retires).
+    semantics previously enforced producer-side (the bus now owns it).
 
     ``ref_dirs`` (symbol → vault-relative research dir, existence-checked by the caller — this stays
     pure/no-I/O) adds a ``payload.ref`` deep-link the bus-app Inbox renders as a "go to →" jump.

@@ -55,7 +55,7 @@ class ScreenStatus(BaseModel):
 
 class Trip(BaseModel):
     """A trip or visit from the corpus pipeline — parsed from the `trip:` frontmatter block in
-    corpus/travel/{trips,visits}/*.md (the machine-readable twin, tracker-* schema). The spine of
+    corpus/travel/{trips,visits}/*.md (the machine-readable twin). The spine of
     the travel command-center: the whole horizon at a glance, not one trip in focus."""
 
     slug: str
@@ -98,7 +98,7 @@ class ScoredCandidate(BaseModel):
 
 
 class Shortlist(BaseModel):
-    """Always a ranked shortlist (never a single pick) — preserves partner-decision-making."""
+    """Always a ranked shortlist (never a single pick) — the human keeps the final call."""
 
     window: str
     candidates: list[ScoredCandidate]
@@ -109,7 +109,7 @@ class Shortlist(BaseModel):
 class EventResult(BaseModel):
     """A live event at a destination during a window — the dynamic-characteristics layer.
 
-    Raw + classified; the maintainer's centerpiece/perk tiering is applied downstream by
+    Raw + classified; the configured centerpiece/perk tiering is applied downstream by
     EventWeights.tier_for (NBA/NFL = centerpiece, everything else = perk), NOT stored here.
     """
 
@@ -351,7 +351,7 @@ class FoodReport(BaseModel):
 
 class FxRates(BaseModel):
     """Foreign-exchange rates from a base currency (open.er-api.com; keyless, daily). USD-base by
-    default — the maintainer thinks in USD, so `rates[X]` = units of X per 1 USD."""
+    default — USD-based, so `rates[X]` = units of X per 1 USD."""
 
     base: str
     date: str = ""  # provider's last-update date

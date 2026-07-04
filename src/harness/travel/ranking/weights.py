@@ -102,7 +102,7 @@ class ConditionsThresholds(BaseModel):
     aqi: int = 101  # US AQI >= this -> smoke flag (Unhealthy-for-Sensitive; wildfire season)
     wet_day_hours: float = 6.0  # precip_hours >= this -> wet_day (duration, "most of the day")
     wet_day_sum_in: float = 0.3  # OR precip_sum >= this (inches) -> wet_day (a soaking)
-    # snow: ANY snowfall_sum > 0 flags ("snow at home always") — no threshold field.
+    # snow: ANY snowfall_sum > 0 flags (any snowfall at the home locale is notable) — no threshold field.
 
 
 class ConditionsWeights(BaseModel):

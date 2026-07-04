@@ -47,7 +47,7 @@ pub struct AppConfig {
     #[serde(default)]
     pub db_path: Option<String>,
     /// Remote bus (docs/BUS.md "Serving the bus over HTTP"): base URL of an `hn bus serve`
-    /// instance — prefer the MagicDNS name (e.g. `http://my-mini.mesh.internal:8787`;
+    /// instance — prefer the MagicDNS name (e.g. `http://bus-host.tailnet.example:8787`;
     /// survives node re-enrollment) over the tailnet IP (stable but registration-bound).
     /// Absent/blank = local rusqlite, unchanged — the OOTB default. Multi-device is an opt-in
     /// layer; no sample pack ever sets this.
@@ -280,24 +280,24 @@ mod tests {
         // Default: local file (OOTB unchanged).
         assert!(matches!(bus_endpoint(&cfg), BusEndpoint::Local(_)));
         // bus_url set → remote; trailing slash normalized; token rides along.
-        cfg.bus_url = Some("http://my-mini.mesh.internal:8787/".into());
+        cfg.bus_url = Some("http://bus-host.tailnet.example:8787/".into());
         cfg.bus_token = Some(" secret ".into());
         assert_eq!(
             bus_endpoint(&cfg),
-            BusEndpoint::Remote { url: "http://my-mini.mesh.internal:8787".into(), token: "secret".into() }
+            BusEndpoint::Remote { url: "http://bus-host.tailnet.example:8787".into(), token: "secret".into() }
         );
         // Missing token stays REMOTE (empty token) — the client errors actionably, never a
         // silent local fallback the user opted out of.
         cfg.bus_token = None;
         assert_eq!(
             bus_endpoint(&cfg),
-            BusEndpoint::Remote { url: "http://my-mini.mesh.internal:8787".into(), token: String::new() }
+            BusEndpoint::Remote { url: "http://bus-host.tailnet.example:8787".into(), token: String::new() }
         );
         // Blank url = unset.
         cfg.bus_url = Some("   ".into());
         assert!(matches!(bus_endpoint(&cfg), BusEndpoint::Local(_)));
         // Demo seal trumps remote: bundled pack active → the sealed local bus, never the mesh.
-        cfg.bus_url = Some("http://my-mini.mesh.internal:8787".into());
+        cfg.bus_url = Some("http://bus-host.tailnet.example:8787".into());
         cfg.active_pack = Some(samples_packs_dir().join("demo-investor").display().to_string());
         assert_eq!(
             bus_endpoint(&cfg),
@@ -596,7 +596,7 @@ fn default_config() -> AppConfig {
             label: "Finance pulse".into(),
             cmd: "uv".into(),
             // --notify is the publish path (osascript inside it is the deprecated fallback,
-            // removed in Phase 3 — after which this is purely publish + log).
+            // removed once the console transport is verified — after which this is purely publish + log).
             args: vec!["run".into(), "hn".into(), "finance".into(), "pulse".into(),
                        "--notify".into(), "--json".into()],
             cwd: ".".into(),
@@ -619,7 +619,7 @@ pub fn load() -> AppConfig {
     }
     let mut cfg = default_config();
     // First run (no config on disk): default to the bundled fictional pack so a fresh / published
-    // install renders sample data OOTB and NEVER the real-or-absent corpus (the b15.1 OOTB-safe
+    // install renders sample data OOTB and NEVER the real-or-absent corpus (the OOTB-safe
     // state). Fires ONLY when the config file is absent — an existing user/dev config is returned
     // verbatim above, so the dev daily-driver (pack-less = real corpus) is untouched.
     cfg.active_pack = default_pack_dir().map(|p| p.to_string_lossy().into_owned());

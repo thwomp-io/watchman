@@ -42,6 +42,10 @@ class WatchFilters(BaseModel):
 class Watchlist(BaseModel):
     companies: list[WatchCompany] = []
     filters: WatchFilters = WatchFilters()
+    # Shortlist tier ordering, most-actionable first. Optional: when absent, tiers rank by first
+    # appearance in `companies` (the watchlist is already curated top-down). Tiers not listed sort
+    # last but are kept — never dropped.
+    tier_order: list[str] = []
 
 
 def load_watchlist(tracker_path: Path, *, root: Path | None = None) -> Watchlist:

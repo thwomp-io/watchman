@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn missing_token_is_an_actionable_error_not_a_fallback() {
-        let err = match RemoteBus::new("http://mini:8787".into(), String::new()) {
+        let err = match RemoteBus::new("http://bus-host:8787".into(), String::new()) {
             Err(e) => e,
             Ok(_) => panic!("empty token must be rejected"),
         };

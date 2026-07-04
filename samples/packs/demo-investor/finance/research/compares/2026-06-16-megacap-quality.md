@@ -2,7 +2,7 @@
 date: 2026-06-16
 tags: [finance, research, compare, sample, fictional]
 ---
-# Compare — AAPL · MSFT · COST · NVDA (2026-06-16)
+# Compare — AAPL · MSFT · COST · NVDA
 
 *FICTIONAL sample comparison. Not advice.*
 

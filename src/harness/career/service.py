@@ -1,5 +1,5 @@
 """CareerService — read-only openings scan across the watchlist (the read side of the
-read-rich/execute-gated doctrine: scan + watch + surface comp freely; applying is the maintainer's act).
+read-rich/execute-gated doctrine: scan + watch + surface comp freely; applying is the user's act).
 
 Stateless + explainable: reads `role-hunt/watchlist.yml`, queries each company's public board API,
 filters titles by the watchlist keywords (ANY title-kw AND ANY seniority-kw, lowercase-contains),
@@ -27,22 +27,11 @@ _FETCHERS = {"greenhouse": fetch_greenhouse, "ashby": fetch_ashby}
 
 
 def slugify(name: str) -> str:
-    """Company name → filename/URL slug (the per-company doc home key). 'Sony PlayStation' →
-    'sony-playstation'; 'T-Mobile' → 't-mobile'; 'Grafana Labs' → 'grafana-labs'."""
+    """Company name → filename/URL slug (the per-company doc home key). 'Acme Cloud' →
+    'acme-cloud'; 'X-Corp' → 'x-corp'; 'Example Labs' → 'example-labs'."""
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
-# Shortlist tier ordering — most-actionable first (primary-region leadership, then IC, then
-# ai-infra, then seeds). Unknown tiers sort last. Mirrors the role-hunt corpus tier vocabulary
-# (role-hunt/watchlist.yml); a tier not listed here lands at the bottom (rank 9), never dropped.
-_TIER_RANK: dict[str, int] = {
-    "shape-a-region": 0,
-    "shape-b-ic": 1,
-    "ai-infra": 2,
-    "shape-b-seed": 3,
-    "region-anchor": 4,
-}
-
-# The role-shape buckets that count as deep-IC / infra (Shape-B-ish) vs leadership (Shape-A-ish),
+# The role-shape buckets that count as deep-IC / infra vs leadership,
 # for the shortlist summary tiles. Maps the deterministic shape_bucket labels onto the goal frame.
 _IC_INFRA_SHAPES = ("SRE / Reliability", "Platform / Infra", "Security")
 
@@ -206,9 +195,15 @@ class CareerService:
         salary-known → title. Tier is a displayed column; unknown tiers sort last but are kept."""
         scans, as_of = self.latest_scan()
         tier_by_company: dict[str, str] = {}
+        tier_rank: dict[str, int] = {}
         try:
-            for c in self.load().companies:
+            wl = self.load()
+            for c in wl.companies:
                 tier_by_company[c.name] = c.tier
+            # Tier ranking is watchlist-driven: explicit `tier_order` wins; otherwise tiers rank by
+            # first appearance in `companies` (the curated top-down order). Unknown tiers sort last.
+            order = wl.tier_order or list(dict.fromkeys(c.tier for c in wl.companies if c.tier))
+            tier_rank = {t: i for i, t in enumerate(order)}
         except ProviderError:
             pass  # no watchlist → roles just carry empty tiers
 
@@ -240,7 +235,7 @@ class CareerService:
                     "url": o.url,
                 })
         roles.sort(key=lambda r: (
-            _TIER_RANK.get(str(r["tier"]), 9),
+            tier_rank.get(str(r["tier"]), len(tier_rank)),
             r["salary"] == "—",
             str(r["title"]),
         ))

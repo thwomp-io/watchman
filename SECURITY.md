@@ -18,6 +18,11 @@ Watchman is built to be **read-rich and execute-gated**, which is also its secur
   accepted.
 - **Secrets stay local.** API keys live in a git-ignored `.env` (see `.env.example`). Nothing in the repo
   contains real keys, and every key is independently optional — most senses are keyless.
+- **The served surfaces are opt-in, token-gated, and read-only.** Nothing listens unless you run
+  `hn bus serve`; it binds localhost unless you deliberately bind wider. Every `/api` route requires a
+  bearer token (constant-time compare; auto-generated to a `0600` file), and the web console's RPC door
+  mirrors only *read* commands — its sole write is marking notifications read. The token is
+  defense-in-depth, not the perimeter: keep the transport private (mesh ACLs / VPN / TLS in front).
 - **Non-PII outbound identity.** Every external HTTP call carries a tool-only `User-Agent` (no name, no
   email). The harness does not phone home.
 - **Your corpus stays out of the repo.** Real personal data lives outside this repository (config-pointed);

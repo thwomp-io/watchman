@@ -123,7 +123,7 @@ fn cols(list: &[&str]) -> Vec<String> {
     list.iter().map(|s| s.to_string()).collect()
 }
 
-/// The default finance dashboard — every source already exists in the toolkit (v0.37.0).
+/// The default finance dashboard — every source already exists in the toolkit.
 fn default_finance() -> Dashboard {
     Dashboard {
         lane: "finance".into(),
@@ -387,10 +387,10 @@ fn default_market() -> Dashboard {
 /// The NEWS dashboard — a Finance ▸ News subtab: the broad-market RSS wire as a
 /// "one pane of glass" reader. One full-width master-detail widget (kind `news`): a scan list on the
 /// left (time, source, headline; newest-first) and the selected item's summary on the right, plus an
-/// open-original link. Data is `hn finance wire --json` (feeds.yaml: MarketWatch/CNBC/FT/AP/Bloomberg,
-/// geopolitics) — the SAME determinism contract as the rest of DASH: a `--json` verb on a refresh
-/// cadence, NO model and NO standing agent in the loop (the maintainer-scoped display-only, 2026-06-25). The
-/// reader renders the `summary` field captured in harness v0.65.0 (content:encoded else description).
+/// open-original link. Data is `hn finance wire --json` (feeds.yaml: mainstream market wires
+/// plus world-news feeds) — the SAME determinism contract as the rest of DASH: a `--json` verb on a refresh
+/// cadence, NO model and NO standing agent in the loop (display-only by design). The
+/// reader renders the `summary` field the wire verb captures (content:encoded else description).
 fn default_news() -> Dashboard {
     Dashboard {
         lane: "news".into(),
@@ -467,7 +467,7 @@ fn default_compare() -> Dashboard {
     }
 }
 
-/// The CAREER dashboard — the Phase-2 role-hunt operator board. The shortlist tiles
+/// The CAREER dashboard — the role-hunt operator board. The shortlist tiles
 /// + table share ONE source (`hn career shortlist --json`), so the in-flight dedupe collapses them to
 /// a single subprocess; each plucks its own sub-shape. Shortlist reads the LATEST persisted scan twin
 /// (LOCAL, no board scan on refresh — refreshing the data is the deliberate `hn career openings
@@ -483,9 +483,9 @@ fn default_career() -> Dashboard {
         widgets: vec![
             w("openings", "Matched openings", "stat", shortlist(), "manual", 1,
               Some("summary.total"), None, None),
-            w("leadership", "Leadership (Shape A)", "stat", shortlist(), "manual", 1,
+            w("leadership", "Leadership", "stat", shortlist(), "manual", 1,
               Some("summary.leadership"), None, None),
-            w("ic_infra", "IC / infra (Shape B)", "stat", shortlist(), "manual", 1,
+            w("ic_infra", "IC / infra", "stat", shortlist(), "manual", 1,
               Some("summary.ic_infra"), None, None),
             // shortlist (half) ‖ market-shape bar (half) — the actionable list + its at-a-glance shape.
             Widget { columns: cols(&["company", "tier", "shape", "title", "salary", "url"]),
@@ -565,10 +565,10 @@ pub fn load_all() -> Vec<Dashboard> {
     out
 }
 
-/// Load dashboards for the active scenario (`b15.8` v2 — pack-DESCRIBED dashboards). When a weight
+/// Load dashboards for the active scenario (pack-DESCRIBED dashboards v2). When a weight
 /// pack is active AND ships a non-empty `dashboards/` dir, those dashboards **fully replace** the
 /// console tab-set — the persona curates its own console (full-set override): a demo pack can drop
-/// maintainer-specific tabs (Unwind, Compare) and ship its own chart symbols instead of inheriting the
+/// tabs a persona doesn't need (e.g. Unwind, Compare) and ship its own chart symbols instead of inheriting the
 /// real defaults. Read **transiently** — pack dashboards are NEVER seeded into
 /// `~/.config/harness/dashboards/` (a file there, once written, overrides forever and would poison
 /// the real console — the config-override-forever trap). No pack, a pack without a
@@ -664,7 +664,7 @@ mod tests {
     /// `dashboards/` console from `compiled_defaults()`, retargeted to FICTIONAL symbols. Keeps the
     /// sample-pack consoles faithful to the real compiled defaults (every tab) while ensuring a loaded
     /// demo pack never inherits the compiled-default chart/compare symbols. The persona swaps the WHOLE
-    /// console (b15.8 v2 full-override), so all tabs must be present — `test_sample_packs.py` guards it.
+    /// console (pack full-override v2), so all tabs must be present — `test_sample_packs.py` guards it.
     /// Run: `cargo test emit_pack_dashboards -- --ignored --nocapture`.
     #[test]
     #[ignore = "maintainer tool: regenerates sample-pack dashboards from compiled defaults"]

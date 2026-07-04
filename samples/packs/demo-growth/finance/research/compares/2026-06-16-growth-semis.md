@@ -2,7 +2,7 @@
 date: 2026-06-16
 tags: [finance, research, compare, sample, fictional]
 ---
-# Compare — NVDA · CRWD · DDOG · SHOP (2026-06-16)
+# Compare — NVDA · CRWD · DDOG · SHOP
 
 *FICTIONAL sample comparison. Not advice.*
 

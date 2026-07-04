@@ -10,7 +10,7 @@ Design contract (full spec: docs/BUS.md):
 - **Dedup is bus-side**: UNIQUE(idempotency_key); publish is INSERT .. ON CONFLICT DO NOTHING.
   Producers *compose* keys (``producer:kind:subject:YYYY-MM-DD``); the bus *enforces* them — so
   producer #2 (career watchman) inherits once-per-day semantics for free and producers stay
-  stateless (retires the pulse-flags.json producer-side cache in Phase 3).
+  stateless (supersedes any producer-side dedup cache).
 - stdlib ``sqlite3`` only — no new dependency (API-over-library rule).
 """
 
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 def harness_state_dir() -> Path:
     """The harness state dir (pulse.log, bus.db, pulse-flags.json). `HARNESS_STATE_DIR` seals it for a
-    sandboxed instance (the prod-app dog-food / CI): the Rust host passes it on every `hn` spawn so a
+    sandboxed instance (tests / CI): the Rust host passes it on every `hn` spawn so a
     spawned watchmen/pulse reads the SANDBOX state, not the real standing-agent log — else a real pulse
     flag leaks into the demo. The Rust->Python bridge for STATE, twin of `TRACKER_PATH` for the corpus.
     Default: the real `~/.local/state/harness`."""

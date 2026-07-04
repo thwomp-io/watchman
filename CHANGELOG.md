@@ -3,6 +3,46 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-07-04
+
+The web console. The same console the desktop app embeds, served over HTTP to any browser on your own
+network — laptop, second desktop, or phone.
+
+### Added
+- **The web console** — `hn bus serve --console --ui <dist>` serves the console UI from the bus server:
+  one server, one bearer token, one bind. The page prompts for the token on first visit (or takes
+  `?token=` and cleans the URL); a wrong token re-prompts instead of rendering a broken console. See
+  `docs/WEB-CONSOLE.md`.
+- **Phones + PWA** — a web-app manifest and standalone ergonomics (safe-area insets, bottom zone tabs):
+  Add to Home Screen installs the console like a native app.
+- **Variant mounts** — `--ui name=DIR` repeats to serve multiple console builds side by side at
+  `/ui/<name>/` (A/B a change or a phone-tuned build without touching the default).
+- **The container serves the console** — the published image now carries the built UI at `/app/ui`;
+  one `docker run` serves the bus + console from a mounted corpus. New `docs/DOCKER.md` covers volumes,
+  the token, version pinning, and running the standing agents from the image.
+
+### Changed
+- **Served-console performance** — request handling moved to a worker pool with in-flight spawn dedupe
+  and a short server-side cache: a warm dashboard renders in milliseconds; a cold one in under a second.
+
+## [0.5.0] - 2026-07-02
+
+Multi-device. One always-on machine holds the authoritative bus; every other device is a client.
+
+### Added
+- **The bus over HTTP** — `hn bus serve` exposes the notification bus on a token-authed API
+  (`/api/bus/*`); the token auto-generates to a `0600` file on first run, and `/health` stays open for
+  liveness probes. Publish/ack semantics — including idempotent dedup — are identical to the local CLI.
+- **Remote mode for the desktop console** — two config keys (`bus_url` + `bus_token`) point a console at
+  a served bus instead of the local file. Each device notifies independently; read-state is shared, so
+  acking anywhere clears badges everywhere. The footer shows which bus a console is reading.
+- **Backlog guard** — a device's first connection to a busy bus summarizes the catch-up in one toast
+  instead of a notification storm.
+
+### Fixed
+- A configured remote bus with a missing token is an actionable error, never a silent fall-back to an
+  empty local bus.
+
 ## [0.4.0] - 2026-07-02
 
 The self-contained console. Installers now carry the engine — download, install, and the demo
@@ -133,6 +173,8 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.6.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.6.0
+[0.5.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.5.0
 [0.4.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.4.0
 [0.3.2]: https://github.com/thwomp-io/watchman/releases/tag/v0.3.2
 [0.3.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.3.1

@@ -10,7 +10,7 @@ use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct VizEntry {
-    pub path: String,      // vault-relative, e.g. finance/plans/concentration-unwind/unwind.json
+    pub path: String,      // vault-relative, e.g. finance/allocation/allocation.json
     pub doc: String,       // parent dir vault-relative (the owning document/workshop)
     pub name: String,      // file stem
     pub viz_type: String,  // sankey | treemap | pies | line | unknown

@@ -19,7 +19,7 @@ from harness.travel.cli import app as travel_app
 
 app = typer.Typer(
     add_completion=False,
-    help="harness — the maintainer's personal agentic-harness toolkit. One CLI of domain submodules.",
+    help="harness — a personal agentic-harness toolkit. One CLI of domain submodules.",
     no_args_is_help=True,
 )
 

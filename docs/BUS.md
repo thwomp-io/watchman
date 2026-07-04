@@ -42,7 +42,7 @@ never contend on the same columns; WAL makes the rest a non-event.
 
 `meta` table carries `schema_version` (currently `1`); future migrations key off it.
 
-## Deep-links — `payload.ref` (bus-app 0.1.14+)
+## Deep-links — `payload.ref`
 
 A producer may put a **`ref`** object inside `payload_json` to make a signal *navigable*: the bus-app
 Inbox renders a **"GO TO →"** button that jumps to the referenced spot. Purely additive — **no schema
@@ -57,16 +57,15 @@ button. Shape (the app's universal `Ref` descriptor):
 - `doc` — an exact vault-relative doc path · `dir` — a vault-relative dir, opened at its **newest** doc
   (via `list_vault_dir`) · `viz` — a `VizEntry.path` (selects that interactive diagram).
 - **Existence-check producer-side** so there are no dead links (e.g. `finance.pulse` only sets `ref` for a
-  symbol whose research dir exists — `events_from_pulse` stays pure; the caller does the check). The
-  **career watchman** should emit a `ref` to the relevant openings/discoveries doc.
+  symbol whose research dir exists — `events_from_pulse` stays pure; the caller does the check). Any
+  producer publishing doc-anchored signals (e.g. a role-scan watcher) emits a `ref` the same way.
 
 ## Dedup — bus-side, by idempotency key
 
 Publish is `INSERT … ON CONFLICT(idempotency_key) DO NOTHING` → result `published | duplicate`.
 **Key convention**: `producer:kind:subject:YYYY-MM-DD` (local date) — derived automatically when a
 draft's key is blank. This gives every producer once-per-(kind,subject)-per-day semantics by
-default (exactly what pulse's `pulse-flags.json` enforced producer-side; that file retires in
-Phase 3). Producers needing different windows compose their own keys — the bus only enforces
+default (the producer-side dedup the bus now supersedes). Producers needing different windows compose their own keys — the bus only enforces
 uniqueness.
 
 ## `delivered_via` — transport markers
@@ -95,7 +94,7 @@ additive — no schema change, no producer change. Local transports write their 
 - `hn bus list [--unread] [--lane X] [--kind Y] [--since ISO] [--limit N] [--json]`
 - `hn bus ack <ID…> | --all [--lane X]` · `hn bus stats [--json]` · `hn bus purge --before 30d`
 - MCP: `bus_list` / `bus_ack` / `bus_stats` / `bus_publish` on the unified server.
-- The tray app (Phase 2, `bus-app/`) polls every 30s via rusqlite, posts notifications for
+- The tray app (`bus-app/`) polls every 30s via rusqlite, posts notifications for
   undelivered unread events, marks `delivered_via`, and acks on user mark-read.
 
 ## Run-audit vs human-event (don't conflate)
@@ -105,7 +104,7 @@ the **did-it-run audit** (every run,
 quiet or not, plus bus publish counts: `[bus: 2 published, 1 dup]`). The bus holds only
 **human-worthy events**. A quiet run writes a log line and zero bus rows.
 
-## Serving the bus over HTTP — `hn bus serve` (v0.73.0, multi-device S-A)
+## Serving the bus over HTTP — `hn bus serve`
 
 The local `bus.db` contract above is complete on the machine the watchmen run on. For every OTHER
 device, the always-on node serves the same bus over a small HTTP API — **centralize, don't sync**:
@@ -114,6 +113,10 @@ requires this server; the local-file path stays the default; sample packs never 
 out-of-box demo is mesh-free by design — multi-device is an opt-in layer with its own setup doc).
 
 - `hn bus serve [--host 127.0.0.1] [--port 8787] [--token-file ~/.config/harness/bus-token]`
+- `--console` additionally mounts the **web-console RPC door** (`POST /api/invoke/{cmd}` — a
+  read-only Python mirror of the native console's commands; same token), and `--ui <dist>` serves
+  the console UI itself. Both off by default: the plain bus serve stays exactly what satellites
+  depend on. Full form-factor doc: [`WEB-CONSOLE.md`](WEB-CONSOLE.md).
 - **Auth**: every `/api/*` route requires `Authorization: Bearer <token>` (constant-time compare);
   the token auto-generates to a 0600 file on first run. `/health` is open (liveness + version only)
   so reachability probes need no secret. Transport privacy (private mesh / ACLs / TLS) is the
@@ -124,24 +127,24 @@ out-of-box demo is mesh-free by design — multi-device is an opt-in layer with 
     `{"results": [{status: published|duplicate, …}]}` — **idempotency keys dedup exactly as
     local publish does**; remote producers inherit once-per-day semantics for free
   - `POST /api/bus/ack` — `{"ids": [1,2]}` or `{"all": true, "lane"?: "finance"}` → `{"acked": N}`
-  - `POST /api/bus/delivered` *(v0.74.0)* — `{"id": N, "marker": "desktop:winbox"}` →
+  - `POST /api/bus/delivered` — `{"id": N, "marker": "desktop:winbox"}` →
     `{"id", "delivered_via"}` — a remote transport's half of the delivered_via contract
     (append-own-marker-only; idempotent; 404 on unknown id)
   - `GET /api/bus/stats` → the `BusStats` shape (remote consoles also derive unread counts and
     lane/kind filter sets from this — no dedicated meta route needed)
 - **Seal-honoring**: the served db resolves via `HARNESS_BUS_DB`/`HARNESS_STATE_DIR` like every
   other consumer — a sealed (demo/CI) instance serves its sealed bus, never the real one.
-- **Consumers**: the watchman app's **`bus_url` remote mode (bus-app 0.5.0 — live)** and the
-  future web console. `create_app()` is a mountable Starlette app so the eventual web-console
-  server hosts the same routes — one server, one token, one bind.
+- **Consumers**: the watchman app's **`bus_url` remote mode** (below) and the
+  [web console](WEB-CONSOLE.md). `create_app()` is a mountable Starlette app, so the web console's
+  routes ride the same server — one server, one token, one bind.
 
-### The watchman in remote mode — `bus_url` (bus-app 0.5.0, multi-device client half)
+### The watchman in remote mode — `bus_url`
 
 Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file to a served bus:
 
 ```json
 {
-  "bus_url": "http://my-mini.mesh.internal:8787",
+  "bus_url": "http://bus-host.tailnet.example:8787",
   "bus_token": "<the server's ~/.config/harness/bus-token value>"
 }
 ```
@@ -156,6 +159,15 @@ Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file
   notifications — under its own per-device marker (`desktop:{hostname}`). Acks are global
   (`read_at`), so acking on one device clears badges everywhere within a poll tick (30s).
 - **Demo seal trumps remote**: while a bundled demo pack is active the console renders its sealed
-  local bus; a configured mesh bus never leaks into demo mode.
+  local bus; a configured mesh bus never leaks into demo mode. **⚠ Setup step this implies (a
+  known first-run gotcha): a FRESH INSTALL seeds the bundled demo pack as `active_pack` — so on
+  a new device, remote mode requires BOTH adding `bus_url`/`bus_token` AND setting
+  `"active_pack": null`, then a restart.** With the pack active, a correct remote config is
+  silently overridden (the footer keeps showing a local path). A connect-dialog UX that surfaces
+  and handles this interplay is tracked; until then, this is the documented gotcha.
+- **Remote scope**: the served-bus mode covers the BUS surfaces — Inbox, tray badge, native
+  notifications, acks. DASH/VAULT/VIZ read local contracts (spawned `hn` + local files) and render
+  empty/standby on a corpus-less satellite; the full remote console is the
+  [web console](WEB-CONSOLE.md) (served from the always-on node), not this mode.
 - Failure shape: a dead mesh is a skipped poll tick (badge/menu keep last state) or an inline
   error in the Inbox — hard 4s/10s HTTP timeouts, never a hung UI.

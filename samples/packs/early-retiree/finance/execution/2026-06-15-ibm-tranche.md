@@ -2,7 +2,7 @@
 date: 2026-06-15
 tags: [finance, execution, ticket, sample, fictional]
 ---
-# Ticket — Q2 IBM unwind tranche → bonds (2026-06-15)
+# Ticket — Q2 IBM unwind tranche → bonds
 
 *FICTIONAL sample ticket. Read-only planning; you place every order.*
 

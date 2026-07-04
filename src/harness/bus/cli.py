@@ -168,6 +168,20 @@ def serve(
         help="Bearer-token file; auto-generated (0600) on first run. Clients send "
         "'Authorization: Bearer <token>'.",
     ),
+    web_console: bool = typer.Option(
+        False,
+        "--console/--no-console",
+        help="Also mount the web-console RPC door (/api/invoke/{cmd} — read-only mirror of the "
+        "native console's commands; the browser form-factor's backend). Off by default: the "
+        "plain bus serve stays exactly what satellites already depend on.",
+    ),
+    ui: list[str] = typer.Option(# noqa: B008 — typer option factory, the exempted pattern
+        [],
+        "--ui",
+        help="Serve a built console UI (implies --console). Bare DIR mounts the default console "
+        "at /; repeatable name=DIR mounts variants at /ui/<name>/ (A/B candidates, a phone-tuned "
+        "build — variants must be Vite-built with --base=/ui/<name>/). One server, many consoles.",
+    ),
 ) -> None:
     """Serve the bus over HTTP (the multi-device 'centralize, don't sync' layer).
 
@@ -181,7 +195,18 @@ def serve(
 
     resolved_file = token_file.expanduser()
     token = resolve_token(resolved_file)
+    extra = None
+    if web_console or ui:
+        from harness.console.api import console_routes, ui_mounts
+
+        # UI mounts ride AFTER the door: Starlette is first-match-wins, and the root mount
+        # swallows everything — /api/* must already be claimed by then.
+        extra = [*console_routes(token), *ui_mounts(ui)]
     console.print(f"bus db: {default_db_path()}")
     console.print(f"token:  {resolved_file} (send as 'Authorization: Bearer …')")
-    console.print(f"listen: http://{host}:{port}  (health: /health · api: /api/bus/*)")
-    uvicorn.run(create_app(token=token), host=host, port=port, log_level="info")
+    surface = "/api/bus/* + /api/invoke/*" if extra else "/api/bus/*"
+    console.print(f"listen: http://{host}:{port}  (health: /health · api: {surface})")
+    for spec in ui:
+        name, _, raw = spec.partition("=")
+        console.print(f"ui:     {'/ui/' + name + '/' if raw else '/'} ← {raw or name}")
+    uvicorn.run(create_app(token=token, extra_routes=extra), host=host, port=port, log_level="info")

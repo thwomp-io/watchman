@@ -1,0 +1,39 @@
+{
+  "title": "One server, many consoles",
+  "subtitle": "An always-on node serves the same console to every device you own.",
+  "nodes": [
+    {
+      "id": "node",
+      "col": 0,
+      "label": "Always-on node",
+      "sublabel": "your machine, your corpus\nhn engine + standing agents\nbus server :8787 — one token",
+      "accent": "#e8a33d"
+    },
+    {
+      "id": "desktop",
+      "col": 1,
+      "label": "Desktop console",
+      "sublabel": "native app on the node\nreads the bus + corpus directly",
+      "accent": "#7dd6a0"
+    },
+    {
+      "id": "browser",
+      "col": 1,
+      "label": "Browser · phone",
+      "sublabel": "the served web console\nPWA-installable",
+      "accent": "#59b9ff"
+    },
+    {
+      "id": "satellite",
+      "col": 1,
+      "label": "Satellite desktop",
+      "sublabel": "native app in remote mode\nnotifications off the served bus",
+      "accent": "#c792ea"
+    }
+  ],
+  "links": [
+    { "source": "node", "target": "desktop", "label": "local — no server needed" },
+    { "source": "node", "target": "browser", "label": "UI + read-only RPC · token" },
+    { "source": "node", "target": "satellite", "label": "bus over HTTP · token" }
+  ]
+}

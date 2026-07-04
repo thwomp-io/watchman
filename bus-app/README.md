@@ -1,7 +1,7 @@
 # Watchman (bus-app)
 
 Menu-bar-resident desktop app for the **harness message bus** — the human delivery layer for
-standing agents (Phase 2). Tray badge + native notifications + an inbox window
+standing agents. Tray badge + native notifications + an inbox window
 over `~/.local/state/harness/bus.db`. Producer contract: [`../docs/BUS.md`](../docs/BUS.md).
 
 **Stack**: Tauri v2 shell (Rust: rusqlite + tray + notification/autostart/single-instance
@@ -34,12 +34,12 @@ npm run tauri dev # needs Rust (rustup) + Xcode CLT
 Dev-mode notifications post under **the launching terminal's identity** (a dev binary isn't a
 bundled .app — macOS attributes to the parent process; confirmed live 2026-06-12: Terminal.app
 needed whitelisting). Don't judge notification identity/styling until the installed bundle
-(Phase 3), which posts as "Watchman" with its own authorization prompt.
+— it posts as "Watchman" with its own authorization prompt.
 
 > **Crate pin**: `time` is lock-pinned to 0.3.47 — 0.3.48 breaks trait coherence in
 > `cookie`/`tauri-utils` (E0119). Re-test before unpinning.
 
-## Install (Phase 3)
+## Install
 
 ```bash
 npm run tauri build # → src-tauri/target/release/bundle/macos/Watchman.app
@@ -78,7 +78,7 @@ docs/BUS.md "Serving the bus over HTTP") instead of a local file:
 
 ```json
 {
-  "bus_url": "http://my-mini.mesh.internal:8787",
+  "bus_url": "http://bus-host.tailnet.example:8787",
   "bus_token": "<the server's ~/.config/harness/bus-token value>"
 }
 ```
@@ -87,5 +87,9 @@ Absent/blank `bus_url` = local rusqlite, unchanged. Prefer the MagicDNS name ove
 (survives node re-enrollment). The remote console runs the full loop — Inbox, badge, filters,
 acks, its own native notifications under a per-device `desktop:{hostname}` marker; acks are
 global, so reading on one device clears badges everywhere. A bundled demo pack active always
-trumps `bus_url` (the demo seal renders sealed local state, never the mesh). A dead mesh degrades
-to a skipped poll tick / an inline Inbox error (4s/10s timeouts), never a hung UI.
+trumps `bus_url` (the demo seal renders sealed local state, never the mesh) — **and a fresh
+install seeds the demo pack, so a new device needs `"active_pack": null` alongside the two keys,
+then a restart** (otherwise the remote config is silently overridden and the footer keeps showing
+a local path). A dead mesh degrades to a skipped poll tick / an inline Inbox error (4s/10s
+timeouts), never a hung UI. Remote mode covers the bus surfaces (Inbox/badge/notifications/acks);
+DASH/VAULT read local contracts and render empty on a corpus-less satellite.

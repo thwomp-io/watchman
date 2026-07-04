@@ -28,7 +28,7 @@ _BULLET_BOLD = re.compile(r"^\s*[-*]\s*\*\*(.+?)\*\*")
 _WIKILINK_DEST = re.compile(r"\[\[(?:\.\./)+destinations/(?:[a-z0-9-]+/)*([a-z0-9-]+)")
 _DATES = re.compile(r"(\d{1,2})/(\d{1,2}).*?(\d{1,2})/(\d{1,2})")
 _YEAR_TAG = re.compile(r"(20\d\d)-(\d{2})")
-# Leading date-prefix on a trip/visit filename (e.g. "2025-05-chicago", "2026-12-07-event") — the
+# Leading date-prefix on a trip/visit filename (e.g. "2025-05-city-weekend", "2026-12-07-event") — the
 # date-of-record when a doc carries no explicit `start` (past trips known only to month precision).
 _SLUG_DATE = re.compile(r"^(\d{4})-(\d{2})(?:-(\d{2}))?")
 _FAR_FUTURE = date(2099, 12, 31)
@@ -110,7 +110,7 @@ class CorpusReader:
     def read_preferences(self) -> PreferencesDigest:
         text = (self._root / "preferences.md").read_text()
         avoid: list[str] = []
-        for name in ("Southwest", "Frontier", "Spirit"):
+        for name in ("Southwest", "Frontier", "Spirit"):  # common budget carriers, matched as prose mentions
             if name in text:
                 avoid.append(name)
         return PreferencesDigest(
@@ -226,7 +226,7 @@ class CorpusReader:
     def scan_trips(self) -> list[Trip]:
         """Read every migrated trip/visit doc (the `trip:` frontmatter block) under
         trips/ + visits/ into Trip models. Docs without a `trip:` block are skipped (not yet
-        migrated / not a trip doc). Handles BOTH flat files (`trips/2025-05-chicago.md`) and
+        migrated / not a trip doc). Handles BOTH flat files (`trips/2025-05-city-weekend.md`) and
         folder-notes (`trips/beach-trip/beach-trip.md`)."""
         out: list[Trip] = []
         seen: set[Path] = set()

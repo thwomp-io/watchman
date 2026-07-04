@@ -2,7 +2,7 @@
 date: 2026-06-16
 tags: [finance, research, compare, sample, fictional]
 ---
-# Compare — JNJ · PG · KO · JPM (2026-06-16)
+# Compare — JNJ · PG · KO · JPM
 
 *FICTIONAL sample comparison. Not advice.*
 

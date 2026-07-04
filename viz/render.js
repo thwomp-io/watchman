@@ -785,8 +785,8 @@ function renderSankey(root, d) {
     label: l.label,
   })).filter((l) => l.source != null && l.target != null && l.value > 0);
   // Left gutter auto-sizes to the longest SOURCE-side label (nodes never appearing as a target) —
-  // fixed 84px clipped source names three times on 2026-06-11 (doctrine rule 1: never truncate into
-  // whitespace; the canvas had room). Right gutter stays 215 (target labels render rightward).
+  // an earlier fixed 84px gutter clipped long source-side labels (doctrine rule 1: never truncate
+  // into whitespace — the canvas had room). Right gutter stays 215 (target labels render rightward).
   const targetIdx = new Set(links.map((l) => l.target));
   const srcLabelMax = Math.max(0, ...rawNodes.filter((_, i) => !targetIdx.has(i)).map((n) => n.name.length));
   const M = { top: 66, right: 215, bottom: 18, left: Math.max(84, Math.min(260, srcLabelMax * 6.1 + 14)) };
@@ -847,7 +847,17 @@ function renderFlow(root, d) {
   const subLines = (n) => (n.sublabel ? String(n.sublabel).split("\n") : []);
   const maxSub = d3.max(nodes, (n) => subLines(n).length) || 0;
   const NW = 200, NH = 50 + maxSub * 15;
-  const COLGAP = 124, ROWGAP = 28;
+  // Column gap auto-sizes to the longest ADJACENT-column link label (the auto-size doctrine: a fixed
+  // gap that clips real labels is a defect — dense wire diagrams carry file/route names on their
+  // arrows). Labels sit centered in the gap at ~6.15px/char (font 11); skip-column links are excluded
+  // (their midpoints land over another column's band, so authors keep those labels short). Clamped so
+  // a label can widen the canvas but never explode it.
+  const colOf = new Map(nodes.map((n) => [n.id, n.col]));
+  const adjLabelPx = links
+    .filter((l) => !l.feedback && l.label && Math.abs(colOf.get(l.target) - colOf.get(l.source)) === 1)
+    .map((l) => String(l.label).length * 6.15 + 28);
+  const COLGAP = Math.min(260, Math.max(124, ...adjLabelPx, 0));
+  const ROWGAP = 28;
   const hasFeedback = links.some((l) => l.feedback);
   const M = { top: d.title ? 78 : 30, right: 30, bottom: hasFeedback ? 96 : 36, left: 30 };
 
@@ -871,6 +881,19 @@ function renderFlow(root, d) {
   mk("flow-arrow", T.inkDim);
   mk("flow-arrow-fb", T.inkFaint);
 
+  // per-accent arrowheads, created on demand + deduped — an accented link needs its arrowhead to match
+  // its stroke (markers carry a fixed fill, so each distinct accent gets its own marker def).
+  const accentMarkers = new Map();
+  const arrowFor = (accent) => {
+    if (!accent) return "url(#flow-arrow)";
+    if (!accentMarkers.has(accent)) {
+      const id = `flow-arrow-a${accentMarkers.size}`;
+      mk(id, accent);
+      accentMarkers.set(accent, id);
+    }
+    return `url(#${accentMarkers.get(accent)})`;
+  };
+
   // haloed text — readable wherever a label crosses an arrow or the panel edge
   const label = (x, y, text, opts = {}) => {
     const common = (sel) => sel.attr("x", x).attr("y", y).attr("text-anchor", "middle")
@@ -890,14 +913,19 @@ function renderFlow(root, d) {
     ns.forEach((n, ri) => pos.set(n.id, { x, y: y0 + ri * (NH + ROWGAP), w: NW, h: NH }));
   });
 
-  // forward links (drawn under the boxes)
+  // forward links (drawn under the boxes). Optional per-link fields (both backward-compatible —
+  // absent fields render exactly the classic neutral link):
+  //   accent: stroke + matching arrowhead + label color — lets a multi-path routing diagram carry a
+  //           color per lane (e.g. one color per connection method), the "which path is this?" signal
+  //   dash:   dashed stroke for planned/in-flight paths (roadmap semantics, vs solid = shipped)
   links.filter((l) => !l.feedback).forEach((l) => {
     const s = pos.get(l.source), t = pos.get(l.target);
     if (!s || !t) return;
     const sy = s.y + s.h / 2, ty = t.y + t.h / 2;
-    svg.append("line").attr("x1", s.x + s.w).attr("y1", sy).attr("x2", t.x - 3).attr("y2", ty)
-      .attr("stroke", T.inkDim).attr("stroke-width", 2).attr("marker-end", "url(#flow-arrow)");
-    if (l.label) label((s.x + s.w + t.x) / 2, (sy + ty) / 2 - 9, l.label);
+    const line = svg.append("line").attr("x1", s.x + s.w).attr("y1", sy).attr("x2", t.x - 3).attr("y2", ty)
+      .attr("stroke", l.accent || T.inkDim).attr("stroke-width", 2).attr("marker-end", arrowFor(l.accent));
+    if (l.dash) line.attr("stroke-dasharray", "6 5");
+    if (l.label) label((s.x + s.w + t.x) / 2, (sy + ty) / 2 - 9, l.label, l.accent ? { fill: l.accent } : {});
   });
 
   // feedback links — dashed curve arcing back beneath everything
@@ -1327,8 +1355,8 @@ function renderMatrix(root, d) {
     ? Math.min(78, Math.max(20, ...rowsIn.map((r) => (r.reach || "").length)))
     : 0;
   const reachW = hasReach ? Math.ceil(reachChars * 6.2) : 0;
-  // detail: a single free-text string (v0.23.0) OR structured sub-columns via `detailCols`
-  // (v0.24.0): detailCols:[{key,label}] + per-row detail:{key:value}. Aligned sub-columns with
+  // detail: a single free-text string OR structured sub-columns via `detailCols`:
+  // detailCols:[{key,label}] + per-row detail:{key:value}. Aligned sub-columns with
   // mini-headers + faint separators — alignment is the delineation.
   const detailColsDef = Array.isArray(d.detailCols) && d.detailCols.length ? d.detailCols : null;
   let detailSpec = [];

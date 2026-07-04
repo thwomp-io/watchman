@@ -102,7 +102,7 @@ def _pct(rows: list[MarketQuote], symbol: str) -> float | None:
 def build_overview(quotes: list[Quote]) -> MarketOverview:
     """Assemble the grouped overview + deterministic breadth facts from a flat list of Quotes.
 
-    Pure: no network, no model. Same input → same output (the determinism the maintainer wants to validate)."""
+    Pure: no network, no model. Same input → same output (deterministic by design)."""
     by_sym = {q.symbol.upper(): q for q in quotes}
     grouped: dict[str, list[MarketQuote]] = {
         key: [_to_market_quote(by_sym.get(sym), sym, label, key) for sym, label in members]

@@ -1,4 +1,4 @@
-"""harness.career — the Phase-2 agentic role-hunter lane.
+"""harness.career — the agentic role-hunter lane.
 
 Graduated from reserved placeholder: v1 surface is `hn career viz`
 (D3 renders into the role-hunt corpus via the shared harness.viz engine). Scanner / evaluator /

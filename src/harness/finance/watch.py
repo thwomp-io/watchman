@@ -1,15 +1,15 @@
 """Standing-watch layer — the one-shot vigilance pass behind `hn finance watch`.
 
 Composes mechanical checks the corpus previously held only as prose:
-- **Rebalance-band drift** — positions vs. the (scaffold) bands in `portfolio.yaml`; the corpus's
-  named no-rebalance-discipline gap made mechanical. Symbols without bands aren't checked.
+- **Rebalance-band drift** — positions vs. the configured bands in `portfolio.yaml`; the corpus's
+  rebalance-band drift check made mechanical. Symbols without bands aren't checked.
 - **Concentrated-holding wash-sale window** — vest dates (manual-synced from a vesting calendar)
   poison loss-sales ±30 days; reports poisoned/clean *today* + the next clean window.
 - **Days-to-print** — next 10-Q/10-K window per CIK-resolvable holding, from filing cadence.
 - **New headlines only** — the news scan filtered through a seen-cache
   (`~/.cache/harness/news-seen.json`), so repeat watches surface deltas, not repeats.
 
-Read-only by doctrine. Cron-able later (the scheduling design is the maintainer's call); v1 is on-demand.
+Read-only by doctrine. Cron-able later (scheduling — cron/launchd — is left to the user); v1 is on-demand.
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ class WatchlistMove(BaseModel):
 class WatchDigest(BaseModel):
     """One-shot standing-watch digest — everything `hn finance watch` composes.
 
-    Read-only observation. Drift bands are SCAFFOLD until the target-allocation decision."""
+    Read-only observation. Drift bands are illustrative until the user sets real targets in portfolio.yaml."""
 
     as_of: str
     day_moves: list[Position] = Field(default_factory=list)  # live positions w/ day change

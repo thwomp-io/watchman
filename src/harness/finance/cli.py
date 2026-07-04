@@ -84,7 +84,7 @@ def _pulse_notify(rep: PulseReport, bus_note: str = "") -> None:
 
     ⚠️ DEPRECATED TRANSPORT: the osascript banner is transient + posts under an
     unauthorized identity, and pulse-flags.json duplicates dedup the bus now owns — both retire in
-    Phase 3 once the bus-app is the verified human transport. Until then this stays as the
+    once the console is the verified human transport. Until then this stays as the
     fallback so delivery never regresses below today's (imperfect) baseline."""
     import json
     import subprocess
@@ -251,7 +251,7 @@ def bars(
     console.print(lt)
     console.print(
         f"[dim]  • last close ${last.c:,.2f} ({last.t[:10]}) · levels describe PAST swing lows "
-        "(touches + recency = evidence), not predictions. Order placement is the maintainer's.[/dim]"
+        "(touches + recency = evidence), not predictions. Order placement is the user's.[/dim]"
     )
 
 
@@ -1235,7 +1235,7 @@ def watch(
                     f"{' · ' + m.note if m.note else ''}[/dim]"
                 )
     if d.drift:
-        console.print("\n[bold]rebalance bands[/bold] [dim](scaffold — real targets TBD)[/dim]")
+        console.print("\n[bold]rebalance bands[/bold] [dim](illustrative — set your own targets)[/dim]")
         for f in d.drift:
             color = "yellow" if f.status != "in-band" else "green"
             console.print(

@@ -1,7 +1,7 @@
 """USGS earthquake provider — KEYLESS (FDSN event web service, GeoJSON).
 
 The geological-screen *sense*: recent real seismic activity near a place, so the harness can calibrate
-the geological risk screen with real seismic data (the no-enabling data-pushback) instead of
+the geological risk screen with real seismic data (data-pushback over categorical priors) instead of
 categorical priors.
 Read-only. Volcano alert levels are a planned fast-follow.
 """

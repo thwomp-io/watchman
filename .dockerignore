@@ -3,7 +3,10 @@
 # build context so image builds stay fast + lean.
 
 # the desktop console (Tauri GUI) — ships as native bundles, not in this image
-bus-app/
+# bus-app: the UI SOURCE feeds the image's ui build stage; only its heavy/derived dirs stay out
+bus-app/node_modules/
+bus-app/src-tauri/
+bus-app/dist/
 viz/
 
 # python / build artifacts

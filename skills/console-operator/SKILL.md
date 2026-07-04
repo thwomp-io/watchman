@@ -28,9 +28,10 @@ The harness is one engine behind three surfaces. Know which to reach for:
    This is where you *do* the work: pull a quote, scan openings, read the tape, run a correlation. Every
    verb takes `--json` for a machine-readable shape, and a trailing **`--pack <dir>`** points any verb at
    a specific weight pack instead of the active one.
-2. **The Watchman console** (the desktop app) — the *viewing* surface. It renders dashboards off whatever
-   pack is loaded and delivers standing-agent notifications. You don't drive it command-by-command; you
-   help the user read it. Its zones:
+2. **The Watchman console** — the *viewing* surface: the resident desktop app, or the same console
+   served to a browser/phone (`hn bus serve --console --ui`; see `docs/WEB-CONSOLE.md`). It renders
+   dashboards off whatever pack is loaded and delivers standing-agent notifications. You don't drive it
+   command-by-command; you help the user read it. Its zones:
    - **INBOX** — notifications from the standing agents (day moves, order-fill proximity, scan deltas,
      macro-event proximity, filings), triaged into severity bands; an `info` context-stream skims beneath
      the actionable ones. Each signal can deep-link to the relevant doc / chart / dashboard.

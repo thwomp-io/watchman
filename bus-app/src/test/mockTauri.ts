@@ -79,7 +79,7 @@ export function oneWidgetDash(lane: string, group: string, title: string, widget
   return { lane, group, title, widgets: [widget] };
 }
 
-// The maintainer's real console: 5 Finance subtabs (Core + the campaign/observability tabs) + Career + Travel.
+// A fully-populated console fixture: 5 finance subtabs + career + travel.
 export function realFixture(): Dashboard[] {
   return [
     dashboard("finance", "Finance", "Core"),

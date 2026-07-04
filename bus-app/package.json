@@ -1,7 +1,7 @@
 {
   "name": "harness-bus-app",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "install:local": "tauri build && rm -rf '/Applications/Watchman.app' && cp -R 'src-tauri/target/release/bundle/macos/Watchman.app' /Applications/ && (pkill -f 'Watchman.app/Contents/MacOS/bus-app' 2>/dev/null; sleep 1; true) && open '/Applications/Watchman.app'"
+    "install:local": "tauri build && rm -rf '/Applications/Watchman.app' && cp -R 'src-tauri/target/release/bundle/macos/Watchman.app' /Applications/ && (pkill -f 'Watchman.app/Contents/MacOS/bus-app' 2>/dev/null; sleep 1; true) && open '/Applications/Watchman.app'",
+    "shot": "node scripts/console-shot.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitest": "^4.1.9"

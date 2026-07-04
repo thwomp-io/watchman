@@ -2,7 +2,7 @@
 date: 2026-06-17
 tags: [finance, execution, ticket, sample, fictional]
 ---
-# Ticket — first DDOG RSU sell + reinvest (2026-06-17)
+# Ticket — first DDOG RSU sell + reinvest
 
 *FICTIONAL sample ticket. Read-only planning; you place every order.*
 

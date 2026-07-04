@@ -1,9 +1,8 @@
-"""Typer sub-app for the `career` noun-group — the Phase-2 role-hunter lane.
+"""Typer sub-app for the `career` noun-group — the role-hunt lane.
 
 Read-rich / execute-gated by doctrine: everything here observes (scan boards, surface comp,
-render artifacts); applying/uploading a CV is the maintainer's act, never the tool's. Verbs: `viz`
-(v0.16.0) + `openings` (v0.17.0 — keyless Greenhouse/Ashby board scan
-against role-hunt/watchlist.yml).
+render artifacts); applying/uploading a CV is the user's act, never the tool's. Verbs: `viz` +
+`openings` (keyless Greenhouse/Ashby board scan against role-hunt/watchlist.yml).
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ from harness.viz import KNOWN_TYPES, VizError, render_diagram
 app = typer.Typer(
     cls=PackGroup,  # every verb accepts a trailing `--pack <dir>` (hn career shortlist --pack …)
     add_completion=False,
-    help="Career / role-hunt lane (Phase-2 agentic role-hunter). "
+    help="Career / role-hunt lane (the agentic role-hunter). "
     "Read-only surface: openings scan (Greenhouse/Ashby boards) + D3 renders into role-hunt/.",
 )
 console = Console()
@@ -161,7 +160,7 @@ def shortlist(
 ) -> None:
     """High-priority role shortlist from the LATEST persisted scan twin + watchlist tiers (LOCAL,
     no network — refreshing the data is the deliberate `openings --write` action). Summary tiles
-    (total / leadership ≈ Shape A / IC-infra ≈ Shape B) + tier-ranked role rows. The CAREER
+    (total / leadership / IC-infra) + tier-ranked role rows. The CAREER
     dashboard's shortlist table + stat tiles read this; nothing here applies anywhere."""
     svc = CareerService(
         get_settings().tracker_path, role_hunt_root=role_hunt_root(get_settings())
@@ -196,9 +195,9 @@ def applications(
         False, "--json", help="Machine output (pipeline rows) — the CAREER-dashboard contract"
     ),
 ) -> None:
-    """The Phase-2 application/opportunity pipeline (`role-hunt/applications.yaml`, hand-edited
+    """The application/opportunity pipeline (`role-hunt/applications.yaml`, hand-edited
     corpus). A missing file = empty pipeline. The CAREER dashboard's PIPELINE table reads this;
-    advancing a stage is the maintainer's edit (read-rich / execute-gated)."""
+    advancing a stage is the user's edit (read-rich / execute-gated)."""
     from harness.career.applications import load_applications
 
     try:
@@ -386,7 +385,7 @@ def _render_master_pdf(design: str, out_arg: str | None) -> None:
 
     if shutil.which("typst") is None and not Path("/opt/homebrew/bin/typst").exists():
         _fail("typst not installed — `brew install typst` (the résumé render toolchain). "
-              "Install is the maintainer-gated per the permission architecture.")
+              "Install is never automatic — run it yourself.")
         raise typer.Exit(code=1)
 
     design_file = _resolve_design(design)
@@ -442,7 +441,7 @@ def _render_master_docx(design: str, out_arg: str | None) -> None:
 
     if shutil.which("pandoc") is None and not Path("/opt/homebrew/bin/pandoc").exists():
         _fail("pandoc not installed — `brew install pandoc` (the résumé render toolchain). "
-              "Install is the maintainer-gated per the permission architecture.")
+              "Install is never automatic — run it yourself.")
         raise typer.Exit(code=1)
 
     career = get_settings().tracker_path / "docs" / "career"
@@ -486,7 +485,7 @@ def _render_application(slug: str, doc: str) -> None:
 
     if shutil.which("pandoc") is None:
         _fail("pandoc not installed — `brew install pandoc basictex` (the documented resume "
-              "toolchain). Install is the maintainer-gated per the permission architecture.")
+              "toolchain). Install is never automatic — run it yourself.")
         raise typer.Exit(code=1)
 
     base = get_settings().tracker_path / "role-hunt" / "applications" / slug

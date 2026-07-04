@@ -230,7 +230,7 @@ select {
 .detail-empty p { margin: 0; color: var(--ink-faint); font-size: 9px; letter-spacing: 0.16em;
                   text-transform: uppercase; }
 
-/* ————— triage bands + always-on status header (2026-06-30) ———————————————————————————————————— */
+/* ————— triage bands + always-on status header ———————————————————————————————————— */
 .statusbar {
   display: flex; align-items: center; gap: 14px; flex: none;
   margin: 0 16px; padding: 8px 14px;
@@ -695,7 +695,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .dash-expanded .expanded-back:hover { color: var(--amber); }
 .dash-expanded .widget { flex: 1; min-height: 0; overflow: auto; }
 .dash-expanded .widget .viz-svg { width: 100%; height: auto; }
-/* tall centerpiece panels (the Hiring Map) — span grid rows; the viz canvas then fills the height
+/* tall centerpiece panels (a rows-spanning viz) — span grid rows; the viz canvas then fills the height
    (overriding the default fixed 340px) and its inner HTML content scrolls. */
 .widget.rows-2 { grid-row: span 2; }
 .widget.rows-3 { grid-row: span 3; }
@@ -935,3 +935,81 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .agenda-flags dd { color: var(--ink-dim); font-size: 10px; }
 .digest-foot { margin: auto 0 0; color: var(--ink-faint); font-size: 9px; letter-spacing: 0.16em;
                text-transform: uppercase; text-align: center; }
+
+/* ————— responsive pass — phone testing, rounds 1-3 ——————————
+   Round 3's lesson: the desktop layout system (span-1..6 columns, rows-2/3 spans, dense flow) is
+   a single interacting SYSTEM — overriding pieces of it at phone width creates grid states the
+   desktop never sees (a span-6 widget on a 2-col grid grows IMPLICIT auto columns; row spans
+   starve implicit rows; stat tiles clipped, then collapsed). At ≤720px we RETIRE the system
+   wholesale (!important — deliberately outranking the whole utility family instead of
+   enumerating it) and lay out the one true mobile shape: stat tiles 2-up, everything else one
+   natural-height column, in document order. Desktop is untouched. */
+@media (max-width: 720px) {
+  .dash-grid,
+  .dash-grid.lane-finance {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-flow: row;      /* dense backfill is a wide-canvas trick — keep reading order */
+    grid-auto-rows: auto;
+  }
+  .dash-grid .widget {
+    grid-column: 1 / -1 !important;  /* every span-N flattens to full-width... */
+    grid-row: auto !important;       /* ...and every rows-N to one natural-height row */
+    height: auto;
+    min-height: 96px;
+  }
+  .dash-grid .widget.kind-stat { grid-column: auto !important; } /* ...except stats: 2-up */
+  .dash-grid .widget.doc-series { min-height: 340px; }
+  /* THE NUMBER IS THE WIDGET (the maintainer, round 4): on a phone the stat tile's freshness/cadence
+     chrome (AS-OF · age · CACHED · AUTO chips) yields entirely — it was wrapping 3-4 header rows
+     and eating the value. Title + number + refresh only; freshness stays visible on every
+     non-stat widget and on desktop. */
+  .widget.kind-stat .surface-when { display: none; }
+  .dash-grid .widget.kind-stat { min-height: 64px; }
+  .stat-big { font-size: 24px; padding: 4px 10px 12px; }
+  /* thinner bezels at phone width (the maintainer's call): tighter chrome, more data per screen */
+  .widget > header { padding: 6px 9px; gap: 6px; }
+  .dash-grid { gap: 7px; padding: 8px; }
+  /* chip rows + masthead wrap instead of clipping off-screen */
+  .dash-tabs, .dash-groups, .zones, .masthead, .widget > header { flex-wrap: wrap; row-gap: 4px; }
+  /* doc panels + tables scroll inside their tile, never widen the page */
+  .widget { min-width: 0; }
+  .widget pre, .widget table { max-width: 100%; overflow-x: auto; }
+}
+
+/* ————— installed-PWA ergonomics (standalone home-screen install) ————————————————————
+   Standalone mode owns the FULL screen — no Safari chrome means the masthead sat under the
+   status bar/notch, and the top zone nav lost the reachability Safari's bottom bar was quietly
+   providing. Scoped to installed-app-on-phone ONLY (display-mode: standalone) so browsing in
+   Safari keeps the layout the maintainer approved. Two moves: pad the chrome into the safe areas
+   (env() insets), and drop the zone nav to a thumb-reach bottom tab bar. */
+@media (max-width: 720px) {
+  html.pwa .masthead { padding-top: calc(env(safe-area-inset-top, 0px) + 6px); }
+  /* stacking order (the maintainer's call, round 2): the amber BUS.DB baseplate is the app's ground truth
+     line — it keeps the TRUE bottom (padded into the home-indicator safe area); the zone tab bar
+     rides just ABOVE it. --baseplate-h = its 9.5px line + 7px×2 padding + hairline ≈ 27px. */
+  html.pwa .baseplate {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 61;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7px);
+  }
+  html.pwa nav.zones {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 27px);
+    z-index: 60;
+    display: flex;
+    justify-content: space-around;
+    gap: 4px;
+    margin: 0;
+    border-radius: 0;
+    border-left: none; border-right: none; border-bottom: none;
+    background: var(--graphite-1);
+    border-top: var(--hairline);
+    padding: 10px 8px;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+  }
+  html.pwa nav.zones button { flex: 1; padding: 8px 4px; }
+  /* the content column clears both fixed bars */
+  html.pwa .console { height: 100dvh; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
+}

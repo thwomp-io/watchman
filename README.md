@@ -5,8 +5,7 @@
 Watchman renders live, deterministic views over your own data — finance, career, travel — through a CLI
 and a resident desktop console. It's built on one thesis:
 
-> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take, a
-> ghost-written note — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
+> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take, a trip recommendation — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
 > your stories, the *why* behind your decisions, your preferences and their emotional texture, **in your own
 > voice**. That voice is the moat — it's what makes the output sound like *you* instead of generic AI. The
 > machine-readable weights the tools read are a thin derived projection of it. The dashboards are just a surface.
@@ -18,8 +17,8 @@ and a resident desktop console. It's built on one thesis:
   `watchlist.yml`, `weights.yaml` ([real examples below](#the-weight-packs)).
 - **Harness** (`hn`) — *the tools.* A CLI of domain lanes — finance · career · travel — that read the corpus
   + live data and reason against it. No model in the loop.
-- **Watchman** — *the console.* A resident desktop app (dashboards + a notification bus) that renders the
-  harness's output, live and always-on.
+- **Watchman** — *the console.* Dashboards + a notification bus rendering the harness's output, live and
+  always-on — as a resident desktop app, or served to any browser on your own network.
 
 ![How Watchman works](docs/assets/architecture.svg)
 
@@ -55,6 +54,9 @@ on the bundled sample packs — no real data.)_
 - **Watchman console** — a small resident desktop app (Tauri): domain **dashboards** that self-refresh from
   the CLI's `--json` verbs, a **notification bus** for standing agents, and an interactive **viz** layer.
   No model is ever in the render loop.
+- **The web console** — the same console, served: `hn bus serve --console --ui` puts it in any browser on
+  your network or private mesh — including your phone, installable as a PWA. One server, one token; see
+  [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
 - **A D3 viz engine** — one Python↔Node renderer shared across lanes (the diagram above is rendered by it).
 
 ## Quickstart — runs out of the box on bundled sample packs
@@ -135,12 +137,30 @@ libsoup-3.0-dev patchelf`; the tray icon wants an appindicator extension on GNOM
 > *standby* state for them until configured. All state lives under `~/.local/state/harness` and
 > `~/.config/harness` on every platform (yes, dot-dirs on Windows too — one convention everywhere).
 
+## The web console — any browser on your network
+
+The desktop app isn't the only way to see the console. The bus server can serve the **same UI** over
+HTTP — to a laptop browser, a second desktop, or your phone (installable as a PWA, where it reads like a
+native finance app):
+
+```bash
+cd bus-app && npm install && npm run build # build the console once
+uv run hn bus serve --console --ui bus-app/dist
+# → http://127.0.0.1:8787/ (the page prompts for the bearer token on first visit)
+```
+
+One server, one token, one bind: the same process that serves the notification bus serves the console,
+every `/api` route requires the bearer token (auto-generated to a `0600` file on first run), and it binds
+localhost unless you deliberately point it at a private-network address. Run it on an always-on machine
+over a mesh/VPN (e.g. Tailscale/Headscale) and every device you own has the console at one URL. Details —
+tokens, phones/PWA, serving multiple console builds side by side — in
+[`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
+
 ## Run as a container
 
-The **headless engine** (the `hn` CLI + standing agents + bus) also ships as a container image — a portable
-way to run any `hn` command without a local Python setup, and the foundation for running the standing
-agents as a service. Your corpus is **mounted**, never baked in. *(The desktop console is a native app — it
-ships as platform bundles, not in the image; a fully browser-based console is on the roadmap.)*
+The container image carries the **engine and the web console**: the `hn` CLI, the standing agents, the
+notification bus, and the served UI — one `docker run` from a console in the browser. Your corpus is
+**mounted**, never baked in. *(The desktop app still ships as native platform bundles, not in the image.)*
 
 ```bash
 # pull the published image (built + scanned + smoke-tested in CI, published to GHCR)
@@ -149,9 +169,14 @@ docker run --rm ghcr.io/thwomp-io/watchman --help
 # run a lane against your own mounted corpus (defaults to /corpus inside the container):
 docker run --rm -v "$PWD/corpus:/corpus" ghcr.io/thwomp-io/watchman finance networth
 
-# or build it yourself
-docker build -t watchman .
+# or serve the web console from the image:
+docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman \
+  ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
+
+Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.6.0`) plus a moving `:latest` — pin the
+version tag for anything durable. Volumes, the token, and running the standing agents from the image:
+[`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## A pack is a persona
 
@@ -234,6 +259,10 @@ you](skills/corpus-operator/SKILL.md) from conversation — but they stay plain 
   agent builds and maintains *your* narrative corpus, in your voice.
 - [`skills/console-operator/SKILL.md`](skills/console-operator/SKILL.md) — the companion: how an agent
   *operates* the console and drives each lane (operate-the-tool vs. build-the-corpus).
+- [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md) — the console in a browser: serving, tokens, phones/PWA,
+  variant mounts, remote satellites.
+- [`docs/DOCKER.md`](docs/DOCKER.md) — the container image: engine commands, the served console, volumes,
+  version pinning.
 - [`docs/BUS.md`](docs/BUS.md) — the notification-bus producer contract (publish events from any language).
 - [`SECURITY.md`](SECURITY.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md)
 

@@ -12,11 +12,18 @@ class ResizeObserverStub {
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
 // --- the mocked Tauri IPC --------------------------------------------------------------------------
-// api.ts is the webview's ONLY door to the Rust shell — every call is `invoke(cmd, args)` from
-// @tauri-apps/api/core (+ `listen` from /event). Mock both here so a test stages command→response
-// fixtures and drives the real React render layer. The hoisted store is the one bridge that survives
-// vitest's vi.mock hoisting; the setters are attached to globalThis for `src/test/mockTauri.ts` to wrap
-// with types.
+// api.ts is the webview's ONLY door to the backend — every call routes through src/transport.ts, whose
+// Tauri implementation is `invoke(cmd, args)` from @tauri-apps/api/core (+ `listen` from /event). Mock
+// both modules here so a test stages command→response fixtures and drives the real React render layer.
+// The hoisted store is the one bridge that survives vitest's vi.mock hoisting; the setters are attached
+// to globalThis for `src/test/mockTauri.ts` to wrap with types.
+//
+// jsdom has no __TAURI_INTERNALS__, so transport selection (transport.ts isTauri()) would otherwise
+// pick the HTTP client and sail past this mock — stub the marker so component tests keep exercising
+// the (mocked) Tauri path, exactly like the native webview they simulate. HTTP-path tests bypass this
+// by constructing httpTransport() directly (see transport.test.ts).
+(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ ??= {};
+
 const store = vi.hoisted(() => ({
   handlers: new Map<string, (args: Record<string, unknown>) => unknown>(),
 }));

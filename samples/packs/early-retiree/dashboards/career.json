@@ -31,7 +31,7 @@
     },
     {
       "id": "leadership",
-      "title": "Leadership (Shape A)",
+      "title": "Leadership",
       "kind": "stat",
       "source": {
         "type": "command",
@@ -57,7 +57,7 @@
     },
     {
       "id": "ic_infra",
-      "title": "IC / infra (Shape B)",
+      "title": "IC / infra",
       "kind": "stat",
       "source": {
         "type": "command",

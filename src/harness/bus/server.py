@@ -39,7 +39,7 @@ from typing import Any
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Route
+from starlette.routing import BaseRoute, Route
 
 from harness import __version__
 from harness.bus.models import EventDraft
@@ -62,9 +62,16 @@ def _authorized(request: Request, token: str) -> bool:
     return bool(supplied) and hmac.compare_digest(supplied, token)
 
 
-def create_app(*, token: str, db_path: Path | None = None) -> Starlette:
+def create_app(
+    *, token: str, db_path: Path | None = None, extra_routes: list[BaseRoute] | None = None
+) -> Starlette:
     """Build the bus HTTP app. `token` is required — the caller (the CLI verb) owns generation
-    and persistence; an empty token is a config error, not an open-server mode."""
+    and persistence; an empty token is a config error, not an open-server mode.
+
+    `extra_routes` is the mount seam (the console's standing rule: one server, one token,
+    one bind): a caller appends its own routes — e.g. `harness.console.api.console_routes(token)`
+    — without this module knowing about them. Deliberately a plain list, not an import: `bus/`
+    stays cleanly extractable (no domain/console imports)."""
     if not token:
         raise ValueError("bus server requires a non-empty token (see `hn bus serve --help`)")
 
@@ -182,6 +189,7 @@ def create_app(*, token: str, db_path: Path | None = None) -> Starlette:
             Route("/api/bus/ack", ack, methods=["POST"]),
             Route("/api/bus/delivered", delivered, methods=["POST"]),
             Route("/api/bus/stats", stats, methods=["GET"]),
+            *(extra_routes or []),
         ]
     )
 

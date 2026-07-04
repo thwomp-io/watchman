@@ -71,7 +71,7 @@ export default function BarChart({ data }: { data: BarData }) {
             </div>
           );
         })}
-        {rows.length === 0 && <p className="empty">NO OPENINGS IN THE LATEST SCAN</p>}
+        {rows.length === 0 && <p className="empty">NO ROWS IN THIS DATA</p>}
       </div>
       {multi && (
         <div className="bar-legend">

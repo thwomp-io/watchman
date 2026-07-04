@@ -662,7 +662,7 @@ class FinanceService:
         live = [p for p in snap.positions if p.valuation == "live" and p.day_change_pct is not None]
         digest.day_moves = sorted(live, key=lambda p: abs(p.day_change_pct or 0), reverse=True)
 
-        # watchlist day reads — non-held symbols the maintainer keeps tabs on. OTC ADRs come
+        # watchlist day reads — non-held symbols the user keeps tabs on. OTC ADRs come
         # back available=False (no IEX feed) — stated honestly; they stay news-covered below.
         if seed.watchlist:
             notes_by_sym = {w.symbol: w.note for w in seed.watchlist}
@@ -707,7 +707,7 @@ class FinanceService:
             }
             digest.drift = check_drift(pct, seed.rebalance_bands)
             digest.notes.append(
-                "Bands are SCAFFOLD values (real targets = the open allocation decision); "
+                "Bands are illustrative until real targets are set in portfolio.yaml; "
                 "drift % is of the holding's own brokerage account, not net worth."
             )
 
@@ -800,7 +800,7 @@ class FinanceService:
             except ProviderError as e:
                 digest.notes.append(f"EDGAR feed {h.symbol} failed: {e}")
 
-        # per-ticker single-name catalysts — Google News search, HELD stocks only (2026-06-30). The
+        # per-ticker single-name catalysts — Google News search, HELD stocks only. The
         # breadth layer beyond Yahoo: catches single-name catalysts a per-ticker feed misses — the kind a
         # broker console's news-event marker surfaces that a plain RSS wire can lag. Held-scoped to bound
         # the added serial fetches;
@@ -1155,8 +1155,8 @@ def _load_feeds() -> list[dict[str, str]]:
     ]
 
 
-# corporate-suffix stripper for the relevance matcher — "ServiceNow Inc" → "ServiceNow", so a headline
-# saying "ServiceNow" (never "ServiceNow Inc") still matches. Conservative: only strips legal-form tails,
+# corporate-suffix stripper for the relevance matcher — "Cisco Systems Inc" → "Cisco Systems", so a headline
+# saying "Cisco Systems" (never the "Inc" form) still matches. Conservative: only strips legal-form tails,
 # never distinctive words ("Energy"/"Services" stay). The common-name gaps (Google vs "Alphabet Inc")
 # are closed by per-holding `aliases` in portfolio.yaml.
 _NAME_SUFFIX_RE = re.compile(

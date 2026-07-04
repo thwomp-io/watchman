@@ -10,10 +10,10 @@ const mk = (pts: [string, number][]) => ({
 
 // Two personas log net worth on the SAME dates, different magnitudes — the line must redraw to the new
 // values (the axes do).
-const DATES = ["2026-03-31", "2026-04-15", "2026-04-30", "2026-05-15", "2026-05-29", "2026-06-12", "2026-06-19"];
+const DATES = ["2024-01-01", "2024-02-01", "2024-03-01", "2024-04-01", "2024-05-01", "2024-06-01", "2024-07-01"];
 const series = (ys: number[]) => mk(DATES.map((d, i) => [d, ys[i]]));
-const INVESTOR = series([1062000, 1078500, 1071200, 1094800, 1103400, 1121900, 1139029]);
-const GROWTH = series([168400, 175200, 171900, 188650, 202100, 219400, 249551]);
+const INVESTOR = series([100000, 105000, 110000, 108000, 115000, 120000, 125000]);
+const GROWTH = series([40000, 42000, 41000, 45000, 48000, 52000, 60000]);
 
 const linePath = (c: HTMLElement) => c.querySelector("svg.line-chart path")?.getAttribute("d") ?? "";
 const pointCount = (c: HTMLElement) => c.querySelectorAll("svg.line-chart circle").length;
@@ -27,21 +27,21 @@ describe("LineChart — redraw on data change (pack swap)", () => {
     expect(linePath(container)).not.toBe(a);
   });
 
-  // THE REGRESSION (the maintainer's eyeball 2026-06-20): xDom (the zoom window) is seeded once from the data on
+  // THE REGRESSION: xDom (the zoom window) is seeded once from the data on
   // mount and was never reconciled. Swapping from a NARROW-range series (e.g. a few recent real points)
   // to a WIDER one (a demo persona spanning months) left the window pinned, so the new line was clipped
   // to the old window — only a remount (switching to a structurally different dashboard) cleared it.
   it("spans the full new series after swapping to a wider date range (not clipped to the old window)", () => {
-    const NARROW = mk([["2026-06-12", 100], ["2026-06-19", 110]]); // 2 recent points
+    const NARROW = mk([["2024-06-01", 100], ["2024-07-01", 110]]); // 2 recent points
     const { container, rerender } = render(<LineChart data={NARROW} />);
     expect(pointCount(container)).toBe(2);
 
     rerender(<LineChart data={INVESTOR} />); // 7 points over a much wider range
-    // without the extent-reset the window stays [06-12, 06-19] → only 2 of 7 points show.
+    // without the extent-reset the window stays [06-01, 07-01] → only 2 of 7 points show.
     expect(pointCount(container)).toBe(7);
   });
 
-  // THE REGRESSION (the maintainer's eyeball 2026-06-21): an EMPTY series (the offline/keyless position-chart, which
+  // THE REGRESSION: an EMPTY series (the offline/keyless position-chart, which
   // emits `series:[{points:[]}]`) made d3.extent yield [undefined, undefined] → xDom[0].getTime() threw →
   // the ErrorBoundary showed "RENDER FAULT" on every pack. An empty chart must render a clean note instead.
   it("renders a note (not a crash) when the series is empty", () => {

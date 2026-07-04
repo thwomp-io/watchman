@@ -580,7 +580,7 @@ class TravelService:
     ) -> FoodReport:
         """Eateries near `place` — two-tier. Tier 1 (default, KEYLESS): OSM Overpass
         enumeration — what exists, from data instead of memory. Tier 2 (`live_ratings=True`, QUOTA
-        — confirm with the maintainer first): SerpAPI google_maps ratings merged on, ~1 search, cached."""
+        — confirm first): SerpAPI google_maps ratings merged on, ~1 search, cached."""
         from harness.travel.providers.food_provider import (
             OverpassFoodProvider,
             SerpApiLocalFoodProvider,
