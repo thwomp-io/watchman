@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ---- ui: build the React console the server serves (same dist the Tauri shell embeds) -----------
 # npm ci is hermetic against the lockfile; playwright is a devDependency but its browser download
 # only happens on an explicit `playwright install`, so this stage stays lean.
-FROM node:22-slim AS ui
+FROM node:26-slim AS ui
 WORKDIR /ui
 COPY bus-app/package.json bus-app/package-lock.json ./
 RUN npm ci
