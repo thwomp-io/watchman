@@ -44,6 +44,10 @@ pub(crate) fn tool_command(cmd: &str, args: &[String], cwd: &str) -> Command {
         .args(&args)
         .current_dir(config::resolve_cwd(cwd))
         .env("PATH", config::augmented_path())
+        // Piped spawns on Windows give Python a legacy-codepage stdio (cp1252); the engine
+        // emits UTF-8 glyphs (≈, →) in JSON labels, and one unencodable char fails the whole
+        // command. UTF-8 mode makes stdio encoding platform-independent (harmless elsewhere).
+        .env("PYTHONUTF8", "1")
         .env("TRACKER_PATH", config::harness_home().join("projects/corpus"))
         .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness"));
     // Demo-pack full seal: while a BUNDLED sample persona is active, every spawn — widget,

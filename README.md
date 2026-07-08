@@ -178,7 +178,7 @@ docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman
   ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
 
-Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.7.0`) plus a moving `:latest` — pin the
+Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.7.1`) plus a moving `:latest` — pin the
 version tag for anything durable. Volumes, the token, and running the standing agents from the image:
 [`docs/DOCKER.md`](docs/DOCKER.md).
 

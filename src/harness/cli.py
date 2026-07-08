@@ -7,6 +7,8 @@ composes. New domains mount here with one line.
 
 from __future__ import annotations
 
+import sys
+
 import typer
 
 from harness import __version__
@@ -16,6 +18,18 @@ from harness.finance.cli import app as finance_app
 from harness.packs import packs_app
 from harness.scaffold import init as init_cmd
 from harness.travel.cli import app as travel_app
+
+# Piped spawns on Windows hand Python a legacy-codepage stdout/stderr (cp1252), which can't
+# encode characters the toolkit legitimately emits (the ≈ in estimate labels, the → in
+# allocation labels) — one such glyph kills an entire command with UnicodeEncodeError. Force
+# UTF-8 on both streams; errors="replace" guarantees a degraded glyph is never fatal.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            # A closed/detached stream (capture harnesses, unusual hosts) must never break import.
+            pass
 
 app = typer.Typer(
     add_completion=False,

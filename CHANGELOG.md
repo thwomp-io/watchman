@@ -3,6 +3,16 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] - 2026-07-08
+
+### Fixed
+- **Windows: finance widgets no longer crash on special characters.** Piped spawns on Windows
+  hand the engine a legacy-codepage stdio (cp1252), so any widget whose JSON carried a
+  non-cp1252 glyph (the `≈` in estimated print dates, the `→` in allocation labels) failed with
+  an encoding error — on a fresh Windows install this took out the Day Moves, Upcoming Prints,
+  and Allocation panels. The CLI now forces UTF-8 stdio at entry and the console sets UTF-8 mode
+  on every spawn, with a regression test pinning both.
+
 ## [0.7.0] - 2026-07-07
 
 Push to your phone, a theme system, and wire integrity. The console now reaches you as native
