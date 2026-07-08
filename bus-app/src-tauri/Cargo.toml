@@ -37,5 +37,5 @@ notify = "6"  # vault fs-watcher (VAULT live-refresh); FSEvents on macOS
 # the poller thread + invoke commands are synchronous, so no async runtime is warranted.
 # Default features kept (rustls) so a future https bus URL works without a dep change.
 ureq = { version = "2", features = ["json"] }
-gethostname = "0.5"  # per-device transport marker ("desktop:{hostname}") in remote mode
+gethostname = "1.1"  # per-device transport marker ("desktop:{hostname}") in remote mode
 
