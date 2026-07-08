@@ -38,7 +38,7 @@ def events_from_catalysts(
     items: list[NewsItem], ref_dirs: dict[str, str] | None = None
 ) -> list[EventDraft]:
     """Single-name catalyst headlines (the watch fresh-news delta) → bus events for the Inbox WIRE
-    band (option B, 2026-06-30 — the doctrine-clean 'why is it moving' context layer beneath the
+    band (the doctrine-clean 'why is it moving' context layer beneath the
     act/watch alerts; the standing agent fetches headlessly, the Inbox just reads the bus).
 
     Scope = symbol-tagged single-name catalysts only (held/watchlist names; per-ticker gnews + Yahoo

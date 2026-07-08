@@ -35,8 +35,8 @@ events:
 destination_airports:
   kona: KOA
   barcelona: BCN
-  napa: SMF
+  denver: DEN
 destination_cities:
   kona: "Kailua-Kona, HI"
   barcelona: "Barcelona, ES"
-  napa: "Napa, CA"
+  denver: "Denver, CO"

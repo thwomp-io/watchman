@@ -34,7 +34,17 @@ CREATE INDEX IF NOT EXISTS ix_events_unread ON events(read_at) WHERE read_at IS 
 CREATE INDEX IF NOT EXISTS ix_events_lane_kind ON events(lane, kind);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', '1');
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint   TEXT PRIMARY KEY,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    label      TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
 "#;
+// ^ push_subscriptions is the web-push transport's store (Python-only reads/writes — see
+// harness/bus/push.py). It rides BOTH DDLs so either surface can boot a fresh db with the full
+// schema (the three-surface contract: this file + harness.bus.store + docs/BUS.md stay identical).
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Event {
@@ -118,6 +128,18 @@ pub fn list_events(
 pub fn unread_count(conn: &Connection) -> Result<i64, String> {
     conn.query_row("SELECT COUNT(*) FROM events WHERE read_at IS NULL", [], |r| r.get(0))
         .map_err(|e| e.to_string())
+}
+
+/// Unread ALERT/WARN only — the to-do count the tray/badge shows. The severity doctrine: info
+/// (the catalyst wire) + filings are skim-streams that must never scream from the tray —
+/// an unread-wire backlog in the badge trains the operator to ignore it.
+pub fn urgent_unread_count(conn: &Connection) -> Result<i64, String> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM events WHERE read_at IS NULL AND severity IN ('alert','warn')",
+        [],
+        |r| r.get(0),
+    )
+    .map_err(|e| e.to_string())
 }
 
 pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, String> {

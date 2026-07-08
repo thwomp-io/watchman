@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, Field, computed_field
 
 
@@ -360,11 +362,35 @@ class WireDigest(BaseModel):
 
 
 class PrintCountdown(BaseModel):
-    """Days-to-print estimate for one filer (10-Q/10-K cadence; honest, approximate)."""
+    """Days-to-print for one filer — confirmed announcement when available, cadence estimate else."""
 
     symbol: str
-    estimate: str  # "≈ YYYY-MM-DD (est. from 10-Q/10-K filing cadence)"
-    days_out: int | None = None  # negative = estimate already passed (cadence drifted)
+    estimate: str  # "= YYYY-MM-DD (confirmed · nasdaq)" | "≈ YYYY-MM-DD (est. from filing cadence)"
+    days_out: int | None = None  # negative = date already passed (cadence drifted / stale cache)
+    confirmed: bool = False  # True = announcement-sourced (nasdaq analyst API), not cadence-derived
+
+
+class EarningsDate(BaseModel):
+    """Next earnings date from the Nasdaq analyst API (Zacks-fed). `confirmed=False` means the
+    date is Zacks' algorithm-derived estimate — the provider parses the distinction out of the
+    endpoint's own prose so a consumer never dresses an estimate up as an announcement."""
+
+    symbol: str
+    report_date: date
+    confirmed: bool
+
+
+class ConsensusPT(BaseModel):
+    """Sell-side consensus price target + rating mix (Nasdaq analyst API) — the diffable snapshot
+    behind the ratings-change wire. Same information-not-verdict caveat as AnalystRatings."""
+
+    symbol: str
+    mean: float
+    low: float | None = None
+    high: float | None = None
+    buy: int = 0
+    hold: int = 0
+    sell: int = 0
 
 
 class AnalystRatings(BaseModel):

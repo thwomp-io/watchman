@@ -1,4 +1,4 @@
-# Demo Traveler — a FICTIONAL travel-lane weights file (sample weight pack).
+# Demo Growth — a FICTIONAL travel-lane weights file (sample weight pack).
 #
 # Generic ranking weights for a demo home base. Every field not set here falls back to the built-in
 # WeightConfig defaults — this file only overrides the few that should be neutral/generic for a sample
@@ -36,8 +36,8 @@ events:
 destination_airports:
   portland: PDX
   moab: CNY
-  san-diego: SAN
+  austin: AUS
 destination_cities:
   portland: "Portland, OR"
   moab: "Moab, UT"
-  san-diego: "San Diego, CA"
+  austin: "Austin, TX"

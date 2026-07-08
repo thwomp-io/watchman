@@ -1,6 +1,6 @@
 [project]
 name = "harness"
-version = "0.6.0"
+version = "0.7.0"
 description = "A personal agentic-harness toolkit — one CLI of domain lanes (finance, career, travel). Provider-abstracted, corpus-aware, exposed via MCP + CLI."
 requires-python = ">=3.12"
 dependencies = [
@@ -20,6 +20,9 @@ dependencies = [
     # honest rather than transitive-by-luck. Zero growth to the installed tree.
     "starlette",
     "uvicorn",
+    # web push (harness.bus.push) — VAPID ES256 JWT + aes128gcm payload encryption. The one
+    # deliberate library-over-primitives call in the bus: this is crypto, never hand-rolled.
+    "pywebpush>=2.3.0",
 ]
 
 [project.scripts]
@@ -74,4 +77,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["PIL", "PIL.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pywebpush", "pywebpush.*", "py_vapid", "py_vapid.*"]
 ignore_missing_imports = true

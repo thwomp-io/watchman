@@ -223,8 +223,8 @@ fn default_travel() -> Dashboard {
 }
 
 /// LANDSCAPE — the whole researched field at a glance (the travel analog of the finance bench-map /
-/// career hiring-map). The `matrix` File-viz over the existing meta-ranking data twin (47 destinations
-/// × 7 characteristic axes) + the how-to-read narrative browsed off disk. Pure compose. (A destinations
+/// career hiring-map). The `matrix` File-viz over the existing meta-ranking data twin (destinations
+/// × characteristic axes) + the how-to-read narrative browsed off disk. Pure compose. (A destinations
 /// `map` twin is a filed fast-follow.)
 fn default_landscape() -> Dashboard {
     Dashboard {

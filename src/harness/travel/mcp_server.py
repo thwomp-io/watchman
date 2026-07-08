@@ -339,8 +339,7 @@ def get_traffic(
     e.g. a town name), `road` ('I-5' / '405' / 'US-2', normalized to WSDOT's code), `category`
     ('Construction' / 'Incident' / 'Lane Closure'). `congested_only` keeps routes delayed >= 5 min.
     `times_only` / `alerts_only` restrict the surface. Returns {travel_times:[...], alerts:[...],
-    filters}; each travel_time carries delay_minutes + a `congested` flag. WA-regional — the
-    instrumented corridors in your region."""
+    filters}; each travel_time carries delay_minutes + a `congested` flag. WA-regional coverage only."""
     return (
         _svc()
         .get_traffic(
@@ -397,7 +396,7 @@ def make_diagram(
 
     The agent-native path: build the diagram `data` in-context (e.g. a curated schedule, or a
     timeline assembled from find_events results), then render it. `dest` is a vault path under travel/
-    (e.g. 'trips/2026-09-fall-trip'); the SVG lands at {dest}/visuals/{name}.svg.
+    (e.g. 'trips/2027-01-sample-trip'); the SVG lands at {dest}/visuals/{name}.svg.
 
     For diagram_type='map-annotate': `data` carries an `image` (path under the tracker corpus, e.g.
     'screenshots/SCR-….png') + fractional `pins`/`route`/`notes`/`title`/`subtitle`/`legendTitle`

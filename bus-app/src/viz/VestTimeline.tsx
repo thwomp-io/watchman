@@ -8,6 +8,7 @@
 import { useState } from "react";
 import * as d3 from "d3";
 import { fmtNum, useMeasure } from "./common";
+import { useTheme, type Theme } from "../theme";
 
 interface Vest { date: string; units: number; value: number; future: boolean }
 interface Win { start: string; end: string; kind: "poison" | "clean" }
@@ -17,10 +18,25 @@ interface VestTimelineData {
 }
 
 const M = { top: 44, right: 26, bottom: 56, left: 26 };
-// instrument palette (App.css): caution-amber poison, harvest-green clean, amber vest markers
-const POISON = "#ffb454", CLEAN = "#7dd6a0", VEST = "#e8a33d", VEST_PAST = "#79827f";
+// instrument palette: caution-amber poison, harvest-green clean, amber vest markers. SVG fills
+// are attributes, so the tones are picked per-theme here — each set mirrors its App.css tokens
+// (--sig-warn / --pos / --amber / --ink-dim; keep in sync).
+const TONES: Record<Theme, { poison: string; clean: string; vest: string; vestPast: string }> = {
+  dark: { poison: "#ffb454", clean: "#7dd6a0", vest: "#e8a33d", vestPast: "#79827f" },
+  paper: { poison: "#875600", clean: "#1f663c", vest: "#7f5606", vestPast: "#5d5644" },
+  bright: { poison: "#8f7500", clean: "#157a3a", vest: "#c8102e", vestPast: "#8b929b" },
+  phosphor: { poison: "#e0b83d", clean: "#4ade80", vest: "#3ddc84", vestPast: "#2e5c44" },
+  redwatch: { poison: "#ff9a4d", clean: "#74c69d", vest: "#ff4f58", vestPast: "#5c3236" },
+  fjord: { poison: "#ebcb8b", clean: "#a3be8c", vest: "#88c0d0", vestPast: "#545d6e" },
+  outrun: { poison: "#ffd319", clean: "#00ffa3", vest: "#ff2d95", vestPast: "#5b4a80" },
+  abyss: { poison: "#f0b429", clean: "#34d399", vest: "#2dd4bf", vestPast: "#3c5866" },
+  dusk: { poison: "#d19a66", clean: "#82c99a", vest: "#b794d4", vestPast: "#574d6b" },
+  solar: { poison: "#a16207", clean: "#3f6212", vest: "#b45309", vestPast: "#a89574" },
+  mono: { poison: "#8f6400", clean: "#1a7a3a", vest: "#1a1a1a", vestPast: "#8c8c8c" },
+};
 
 export default function VestTimeline({ data }: { data: VestTimelineData }) {
+  const { poison: POISON, clean: CLEAN, vest: VEST, vestPast: VEST_PAST } = TONES[useTheme()];
   const { ref, width: W, height: H } = useMeasure(0.28);
   const parse = d3.utcParse("%Y-%m-%d");
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);

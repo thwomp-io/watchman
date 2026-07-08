@@ -119,12 +119,20 @@ def create_app(
             drafts = [EventDraft.model_validate(d) for d in raw_drafts]
         except Exception as exc:  # pydantic ValidationError — report, don't 500
             return _bad_request(f"invalid event draft: {exc}")
-        svc = service()
-        try:
-            results = svc.publish_many(drafts)
-            return JSONResponse({"results": [r.model_dump() for r in results]})
-        finally:
-            svc.close()
+        # Threadpool, not inline: publish now fans out web pushes (network I/O with real
+        # timeouts) — leaving it on the event loop would stall every other request for the
+        # duration of a slow push service (a lesson the console door already learned).
+        # The service is constructed INSIDE the worker: sqlite3 connections are thread-bound.
+        from starlette.concurrency import run_in_threadpool
+
+        def run() -> list[dict[str, Any]]:
+            svc = service()
+            try:
+                return [r.model_dump() for r in svc.publish_many(drafts)]
+            finally:
+                svc.close()
+
+        return JSONResponse({"results": await run_in_threadpool(run)})
 
     async def ack(request: Request) -> JSONResponse:
         if not _authorized(request, token):
@@ -181,6 +189,105 @@ def create_app(
         finally:
             svc.close()
 
+    # —— web push (harness.bus.push) ————————————————————————————————————————————————————————————
+    # Same token as every /api route: the vapid PUBLIC key isn't secret, but an open route would
+    # be the only unauthenticated /api surface — consistency beats the micro-convenience.
+
+    async def push_vapid_key(request: Request) -> JSONResponse:
+        if not _authorized(request, token):
+            return _unauthorized()
+        from starlette.concurrency import run_in_threadpool
+
+        from harness.bus import push
+
+        # threadpool: first call may GENERATE the keypair (file I/O + EC keygen)
+        key = await run_in_threadpool(push.vapid_public_key)
+        return JSONResponse({"key": key})
+
+    async def push_subscribe(request: Request) -> JSONResponse:
+        if not _authorized(request, token):
+            return _unauthorized()
+        try:
+            body = json.loads(await request.body())
+        except json.JSONDecodeError:
+            return _bad_request("body must be JSON")
+        if not isinstance(body, dict):
+            return _bad_request('body must be {"subscription": <PushSubscription.toJSON()>, "label"?: …}')
+        sub = body.get("subscription")
+        if not isinstance(sub, dict):
+            return _bad_request('"subscription" must be the browser PushSubscription.toJSON() object')
+        endpoint = sub.get("endpoint")
+        raw_keys = sub.get("keys")
+        keys: dict[str, Any] = raw_keys if isinstance(raw_keys, dict) else {}
+        p256dh, auth_key = keys.get("p256dh"), keys.get("auth")
+        if not (isinstance(endpoint, str) and endpoint.startswith("https://")):
+            return _bad_request('"endpoint" must be an https URL')
+        if not (isinstance(p256dh, str) and p256dh and isinstance(auth_key, str) and auth_key):
+            return _bad_request('"keys" must carry non-empty "p256dh" and "auth"')
+        label = str(body.get("label") or "")[:80]
+        svc = service()
+        try:
+            svc.add_push_subscription(endpoint=endpoint, p256dh=p256dh, auth=auth_key, label=label)
+            return JSONResponse({"stored": True, "subscriptions": len(svc.list_push_subscriptions())})
+        finally:
+            svc.close()
+
+    async def push_unsubscribe(request: Request) -> JSONResponse:
+        if not _authorized(request, token):
+            return _unauthorized()
+        try:
+            body = json.loads(await request.body())
+        except json.JSONDecodeError:
+            return _bad_request("body must be JSON")
+        endpoint = body.get("endpoint") if isinstance(body, dict) else None
+        if not isinstance(endpoint, str) or not endpoint:
+            return _bad_request('body must be {"endpoint": <subscription endpoint>}')
+        svc = service()
+        try:
+            return JSONResponse({"removed": svc.remove_push_subscription(endpoint)})
+        finally:
+            svc.close()
+
+    async def push_test(request: Request) -> JSONResponse:
+        # The verification affordance: prove the whole pipeline (key → subscription → push service
+        # → device banner) without waiting for a real alert. Optional {"endpoint"} narrows to one
+        # device; default fans out to all.
+        if not _authorized(request, token):
+            return _unauthorized()
+        try:
+            body_raw = await request.body()
+            body = json.loads(body_raw) if body_raw else {}
+        except json.JSONDecodeError:
+            return _bad_request("body must be JSON")
+        endpoint = body.get("endpoint") if isinstance(body, dict) else None
+        if endpoint is not None and not isinstance(endpoint, str):
+            return _bad_request('"endpoint" must be a string when present')
+        from starlette.concurrency import run_in_threadpool
+
+        from harness.bus import push
+        from harness.bus.store import connect as bus_connect
+
+        payload = json.dumps(
+            {
+                "title": "WATCHMAN TEST",
+                "summary": "push pipeline verified — this device is wired to the bus",
+                "lane": "core",
+                "kind": "push_test",
+                "subject": "",
+                "severity": "info",
+            }
+        )
+        def send() -> dict[str, Any]:
+            # connect INSIDE the worker: sqlite3 connections are thread-bound, and threadpool
+            # execution is a different thread than this handler's.
+            conn = bus_connect(db_path)
+            try:
+                return push.send_to_all(conn, payload, urgency="normal", endpoint=endpoint).model_dump()
+            finally:
+                conn.close()
+
+        return JSONResponse(await run_in_threadpool(send))
+
     return Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
@@ -189,6 +296,10 @@ def create_app(
             Route("/api/bus/ack", ack, methods=["POST"]),
             Route("/api/bus/delivered", delivered, methods=["POST"]),
             Route("/api/bus/stats", stats, methods=["GET"]),
+            Route("/api/push/vapid-key", push_vapid_key, methods=["GET"]),
+            Route("/api/push/subscribe", push_subscribe, methods=["POST"]),
+            Route("/api/push/unsubscribe", push_unsubscribe, methods=["POST"]),
+            Route("/api/push/test", push_test, methods=["POST"]),
             *(extra_routes or []),
         ]
     )

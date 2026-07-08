@@ -33,6 +33,7 @@ from harness.finance.models import (
     Multiples,
     NetWorth,
     NetWorthGroup,
+    NewsItem,
     PortfolioSnapshot,
     Position,
     PrintCountdown,
@@ -124,7 +125,7 @@ class FinanceService:
 
         - **fmp** — Financial Modeling Prep PRE-COMPUTED TTM ratios (free tier). Sidesteps the
           Q4-in-10-K TTM-assembly trap that mis-tags multiples on the EDGAR path,
-          and covers foreign filers/ADRs (TSM/ASML) absent from SEC's CIK map. Needs FMP_API_KEY.
+          and covers foreign filers/ADRs (SONY/ASML) absent from SEC's CIK map. Needs FMP_API_KEY.
         - **edgar** — the keyless auditable-from-XBRL path: SEC reported figures + a LIVE Alpaca
           price, every figure traced to its tag + TTM basis. GAAP-honest ("N/M"/"unavailable"); the
           fallback when no FMP key, and the source for the component breakdown.
@@ -498,7 +499,7 @@ class FinanceService:
             notes=notes,
         )
 
-    # ---- values-screen check (corpus-only, no network) ----
+    # ---- keyless news scan (per-ticker wire + filings rail) ----
     def news(self, symbols: list[str] | None = None, limit: int = 5) -> list[SymbolNews]:
         """Keyless news scan: wire headlines (Yahoo per-ticker RSS) + the EDGAR filings rail.
 
@@ -662,8 +663,8 @@ class FinanceService:
         live = [p for p in snap.positions if p.valuation == "live" and p.day_change_pct is not None]
         digest.day_moves = sorted(live, key=lambda p: abs(p.day_change_pct or 0), reverse=True)
 
-        # watchlist day reads — non-held symbols the user keeps tabs on. OTC ADRs come
-        # back available=False (no IEX feed) — stated honestly; they stay news-covered below.
+        # watchlist day reads — non-held symbols the user keeps tabs on. Symbols off
+        # the IEX feed (e.g. OTC ADRs) come back available=False — stated honestly; news-covered below.
         if seed.watchlist:
             notes_by_sym = {w.symbol: w.note for w in seed.watchlist}
             try:
@@ -739,11 +740,39 @@ class FinanceService:
                     sum(lt.qty for lt in loss_lots), 4
                 )
 
-        # days-to-print per CIK-resolvable holding
+        # days-to-print per holding — CONFIRMED date first (nasdaq analyst API through the
+        # day-TTL cache), honest filing-cadence estimate as the fallback. The label is the
+        # contract: "= … (confirmed · nasdaq)" vs "≈ … (est. …)" — a consumer can always tell an
+        # announcement from a projection (the month-off filing-cadence estimate error this closes).
         today = _date.today()
+        from harness.finance.providers.nasdaq_provider import fetch_earnings_date
+        from harness.finance.watch import EarningsDateCache
+
+        earnings_cache = EarningsDateCache.load()
+        earnings_dirty = False
         for h in seed.holdings:
             if h.asset_type != "stock":
                 continue
+            ed = earnings_cache.fresh(h.symbol, today)
+            if ed is None:
+                try:
+                    ed = fetch_earnings_date(h.symbol)
+                    earnings_cache.put(ed, today)
+                    earnings_dirty = True
+                except ProviderError:
+                    ed = None  # honest miss (ETF-shaped / unknown) → cadence fallback below
+            if ed is not None and ed.confirmed:
+                digest.prints.append(
+                    PrintCountdown(
+                        symbol=h.symbol,
+                        estimate=f"= {ed.report_date.isoformat()} (confirmed · nasdaq)",
+                        days_out=(ed.report_date - today).days,
+                        confirmed=True,
+                    )
+                )
+                continue
+            # Fallback: the EDGAR filing-cadence estimate (or nasdaq's own algo date — same
+            # class of projection; prefer our auditable-from-facts one and label it est.).
             cik = self._cik_resolver.cik_for(h.symbol)
             if not cik:
                 continue
@@ -762,6 +791,41 @@ class FinanceService:
             except (ValueError, IndexError):
                 pass
             digest.prints.append(PrintCountdown(symbol=h.symbol, estimate=est, days_out=days))
+        if earnings_dirty:
+            earnings_cache.save()
+
+        # ratings wire — consensus PT/mix per held stock, TTL-gated (≈one sweep/day against the
+        # unofficial API), diffed vs the stored baseline. A material move becomes a synthetic
+        # [RATING] NewsItem: it rides the existing fresh-news rendering AND the catalyst→bus path
+        # (symbol-tagged info event) for free. First sight seeds the baseline silently.
+        from harness.finance.providers.nasdaq_provider import fetch_price_target
+        from harness.finance.watch import ConsensusState
+
+        consensus = ConsensusState.load()
+        consensus_dirty = False
+        for h in seed.holdings:
+            if h.asset_type != "stock" or not consensus.stale(h.symbol, today):
+                continue
+            try:
+                pt = fetch_price_target(h.symbol)
+            except ProviderError:
+                continue  # honest miss — no consensus coverage; never a fabricated baseline
+            change = consensus.diff(pt)
+            if change:
+                digest.fresh_news.append(
+                    NewsItem(
+                        symbol=h.symbol,
+                        title=f"[RATING] {h.symbol}: {change}",
+                        # Synthetic per-change key → the seen-cache dedupes it like any headline.
+                        url=f"consensus://{h.symbol}/{today.isoformat()}/{pt.mean:.2f}",
+                        source="nasdaq-consensus",
+                        published=today.isoformat(),
+                    )
+                )
+            consensus.put(pt, today)
+            consensus_dirty = True
+        if consensus_dirty:
+            consensus.save()
 
         # fresh headlines — the news scan minus everything already seen. Coverage = held
         # stocks/ETFs + the watchlist (Yahoo RSS covers OTC ADRs the quote feed can't).

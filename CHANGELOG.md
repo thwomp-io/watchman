@@ -3,6 +3,47 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-07-07
+
+Push to your phone, a theme system, and wire integrity. The console now reaches you as native
+notifications on a phone — self-hosted end to end — and the finance wire gets confirmed earnings
+dates and analyst-consensus tracking.
+
+### Added
+- **Web push to the phone** — bus events arrive as native banners on an installed PWA
+  (iOS/Android), account-free and self-hosted: the Web Push protocol end-to-end (vendor relays see
+  ciphertext only). Hard severity gate: only `alert`/`warn` push — the info wire and filings are a
+  skim surface by design and never buzz a pocket. A footer bell arms each device (with a TEST
+  button to verify end to end); `hn bus push-keys` shows the public key + device inventory. VAPID
+  keys auto-generate on first use; dead subscriptions self-prune.
+- **Direct TLS on the served console** — `hn bus serve --tls-cert/--tls-key` terminates HTTPS in
+  the server itself (no reverse proxy), giving the secure context web push requires while the
+  plain port stays available for LAN satellites. Ops recipe in `docs/WEB-CONSOLE.md`.
+- **Confirmed earnings dates** — days-to-print now prefers announcement-confirmed dates
+  (`= 2026-07-22 (confirmed)`) over filing-cadence estimates (`≈ …`), and print-soon flags key off
+  the better date. Cadence estimates can miss by weeks; the label tells you which one you're
+  reading.
+- **The ratings wire** — each held stock's analyst consensus (mean price target + buy/hold/sell
+  mix) is diffed daily; material moves surface as `[RATING]` items on the wire and the Inbox. A
+  price-target-cut day flags itself instead of hiding in generic headlines.
+- **Theme system** — 11 console themes behind a footer menu, including a light "daylight cockpit"
+  variant; the dark instrument panel remains the default, and visualization palettes follow the
+  active theme.
+- **In-app updater (scaffolding)** — the desktop console carries the update plumbing (release
+  builds only; signed artifacts via CI). Update checks activate once a signed release is
+  published.
+- **Illustrated food research (travel)** — restaurant scans pick up thumbnails for free, an
+  opt-in keyless pass fetches each place's own hero image, and a finalists verb pulls full photo
+  galleries for the shortlist.
+- A real favicon — the radar mark, on every tab and bookmark.
+
+### Fixed
+- The tray badge counts **urgent** unread only (alert/warn) — a busy catalyst wire no longer
+  inflates it into the hundreds.
+- iOS push: Apple's push service rejects placeholder VAPID contact claims — the abuse contact now
+  resolves from config, and first-delivery is verified on device.
+- Footer layout no longer pushes the push bell and theme menu off narrow phone widths.
+
 ## [0.6.0] - 2026-07-04
 
 The web console. The same console the desktop app embeds, served over HTTP to any browser on your own
@@ -173,6 +214,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.7.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.0
 [0.6.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.6.0
 [0.5.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.5.0
 [0.4.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.4.0

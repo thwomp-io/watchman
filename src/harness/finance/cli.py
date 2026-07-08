@@ -48,8 +48,8 @@ def _publish_to_bus(rep: PulseReport) -> str:
     tray app delivers from. Returns a 'N published, M dup' note for the run log: the forensic
     proof events reached the bus (next time delivery is questioned, the audit answers).
 
-    Publishes BOTH the act/watch flags AND the info-severity single-name catalyst wire (option B,
-    2026-06-30) — the latter feeds the Inbox WIRE band, so it must publish even on a flag-quiet run
+    Publishes BOTH the act/watch flags AND the info-severity single-name catalyst wire — the
+    latter feeds the Inbox WIRE band, so it must publish even on a flag-quiet run
     (fresh catalysts exist without a threshold flag). Never kills the standing run — a bus failure
     degrades to an ERROR note in the log (graceful-degradation rule; one dead layer is a note)."""
     _news = rep.digest.fresh_news if rep.digest else []
@@ -83,7 +83,7 @@ def _pulse_notify(rep: PulseReport, bus_note: str = "") -> None:
     flags only.
 
     ⚠️ DEPRECATED TRANSPORT: the osascript banner is transient + posts under an
-    unauthorized identity, and pulse-flags.json duplicates dedup the bus now owns — both retire in
+    unauthorized identity, and pulse-flags.json duplicates dedup the bus now owns — both retire
     once the console is the verified human transport. Until then this stays as the
     fallback so delivery never regresses below today's (imperfect) baseline."""
     import json
@@ -166,7 +166,7 @@ def _trend_money(value: float | None, prior: float | None) -> str:
 
 @app.command()
 def bars(
-    symbol: str = typer.Argument(..., help="Ticker, e.g. BEP"),
+    symbol: str = typer.Argument(..., help="Ticker, e.g. AAPL"),
     days: int = typer.Option(90, "--days", help="Lookback window (calendar days)"),
     feed: str = typer.Option("iex", "--feed"),
     as_json: bool = typer.Option(False, "--json"),
@@ -1231,7 +1231,7 @@ def watch(
                 )
             else:
                 console.print(
-                    f"  {m.symbol:<6} [dim]— no IEX feed (OTC ADR) · news-covered below"
+                    f"  {m.symbol:<6} [dim]— no IEX feed (OTC/ADR or fund) · news-covered below"
                     f"{' · ' + m.note if m.note else ''}[/dim]"
                 )
     if d.drift:
@@ -1343,7 +1343,7 @@ def viz(
     console.print(f"wrote {written}")
     console.print("\nObsidian embed (paste into the doc):")
     # markup=False: Rich otherwise parses [[...]] as markup and mangles the embed (caught by the
-    # career-lane test 2026-06-09; travel's viz already had this right — keep the wikilink literal).
+    # career-lane test; travel's viz already had this right — keep the wikilink literal).
     console.print(f"![[{rel.as_posix()}|640]]", markup=False)
 
 

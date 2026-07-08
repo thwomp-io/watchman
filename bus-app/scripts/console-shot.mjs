@@ -62,6 +62,13 @@ const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
 if (tokenFile) {
   const token = readFileSync(tokenFile, "utf8").trim();
   await page.addInitScript((t) => window.localStorage.setItem("watchman.token", t), token);
+  // --theme dark|light pins the console theme for the shot (the theme layer honors an explicit
+  // stored choice over prefers-color-scheme, so this beats headless Chromium's ambient scheme).
+  const themeArg = process.argv.find((a) => a.startsWith("--theme="))?.split("=")[1]
+    ?? (process.argv.includes("--theme") ? process.argv[process.argv.indexOf("--theme") + 1] : null);
+  if (themeArg) {
+    await page.addInitScript((th) => window.localStorage.setItem("watchman.theme", th), themeArg);
+  }
 }
 await page.goto(url, { waitUntil: "domcontentloaded" });
 // --standalone: emulate the installed-PWA media state (display-mode: standalone) via CDP —

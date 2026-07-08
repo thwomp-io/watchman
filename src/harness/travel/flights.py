@@ -33,7 +33,7 @@ _SHORT_MULT_OK = 1.5  # …or within ~1.5× economy
 
 
 def fmt_time(raw: str) -> str:
-    """'2026-06-19 14:25' (local airport clock) → 'Fri Jun 19, 2:25 PM'. Unparseable passes through."""
+    """'2026-01-16 14:25' (local airport clock) → 'Fri Jan 16, 2:25 PM'. Unparseable passes through."""
     try:
         return datetime.strptime(raw, "%Y-%m-%d %H:%M").strftime("%a %b %-d, %-I:%M %p")
     except (ValueError, TypeError):
@@ -55,7 +55,7 @@ def _gflights_url(s: FlightSearch, origin: str, cabin: str) -> str:
 
 
 def _clock(iso: str) -> str:
-    """'2026-06-19 14:25' → '2:25 PM' (time only; the date lives in the report header)."""
+    """'2026-01-16 14:25' → '2:25 PM' (time only; the date lives in the report header)."""
     try:
         return datetime.strptime(iso, "%Y-%m-%d %H:%M").strftime("%-I:%M %p")
     except (ValueError, TypeError):
@@ -170,7 +170,7 @@ def _verdict_band(
 def upgrade_verdict(s: FlightSearch, *, origin: str | None = None) -> str | None:
     """First-class-upgrade read, **duration-gated**: a high preference on long (~4h+) flights, a
     modest-upcharge-only nice-to-have on short hops. Cheapest economy vs cheapest first for the origin.
-    Thresholds come from config (the calibration band)."""
+    Thresholds are module-level tunable defaults."""
     band = _verdict_band(s, origin)
     if band is None:
         return None
@@ -180,7 +180,7 @@ def upgrade_verdict(s: FlightSearch, *, origin: str | None = None) -> str | None
     return {
         "cheaper": f"✈ First class is **cheaper or equal** here (${f:,.0f} vs ${e:,.0f}) — take it.",
         "long_worth": (
-            f"✈ **First-class upgrade looks worth it** — {base}, inside the configured upgrade band "
+            f"✈ **First-class upgrade looks worth it** — {base}, inside the default upgrade band "
             f"(default ≤~2× / ≤~$500) on a long ({hrs}) flight where legroom matters most."
         ),
         "long_pause": f"First class is {base} — the rational-pause zone, even on a long ({hrs}) flight.",

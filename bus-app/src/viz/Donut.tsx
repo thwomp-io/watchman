@@ -4,13 +4,14 @@
 
 import { useState } from "react";
 import * as d3 from "d3";
-import { COLORS, fmtNum, type Tip } from "./common";
+import { useCatColors, fmtNum, type Tip } from "./common";
 
 interface Slice { label: string; value: number; color?: string }
 interface Pie { label: string; caption?: string; slices: Slice[] }
 interface PiesData { title?: string; subtitle?: string; pies: Pie[] }
 
 function OneDonut({ pie }: { pie: Pie }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [off, setOff] = useState<Set<string>>(new Set());
   const [tip, setTip] = useState<Tip | null>(null);
 

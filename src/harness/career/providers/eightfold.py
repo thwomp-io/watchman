@@ -4,8 +4,8 @@ GET https://{host}/api/apply/v2/jobs?domain={domain}&start=0&num=50&query={term}
 → {"count": N, "positions": [{name, location, t_update, canonicalPositionUrl, department}]}.
 
 Same search-per-term strategy as Workday (boards are large; the watchlist's domain keywords ARE
-the search terms). Verified against a representative Eightfold tenant ('reliability' returns
-remote SRE roles).
+the search terms). Verified against a representative Eightfold tenant (a common engineering
+keyword returns clean JSON).
 """
 
 from __future__ import annotations

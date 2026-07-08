@@ -14,11 +14,11 @@ from harness.settings import DEFAULT_TRACKER, BaseToolkitSettings
 
 
 def test_split_sections_preamble_and_h2() -> None:
-    body = "intro line\n\n## Window\n- 6/20 → 6/22\n\n## Lodging anchors\n- **Hotel del**"
+    body = "intro line\n\n## Window\n- 3/10 → 3/12\n\n## Lodging anchors\n- **Hotel X**"
     secs = split_sections(body)
     assert secs["_preamble"] == "intro line"
-    assert "6/20" in secs["Window"]
-    assert "Hotel del" in secs["Lodging anchors"]
+    assert "3/10" in secs["Window"]
+    assert "Hotel X" in secs["Lodging anchors"]
 
 
 def test_section_prefix_match_is_case_insensitive() -> None:

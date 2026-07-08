@@ -171,7 +171,7 @@ class WsfFerryProvider:
     # ---- live vessel positions ----
     def vessel_locations(self, *, route: str | None = None) -> list[FerryVessel]:
         """Live vessel positions + ETA + in-service/cancellation. `route` filters by OpRouteAbbrev
-        substring (e.g. 'edm-king') or a departing/arriving terminal name."""
+        substring (e.g. 'sea-bi') or a departing/arriving terminal name."""
         self._require_key()
         raw = self._get_json(_VESSEL_LOCATIONS)
         if not isinstance(raw, list):

@@ -9,7 +9,7 @@ Scope (v1, honest): the STATEMENT — decision + policy language + target-rate r
 SEP/dot-plot is a SEPARATE item (PDF/HTML projection table, no clean API) — we surface its LINK and
 flag it as a manual/eyeball input; the hawkish/dovish read of the dots stays the agent's job.
 
-Source note: probed live 2026-06-17 — the default `harness/<version>` UA (set by get_with_retry) is
+Source note: probed live — the default `harness/<version>` UA (set by get_with_retry) is
 accepted by federalreserve.gov; the statement body sits in `<div id="article">`, between the vote line
 ("approved the following statement for release by a N – M vote:") and the "For media inquiries"
 boilerplate. Anchors are stable Fed boilerplate; if they move, we fall back to the full stripped text.

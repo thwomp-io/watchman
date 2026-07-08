@@ -5,7 +5,8 @@
 Watchman renders live, deterministic views over your own data — finance, career, travel — through a CLI
 and a resident desktop console. It's built on one thesis:
 
-> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take, a trip recommendation — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
+> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take, a
+> ghost-written note — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
 > your stories, the *why* behind your decisions, your preferences and their emotional texture, **in your own
 > voice**. That voice is the moat — it's what makes the output sound like *you* instead of generic AI. The
 > machine-readable weights the tools read are a thin derived projection of it. The dashboards are just a surface.
@@ -33,13 +34,16 @@ and a resident desktop console. It's built on one thesis:
 A weight **pack is a persona** — a complete sample profile across every lane. Loading one swaps the *whole*
 console; the dashboards are just weights over the corpus.
 
-![Persona swap on the finance console](docs/assets/demo-finance.gif)
+![Touring the finance console on a sample persona](docs/assets/demo-finance.gif)
 
-_Finance console: swap the active pack and the whole view reprojects — net worth, the trend chart, the
-concentration treemap, positions — pulling **live, deterministic data** as the widgets refresh. (Recorded
-on the bundled sample packs — no real data.)_
+_Finance console on a bundled sample persona — net worth and trend, the sell-planning view, the
+market-take reader, and an execution ticket, all rendering **live, deterministic data** as the
+widgets refresh. (Recorded headlessly against a sealed demo instance — fictional data only.)_
 
-![Persona swap on the career console](docs/assets/demo-career.gif)
+![The career board on a sample persona](docs/assets/demo-career.gif)
+
+_The career board: shortlist, pipeline, and the company × role-shape hiring map — same persona,
+same seal._
 
 ## What's in the box
 
@@ -174,7 +178,7 @@ docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman
   ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
 
-Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.6.0`) plus a moving `:latest` — pin the
+Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.7.0`) plus a moving `:latest` — pin the
 version tag for anything durable. Volumes, the token, and running the standing agents from the image:
 [`docs/DOCKER.md`](docs/DOCKER.md).
 

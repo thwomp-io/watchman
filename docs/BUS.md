@@ -42,6 +42,22 @@ never contend on the same columns; WAL makes the rest a non-event.
 
 `meta` table carries `schema_version` (currently `1`); future migrations key off it.
 
+### `push_subscriptions` (additive, v1)
+
+Web-push endpoints (the [web-push transport](#web-push--the-phone-transport)) live in the same db:
+
+| column | meaning |
+|---|---|
+| `endpoint` | PK — the push service's capability URL for one browser/PWA install |
+| `p256dh` / `auth` | the subscription's encryption keys (browser-generated) |
+| `label` | operator-facing device label (`"iOS PWA"`, …) |
+| `created_at` | UTC ISO-8601 |
+
+Additive by construction: `CREATE TABLE IF NOT EXISTS` rides the idempotent DDL on **both** language
+surfaces (Python `harness.bus.store` + the Rust app's `bus.rs` — either can boot a fresh db), but only
+Python ever reads/writes it. Schema version stays `1` — no migration needed. The DDL is a
+**three-surface contract**: the two DDLs and this doc must stay identical.
+
 ## Deep-links — `payload.ref`
 
 A producer may put a **`ref`** object inside `payload_json` to make a signal *navigable*: the bus-app
@@ -132,11 +148,41 @@ out-of-box demo is mesh-free by design — multi-device is an opt-in layer with 
     (append-own-marker-only; idempotent; 404 on unknown id)
   - `GET /api/bus/stats` → the `BusStats` shape (remote consoles also derive unread counts and
     lane/kind filter sets from this — no dedicated meta route needed)
+  - `GET /api/push/vapid-key` · `POST /api/push/subscribe` · `POST /api/push/unsubscribe` ·
+    `POST /api/push/test` — the web-push transport's routes (next section)
+- **TLS (optional)**: `--tls-cert PEM --tls-key PEM` (env `HARNESS_TLS_CERT`/`HARNESS_TLS_KEY`) has
+  uvicorn terminate TLS directly — no reverse-proxy daemon. Both flags or neither (half a pair is a
+  config error, never a silent plain-HTTP fallback). Needed off-localhost for web push (browsers
+  require a secure context); deploy recipe: [`WEB-CONSOLE.md`](WEB-CONSOLE.md) → TLS.
 - **Seal-honoring**: the served db resolves via `HARNESS_BUS_DB`/`HARNESS_STATE_DIR` like every
   other consumer — a sealed (demo/CI) instance serves its sealed bus, never the real one.
 - **Consumers**: the watchman app's **`bus_url` remote mode** (below) and the
   [web console](WEB-CONSOLE.md). `create_app()` is a mountable Starlette app, so the web console's
   routes ride the same server — one server, one token, one bind.
+
+### Web push — the phone transport
+
+The served console can push **alert/warn** events to any subscribed browser/PWA (iOS 16.4+ Home-Screen
+installs included) — account-free, self-hosted, no third-party relay beyond the browser vendors' push
+services (which only ever see ciphertext: the Web Push protocol encrypts payloads end-to-end).
+
+- **Hooked at publish** (`harness/bus/push.py`): after every successful non-duplicate insert, the bus
+  fans the event out to all stored subscriptions. A duplicate publish never re-pushes.
+- **Severity-gated, hard**: only `alert` and `warn` push. `info` (the catalyst-wire skim-stream) and
+  filing kinds (`filing`, `filing_drop`, `print_landed` — mirror of the console's FILINGS band) never
+  push, regardless of severity — the wire is deliberately a non-urgent surface; pushing it would drown
+  the signal.
+- **Best-effort by contract**: a push failure is a log line, never a failed publish. HTTP 404/410 from
+  the push service prunes that subscription (the device uninstalled/revoked).
+- **Keys**: a VAPID keypair generates on first use into `~/.config/harness/push-vapid-key.pem` (0600,
+  honors `HARNESS_CONFIG_DIR`) — never committed, never logged, never printed. `hn bus push-keys`
+  shows the PUBLIC key + the subscription inventory. `HARNESS_PUSH_CONTACT` optionally sets the VAPID
+  contact claim (defaults to a non-address placeholder).
+- **Payload is minimal**: title, one-line summary, lane/kind/subject/severity — never the full
+  `payload_json`.
+- **Subscribing**: the web console's baseplate bell (◇ PUSH) — see
+  [`WEB-CONSOLE.md`](WEB-CONSOLE.md) → Push notifications. `POST /api/push/test` (or the bell's TEST
+  button) verifies the pipeline end to end.
 
 ### The watchman in remote mode — `bus_url`
 

@@ -1,4 +1,4 @@
-"""Web-console RPC door tests (phase 2) — the containment guard's tests PORTED WITH the guard
+"""Web-console RPC door tests — directory-traversal containment, auth/gating semantics, and
 (the plan's explicit requirement: the directory-traversal protections are load-bearing), plus the
 door's auth/gating semantics and the wire-shape parity the frontend depends on.
 
@@ -37,7 +37,7 @@ def vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     )
     (vault / "tmp").mkdir()
     (vault / "tmp" / "skipped.md").write_text("# never listed\n")
-    # the escape target OUTSIDE the vault + a symlink pointing at it (the memory-symlink shape)
+    # the escape target OUTSIDE the vault + a symlink pointing at it (a symlink resolving outside the vault)
     outside = tmp_path / "outside.md"
     outside.write_text("# secret\n")
     (vault / "sneaky").symlink_to(tmp_path)
@@ -73,12 +73,12 @@ def test_write_commands_are_gated_403(client: TestClient) -> None:
 
 
 def test_viz_commands_are_mirrored_as_of_phase_3(client: TestClient) -> None:
-    # phase 2 gated these 501; phase 3 ported the discover/sniff — an empty vault lists empty
+    # the door mirrors the read-only viz discover/sniff — an empty vault lists empty
     assert invoke(client, "list_viz", headers=AUTH).status_code == 200
 
 
 def test_bus_routes_still_mounted_beside_the_door(client: TestClient) -> None:
-    # the D1 one-server property: /api/bus/* and /api/invoke/* answer from the same app
+    # the one-server property: /api/bus/* and /api/invoke/* answer from the same app
     assert client.get("/health").status_code == 200
     assert client.get("/api/bus/stats", headers=AUTH).status_code == 200
 
@@ -224,7 +224,7 @@ def test_run_widget_rejects_undeclared_symbols(client: TestClient, tmp_path: Pat
 
 
 def test_app_config_reads_bus_app_json(client: TestClient, tmp_path: Path) -> None:
-    # the native registry's REAL filename (config.rs config_path) — pins the 0.77.0 wrong-name bug
+    # the native registry's REAL filename (config.rs config_path) — pins a past wrong-filename regression
     cfg_dir = tmp_path / "config"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     (cfg_dir / "bus-app.json").write_text(json.dumps({"surfaces": [{"id": "s", "label": "S"}]}))
@@ -297,7 +297,7 @@ def test_ui_mounts_reject_two_root_consoles(tmp_path: Path) -> None:
         ui_mounts([str(tmp_path / "a"), str(tmp_path / "b")])
 
 
-# ————— o992: the spawn cache (dedupe + TTL) ————————————————————————————————————————————————————
+# ————— the spawn cache (dedupe + TTL) ————————————————————————————————————————————————————
 
 
 def test_cached_spawn_dedupes_concurrent_and_serves_ttl(monkeypatch: pytest.MonkeyPatch) -> None:

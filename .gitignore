@@ -24,7 +24,7 @@ build/
 # D3 viz subproject — regenerable via npm install in viz/
 viz/node_modules/
 
-# bus-app (Tauri subproject —)
+# bus-app (Tauri subproject)
 bus-app/node_modules/
 bus-app/src-tauri/target/
 bus-app/dist/

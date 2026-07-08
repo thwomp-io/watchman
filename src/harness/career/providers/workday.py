@@ -6,7 +6,7 @@ POST https://{host}/wday/cxs/{tenant}/{site}/jobs {"limit","offset","searchText"
 Boards are huge (large tenants carry thousands of postings), so we search PER DOMAIN-KEYWORD
 (the watchlist's title_any terms) instead of paginating the world — honest tradeoff: `total_open`
 reports the DEDUPED SEARCH-HIT count, not the board-wide census. Verified against a representative
-Workday tenant ('reliability' returns clean JSON).
+Workday tenant (a common engineering keyword returns clean JSON).
 """
 
 from __future__ import annotations

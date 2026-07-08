@@ -137,6 +137,16 @@ impl RemoteBus {
         Ok(self.stats()?.get("unread").and_then(Value::as_i64).unwrap_or(0))
     }
 
+    /// Badge count from the served stats. Version-skew grace: an older server without
+    /// `urgent_unread` falls back to the full unread count (worse UX, never wrong-silent-zero).
+    pub fn urgent_unread_count(&self) -> Result<i64, String> {
+        let stats = self.stats()?;
+        Ok(stats
+            .get("urgent_unread")
+            .and_then(Value::as_i64)
+            .unwrap_or_else(|| stats.get("unread").and_then(Value::as_i64).unwrap_or(0)))
+    }
+
     /// Lanes/kinds for the Inbox filter chips, derived from `/stats` maps — the served API has
     /// no dedicated meta route because stats already carries the distinct sets as map keys.
     pub fn distinct_meta(&self) -> Result<DistinctMeta, String> {
@@ -181,7 +191,7 @@ mod tests {
     fn event_mapping_reserializes_payload_and_tolerates_nulls() {
         let v: Value = serde_json::json!({
             "id": 7, "created_at": "2026-07-02T21:00:00+00:00", "producer": "finance.pulse",
-            "lane": "finance", "kind": "day_move", "subject": "TSM", "title": "TSM −5%",
+            "lane": "finance", "kind": "day_move", "subject": "ACME", "title": "ACME −5%",
             "body": "…", "payload": {"pct": -5.0}, "severity": "warn",
             "read_at": null, "delivered_via": ["desktop"]
         });

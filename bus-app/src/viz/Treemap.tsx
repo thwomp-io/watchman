@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import * as d3 from "d3";
 import JsonView from "../JsonView";
-import { COLORS, useMeasure } from "./common";
+import { useCatColors, useMeasure } from "./common";
 
 interface TreemapNode {
   label: string; value: number; group?: string;
@@ -23,6 +23,7 @@ const fmt = (v: number): string =>
   v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)}k` : v.toFixed(0);
 
 export default function Treemap({ data }: { data: TreemapData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [focus, setFocus] = useState<string | null>(null);
   const [detailNode, setDetailNode] = useState<TreemapNode | null>(null);
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -35,7 +36,7 @@ export default function Treemap({ data }: { data: TreemapData }) {
       ? groups.map((g) => g.key)
       : Array.from(new Set(data.nodes.map((n) => n.group ?? "·")));
     return d3.scaleOrdinal<string, string>().domain(keys).range(COLORS);
-  }, [data, groups]);
+  }, [data, groups, COLORS]);
 
   const total = d3.sum(data.nodes, (n) => n.value);
 

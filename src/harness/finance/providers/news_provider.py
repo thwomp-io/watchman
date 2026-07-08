@@ -1,7 +1,7 @@
 """Keyless news provider — Yahoo Finance per-ticker RSS (wire headlines) + SEC EDGAR recent
 filings (data.sec.gov submissions JSON, the primary-source "something material happened" rail).
 
-Probe-validated 2026-06-09. Source notes:
+Probe-validated. Source notes:
 - Yahoo RSS is a broker-console-style wire feed; parsed with stdlib ElementTree (no feedparser
   dependency — the API-over-library rule; RSS 2.0 is trivially walkable).
 - EDGAR's browse-edgar Atom feed is WAF-blocked for undeclared tools, and SEC's declared-UA policy

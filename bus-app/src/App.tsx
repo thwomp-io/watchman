@@ -11,7 +11,10 @@ import VizZone from "./viz/VizZone";
 import VaultZone from "./VaultZone";
 import Dash from "./Dash";
 import ErrorBoundary from "./ErrorBoundary";
+import PushBell from "./PushBell";
+import UpdatePill from "./UpdatePill";
 import { NavContext, payloadRef, resolveRef, useNav, type Nav, type Ref } from "./nav";
+import { clearTheme, setTheme, storedTheme, THEMES, useTheme, type Theme } from "./theme";
 import { PUBLISHED } from "./published";
 import type {
   AgentHealth, AppConfig, BusEvent, DistinctMeta, Surface, SurfaceState, WatchmenStatus,
@@ -442,6 +445,33 @@ function navReducer(s: NavState, a: NavAction): NavState {
   }
 }
 
+// The theme menu — lives on the baseplate (the low-collision chrome strip). A native <select>
+// like the weight-pack loader (the in-window-dropdown pattern; native menus are off the table
+// for this Accessory app, and phones render a native picker — better than any custom popover).
+// AUTO = un-pin and follow the OS; picking a theme pins it (src/theme.ts persists the choice).
+function ThemeMenu() {
+  const theme = useTheme();
+  const GLYPHS: Record<string, string> = {
+    dark: "☾", bright: "☀", paper: "▤", phosphor: "▚", redwatch: "◉",
+    fjord: "❆", outrun: "◢", abyss: "≋", dusk: "☽", solar: "✹", mono: "◼",
+  };
+  const glyph = GLYPHS[theme] ?? "☾";
+  return (
+    <label className="theme-menu" title="Theme — AUTO follows the OS; picking one pins it">
+      <span className="glyph">{glyph}</span>
+      <select
+        value={storedTheme() ?? "auto"}
+        onChange={(e) => (e.target.value === "auto" ? clearTheme() : setTheme(e.target.value as Theme))}
+      >
+        <option value="auto">AUTO</option>
+        {THEMES.map((t) => (
+          <option key={t.value} value={t.value}>{t.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 // ————— Shell ——————————————————————————————————————————————————————————————————————————————————
 
 export default function App() {
@@ -486,7 +516,7 @@ export default function App() {
 
   // Stabilize the context value + callbacks so the once-a-second clock re-render does NOT churn the
   // nav context — otherwise every consumer (incl. memoized VaultZone) re-renders each tick, reviving
-  // the markdown/image "loading flash" (doctrine rule #9). `now` is deliberately NOT in this memo.
+  // the markdown/image "loading flash" (keep rendered subtrees referentially stable). `now` is deliberately NOT in this memo.
   const navigate = useCallback((ref: Ref) => dispatch({ t: "navigate", ref }), []);
   const back = useCallback(() => dispatch({ t: "back" }), []);
   const forward = useCallback(() => dispatch({ t: "forward" }), []);
@@ -579,7 +609,15 @@ export default function App() {
         <span className="path">{config?.bus_source ?? config?.db_path ?? ""}</span>
         <div className="spacer" />
         <span className="status">{status}</span>
+        <ThemeMenu />
+        {/* web-only: the native console notifies through the OS; the bell is the BROWSER's way
+            to arm this device (docs/WEB-CONSOLE.md → Push notifications) */}
+        {!isTauri() && <PushBell />}
         <span className="build">BUS-APP v{version || "—"}</span>
+        {/* self-update: published native builds only — the dev daily-driver's updater config points
+            nowhere (and debug builds don't register the plugin), and the served browser console
+            updates by redeploying the server, so neither ever shows the affordance */}
+        {PUBLISHED && isTauri() && <UpdatePill />}
       </footer>
     </div>
     </NavContext.Provider>

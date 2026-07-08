@@ -61,6 +61,14 @@ impl BusHandle {
         }
     }
 
+    /// The badge count: unread alert+warn only (severity doctrine — wire/filings never scream).
+    pub fn urgent_unread_count(&self) -> Result<i64, String> {
+        match self {
+            BusHandle::Local(conn) => bus::urgent_unread_count(conn),
+            BusHandle::Remote(r) => r.urgent_unread_count(),
+        }
+    }
+
     pub fn ack(&self, ids: &[i64]) -> Result<usize, String> {
         match self {
             BusHandle::Local(conn) => bus::ack(conn, ids),

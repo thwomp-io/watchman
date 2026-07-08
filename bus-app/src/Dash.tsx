@@ -158,7 +158,7 @@ function htmlToText(html: string): string {
 }
 
 // "YYYY-MM-DD HH:MM" (UTC-ish per the wire model) → a relative stamp. The published string carries no
-// tz, so parse it as UTC (append Z) — else a PT user reads every item ~7h stale. Raw fallback if unparseable.
+// tz, so parse it as UTC (append Z) — else a user far west of UTC reads every item hours stale. Raw fallback if unparseable.
 function relTime(published: string): string {
   if (!published) return "—";
   const iso = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(published) ? `${published.replace(" ", "T")}:00Z` : published;

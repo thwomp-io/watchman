@@ -1,6 +1,6 @@
 """SerpAPI / Google Flights flight provider — the v0 primary.
 
-Full carrier coverage, price insights, mirrors the configured browse tool.
+Full carrier coverage, price insights, mirrors what Google Flights shows in the browser.
 Quota-aware: counts searches; the raw-search seam (`_raw_search`) is monkeypatched in tests
 so unit tests never burn the free 250/mo quota.
 """

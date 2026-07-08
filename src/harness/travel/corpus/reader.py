@@ -28,14 +28,14 @@ _BULLET_BOLD = re.compile(r"^\s*[-*]\s*\*\*(.+?)\*\*")
 _WIKILINK_DEST = re.compile(r"\[\[(?:\.\./)+destinations/(?:[a-z0-9-]+/)*([a-z0-9-]+)")
 _DATES = re.compile(r"(\d{1,2})/(\d{1,2}).*?(\d{1,2})/(\d{1,2})")
 _YEAR_TAG = re.compile(r"(20\d\d)-(\d{2})")
-# Leading date-prefix on a trip/visit filename (e.g. "2025-05-city-weekend", "2026-12-07-event") — the
+# Leading date-prefix on a trip/visit filename (e.g. "2025-05-city-weekend", "YYYY-MM-DD-event") — the
 # date-of-record when a doc carries no explicit `start` (past trips known only to month precision).
 _SLUG_DATE = re.compile(r"^(\d{4})-(\d{2})(?:-(\d{2}))?")
 _FAR_FUTURE = date(2099, 12, 31)
 
 
 def _coerce_date(v: object) -> date | None:
-    """YAML auto-parses `start: 2026-09-03` to a `date`; tolerate str/datetime too (and junk → None)."""
+    """YAML auto-parses `start: 2026-01-15` to a `date`; tolerate str/datetime too (and junk → None)."""
     if v is None:
         return None
     if isinstance(v, datetime):

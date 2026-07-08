@@ -59,7 +59,7 @@ export default function Matrix({ data }: { data: MatrixData }) {
                 </th>
                 {r.values.map((v, i) => (
                   <td key={i}
-                      style={{ background: `rgba(232, 163, 61, ${(v / max) * 0.55})` }}
+                      style={{ background: `rgba(var(--amber-rgb), ${(v / max) * 0.55})` }}
                       onMouseMove={(e) => {
                         const w = e.currentTarget.closest(".matrix-wrap") as HTMLElement;
                         const rect = w.getBoundingClientRect();

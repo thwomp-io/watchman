@@ -5,7 +5,7 @@
 // for its value; multi-segment rows show a legend.
 
 import { useState } from "react";
-import { COLORS, type Tip } from "./common";
+import { useCatColors, type Tip } from "./common";
 
 interface Part {
   key: string;
@@ -26,6 +26,7 @@ interface BarData {
 }
 
 export default function BarChart({ data }: { data: BarData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [tip, setTip] = useState<Tip | null>(null);
   const rows = (data.rows || [])
     .map((r) => ({

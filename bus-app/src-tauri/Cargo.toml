@@ -1,6 +1,6 @@
 [package]
 name = "bus-app"
-version = "0.6.0"
+version = "0.7.0"
 description = "Watchman — tray inbox + notifications for the harness message bus (docs/BUS.md)"
 authors = ["thwomp-io"]
 edition = "2021"
@@ -23,6 +23,12 @@ tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-single-instance = "2"
+# In-app self-update (release builds only — registration is #[cfg(not(debug_assertions))]-gated in
+# lib.rs, mirroring the autostart pattern). updater = check/download/install against the published
+# releases' latest.json; process = the post-install relaunch. Both ride the same unpinned "2" train
+# as every other tauri-plugin above (no exact pin — nothing here depends on a patch-level behavior).
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }

@@ -1,0 +1,52 @@
+{
+ "title": "Spring-break shortlist \u2014 the cross-lane leaders",
+ "subtitle": "illustrative persona data (fictional) \u00b7 agent-scored 1-5, a surface to react to",
+ "axes": [
+  "Romance",
+  "Food",
+  "Relax",
+  "Scenery",
+  "Explore",
+  "Energy",
+  "Low-friction"
+ ],
+ "max": 5,
+ "candidates": [
+  {
+   "label": "Austin, TX",
+   "values": [
+    4,
+    4,
+    3,
+    3,
+    4,
+    5,
+    4
+   ]
+  },
+  {
+   "label": "Denver, CO",
+   "values": [
+    3,
+    3,
+    4,
+    5,
+    5,
+    3,
+    3
+   ]
+  },
+  {
+   "label": "Chicago, IL",
+   "values": [
+    4,
+    5,
+    3,
+    4,
+    4,
+    4,
+    4
+   ]
+  }
+ ]
+}

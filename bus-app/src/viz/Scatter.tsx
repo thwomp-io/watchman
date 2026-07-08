@@ -6,7 +6,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { COLORS, useMeasure } from "./common";
+import { useCatColors, useMeasure } from "./common";
 import { resolveRef, useNav, type Ref } from "../nav";
 
 interface Pt { label: string; x: number; y: number; group?: string; r?: number; detail?: string; ref?: Ref }
@@ -18,6 +18,7 @@ const M = { top: 26, right: 26, bottom: 54, left: 54 };
 type Box = { x1: number; x2: number; y1: number; y2: number };
 
 export default function Scatter({ data }: { data: ScatterData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const nav = useNav();
   const { ref, width: W, height: H } = useMeasure(0.5); // fallback only; .scatter-plot flex-fills the stage
   const pts = useMemo(() => (data.points ?? []).filter((p) => p.x > 0 && p.y != null), [data]);

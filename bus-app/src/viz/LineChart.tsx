@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { COLORS, fmtNum, useMeasure } from "./common";
+import { useCatColors, fmtNum, useMeasure } from "./common";
 
 interface Point { x: string; y: number }
 interface Series { label: string; points: Point[] }
@@ -17,6 +17,7 @@ interface LineData {
 const M = { top: 16, right: 24, bottom: 28, left: 64 };
 
 export default function LineChart({ data }: { data: LineData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const { ref, width: W, height: H } = useMeasure(0.30);
   const parse = d3.utcParse("%Y-%m-%d");
   data = { ...data, series: data.series ?? [] };

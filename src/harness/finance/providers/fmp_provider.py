@@ -13,7 +13,7 @@ fallback + the `fundamentals` raw-financials surface. Two calls per symbol (rati
 free tier 250 req/day. Read-only; honest misses raise ProviderError (never a false-empty or a
 fabricated number — same honesty contract as the EDGAR path).
 
-Field names confirmed live against FMP `/stable/` on 2026-06-28 (NVDA); fallback keys cover the
+Field names confirmed live against FMP `/stable/` (NVDA); fallback keys cover the
 known cross-version drift in FMP's naming.
 """
 
@@ -31,7 +31,7 @@ _RATIOS_URL = "https://financialmodelingprep.com/stable/ratios-ttm"
 _QUOTE_URL = "https://financialmodelingprep.com/stable/quote"
 
 # first present key wins (FMP has drifted field names across API versions; primary = the /stable/
-# name confirmed live 2026-06-28, then legacy/alt names).
+# name confirmed live, then legacy/alt names).
 _PE_KEYS = ("priceToEarningsRatioTTM", "peRatioTTM")
 _PS_KEYS = ("priceToSalesRatioTTM", "priceToSalesRatiosTTM")
 _EVEBITDA_KEYS = ("enterpriseValueMultipleTTM", "evToEBITDATTM", "enterpriseValueOverEBITDATTM")

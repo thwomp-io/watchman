@@ -153,6 +153,25 @@ def purge(
     console.print(f"purged {n} (before {bound})")
 
 
+@app.command("push-keys")
+def push_keys() -> None:
+    """Show (generating on first run) the web-push VAPID PUBLIC key + subscription inventory.
+
+    The private key stays in the config dir (0600) and is never printed — this verb exists so the
+    operator can eyeball the public key and see which devices are subscribed without SQL.
+    """
+    from harness.bus import push
+
+    svc = BusService()
+    console.print(f"public key: {push.vapid_public_key()}")
+    console.print(f"key file:   {push.vapid_key_path()} (private — never share/commit)")
+    subs = svc.list_push_subscriptions()
+    console.print(f"subscriptions: {len(subs)}")
+    for s in subs:
+        host = s.endpoint.split("/")[2] if "://" in s.endpoint else "?"
+        console.print(f"  · {s.label or '(unlabeled)'} — {host} — since {s.created_at}")
+
+
 @app.command()
 def serve(
     host: str = typer.Option(
@@ -182,6 +201,20 @@ def serve(
         "at /; repeatable name=DIR mounts variants at /ui/<name>/ (A/B candidates, a phone-tuned "
         "build — variants must be Vite-built with --base=/ui/<name>/). One server, many consoles.",
     ),
+    tls_cert: Path | None = typer.Option(
+        None,
+        "--tls-cert",
+        envvar="HARNESS_TLS_CERT",
+        help="TLS certificate chain (PEM). With --tls-key, uvicorn terminates TLS directly — no "
+        "reverse-proxy daemon. Web push REQUIRES a secure context off-localhost, so this is the "
+        "phone-notifications enabler. Deploy notes: docs/WEB-CONSOLE.md → TLS.",
+    ),
+    tls_key: Path | None = typer.Option(
+        None,
+        "--tls-key",
+        envvar="HARNESS_TLS_KEY",
+        help="TLS private key (PEM) matching --tls-cert.",
+    ),
 ) -> None:
     """Serve the bus over HTTP (the multi-device 'centralize, don't sync' layer).
 
@@ -193,6 +226,11 @@ def serve(
     from harness.bus.server import create_app, resolve_token
     from harness.bus.store import default_db_path
 
+    # TLS is all-or-nothing: half a pair is a config error, not a silent plain-HTTP fallback
+    # (the operator believing TLS is on when it isn't is the worst failure shape here).
+    if bool(tls_cert) != bool(tls_key):
+        raise typer.BadParameter("--tls-cert and --tls-key must be given together")
+
     resolved_file = token_file.expanduser()
     token = resolve_token(resolved_file)
     extra = None
@@ -202,11 +240,21 @@ def serve(
         # UI mounts ride AFTER the door: Starlette is first-match-wins, and the root mount
         # swallows everything — /api/* must already be claimed by then.
         extra = [*console_routes(token), *ui_mounts(ui)]
+    scheme = "https" if tls_cert else "http"
     console.print(f"bus db: {default_db_path()}")
     console.print(f"token:  {resolved_file} (send as 'Authorization: Bearer …')")
     surface = "/api/bus/* + /api/invoke/*" if extra else "/api/bus/*"
-    console.print(f"listen: http://{host}:{port}  (health: /health · api: {surface})")
+    console.print(f"listen: {scheme}://{host}:{port}  (health: /health · api: {surface})")
+    if tls_cert:
+        console.print(f"tls:    cert {tls_cert} · key {tls_key}")
     for spec in ui:
         name, _, raw = spec.partition("=")
         console.print(f"ui:     {'/ui/' + name + '/' if raw else '/'} ← {raw or name}")
-    uvicorn.run(create_app(token=token, extra_routes=extra), host=host, port=port, log_level="info")
+    uvicorn.run(
+        create_app(token=token, extra_routes=extra),
+        host=host,
+        port=port,
+        log_level="info",
+        ssl_certfile=str(tls_cert.expanduser()) if tls_cert else None,
+        ssl_keyfile=str(tls_key.expanduser()) if tls_key else None,
+    )

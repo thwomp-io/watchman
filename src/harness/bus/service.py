@@ -11,13 +11,16 @@ calls it; it exists for transports reaching the bus over HTTP.
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
-from harness.bus.models import BusStats, Event, EventDraft, PublishResult
+from harness.bus.models import BusStats, Event, EventDraft, PublishResult, PushSubscription
 from harness.bus.store import connect, default_db_path
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> str:
@@ -56,6 +59,15 @@ class BusService:
         self._conn.commit()
         if cur.rowcount == 0:
             return PublishResult(status="duplicate", idempotency_key=key)
+        # Web-push fan-out rides the publish hook (transports never re-poll for inserts) and ONLY
+        # fires on a genuinely new row — a duplicate republish must not re-buzz a phone. Delivery
+        # is best-effort by contract: any failure is a log line, never a failed publish.
+        try:
+            from harness.bus import push  # deferred: the module gates cheaply, but stay lean here
+
+            push.notify_event(self._conn, draft)
+        except Exception:  # noqa: BLE001 — the bus row is the durable truth; push is best-effort
+            logger.warning("web push fan-out failed; publish unaffected", exc_info=True)
         return PublishResult(status="published", event_id=cur.lastrowid, idempotency_key=key)
 
     def publish_many(self, drafts: list[EventDraft]) -> list[PublishResult]:
@@ -94,6 +106,16 @@ class BusService:
 
     def unread_count(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) AS n FROM events WHERE read_at IS NULL").fetchone()
+        return int(row["n"])
+
+    def urgent_unread_count(self) -> int:
+        """Unread ALERT/WARN only — the to-do count. The severity doctrine: info (the catalyst
+        wire) and filings are skim-streams that must never drive the urgent badge — a wire
+        backlog screaming from the tray trains the operator to ignore it."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM events WHERE read_at IS NULL"
+            " AND severity IN ('alert','warn')"
+        ).fetchone()
         return int(row["n"])
 
     # -- ack -------------------------------------------------------------------------------------
@@ -142,6 +164,27 @@ class BusService:
             self._conn.commit()
         return markers
 
+    # -- web-push subscriptions --------------------------------------------------------------------
+    # Thin delegations over harness.bus.push's row helpers so every adapter (HTTP routes, CLI)
+    # speaks BusService — the dual-surface convention — while the SQL lives with the transport.
+
+    def add_push_subscription(
+        self, *, endpoint: str, p256dh: str, auth: str, label: str = ""
+    ) -> None:
+        from harness.bus import push
+
+        push.save_subscription(self._conn, endpoint=endpoint, p256dh=p256dh, auth=auth, label=label)
+
+    def remove_push_subscription(self, endpoint: str) -> bool:
+        from harness.bus import push
+
+        return push.delete_subscription(self._conn, endpoint)
+
+    def list_push_subscriptions(self) -> list[PushSubscription]:
+        from harness.bus import push
+
+        return push.list_subscriptions(self._conn)
+
     # -- hygiene ---------------------------------------------------------------------------------
 
     def purge(self, before: str, *, keep_unread: bool = True) -> int:
@@ -169,6 +212,7 @@ class BusService:
         return BusStats(
             total=total,
             unread=self.unread_count(),
+            urgent_unread=self.urgent_unread_count(),
             by_lane=by_lane,
             by_kind=by_kind,
             db_path=str(self._db_path),

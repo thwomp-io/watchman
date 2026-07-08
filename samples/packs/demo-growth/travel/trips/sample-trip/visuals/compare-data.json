@@ -1,0 +1,52 @@
+{
+ "title": "Fall trip shortlist \u2014 the cross-lane leaders",
+ "subtitle": "illustrative persona data (fictional) \u00b7 agent-scored 1-5, a surface to react to",
+ "axes": [
+  "Romance",
+  "Food",
+  "Relax",
+  "Scenery",
+  "Explore",
+  "Energy",
+  "Low-friction"
+ ],
+ "max": 5,
+ "candidates": [
+  {
+   "label": "Portland, OR",
+   "values": [
+    4,
+    5,
+    3,
+    4,
+    4,
+    3,
+    4
+   ]
+  },
+  {
+   "label": "Moab, UT",
+   "values": [
+    3,
+    2,
+    4,
+    5,
+    5,
+    2,
+    2
+   ]
+  },
+  {
+   "label": "Vancouver, BC",
+   "values": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    3,
+    3
+   ]
+  }
+ ]
+}

@@ -99,6 +99,11 @@ pub fn unread_count() -> Result<i64, String> {
 }
 
 #[tauri::command]
+pub fn urgent_unread_count() -> Result<i64, String> {
+    backend::open(&config::load())?.urgent_unread_count()
+}
+
+#[tauri::command]
 pub fn distinct_meta() -> Result<bus::DistinctMeta, String> {
     backend::open(&config::load())?.distinct_meta()
 }

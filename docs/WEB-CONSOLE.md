@@ -44,6 +44,54 @@ The console is responsive down to phone widths and ships a web-app manifest: **A
 iOS/Android installs it standalone — no browser chrome, safe-area aware, with the zone tabs along the
 bottom where thumbs live. Day-to-day it reads like a native finance app pointed at your own data.
 
+## Push notifications
+
+The console can push **alert/warn** bus events to your devices as native notifications — the wire's
+`info` skim-stream and filings deliberately never push (spec: [`BUS.md`](BUS.md) → Web push).
+
+Arm it from the **baseplate bell** (`◇ PUSH`, bottom-right, browser/PWA only): one tap asks for
+notification permission, subscribes the device, and flips to `◆ PUSH ARMED` with a **TEST** button that
+round-trips a real push through the pipeline. Tap again to disarm. `hn bus push-keys` on the serving
+node lists what's subscribed.
+
+Platform notes:
+
+- **iOS (16.4+)**: push only exists for a PWA **installed to the Home Screen** — in-browser Safari
+  shows the bell dimmed with the install hint. Install (Share ▸ Add to Home Screen), open the app,
+  then arm the bell.
+- **Secure context required**: `localhost` counts (the flow is fully testable locally without TLS);
+  any other origin — including a tailnet IP — needs HTTPS. That's what the TLS section below is for.
+- Everything is account-free and self-hosted except the browser vendors' push relays
+  (Apple/Google/Mozilla), which only ever carry ciphertext — payloads are end-to-end encrypted by the
+  Web Push protocol, and the harness keeps them minimal regardless.
+
+## TLS — serving HTTPS directly
+
+`hn bus serve --tls-cert cert.pem --tls-key key.pem` (env: `HARNESS_TLS_CERT`/`HARNESS_TLS_KEY`) has
+uvicorn terminate TLS itself — no reverse-proxy daemon to install, configure, and keep patched.
+
+The intended private-mesh deploy (no port-forwarding, nothing public):
+
+1. **A real hostname pointed at the tailnet IP**: create a subdomain at any DNS provider
+   with API support for DNS-01 resolving to the serving node's overlay address (e.g. `100.64.0.1`). The name is
+   public; the address it points to is only reachable inside the mesh.
+2. **A real certificate via DNS-01**: mint with [lego](https://go-acme.github.io/lego/) (or any ACME
+   client) using the DNS-01 challenge — it proves control of the *name*, so no inbound reachability
+   is ever needed. Renewal is the same command on a timer.
+3. **Serve TLS on a second port, keep `:8787` plain**: existing satellites (native watchmen in
+   `bus_url` mode) keep their mesh-plain endpoint; the phone gets the secure origin push requires.
+
+   ```bash
+   hn bus serve --host 100.64.0.1 --port 8787 --console --ui bus-app/dist & # satellites, unchanged
+   hn bus serve --host 100.64.0.1 --port 8788 --console --ui bus-app/dist \
+     --tls-cert /path/to/console.example.crt --tls-key /path/to/console.example.key
+   ```
+
+4. On the phone, open `https://console.example.com:8788/`, install to Home Screen, arm the bell.
+
+Both flags or neither — half a TLS pair is a config error, never a silent plain-HTTP fallback. The
+token model is unchanged: TLS is transport privacy; the bearer token stays the auth.
+
 ## What it can and can't do
 
 The web console is **read-only by construction**. The RPC door mirrors the desktop console's *read*
@@ -83,4 +131,5 @@ per-device delivery, shared read-state. See [`BUS.md`](BUS.md) → *The watchman
 | `GET /` (+ `/ui/<name>/`) | the served console build(s) |
 | `POST /api/invoke/{cmd}` | the RPC door — read-only command mirror, bearer-token gated |
 | `GET /api/bus/*` | the bus API the satellites use ([`BUS.md`](BUS.md)) |
+| `/api/push/*` | web-push: vapid-key · subscribe · unsubscribe · test — bearer-token gated |
 | `GET /health` | open liveness + version — no secret, no data |

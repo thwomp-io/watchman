@@ -1,6 +1,6 @@
 """`hn init` — scaffold a new harness corpus.
 
-The analog of a `tracker init`: a fresh user runs it to lay down the dirs + template config/weights
+The `git init` of a harness corpus: a fresh user runs it to lay down the dirs + template config/weights
 files the toolkit and their agent expect, then fills them in (by hand, or by letting their agent build
 the corpus from conversation — the `corpus-operator` skill). The skeleton it copies lives in
 `templates/corpus/` (the single canonical definition of "what a harness corpus looks like"); the demo

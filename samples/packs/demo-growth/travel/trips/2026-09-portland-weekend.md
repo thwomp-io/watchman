@@ -11,6 +11,6 @@ trip:
 
 # Portland Weekend
 
-A fictional sample trip in the demo-traveler pack. A short city weekend — easy flight, walkable
+A fictional sample trip in the demo-growth pack. A short city weekend — easy flight, walkable
 neighborhoods, a Columbia River Gorge day trip. Demonstrates a `status: planning` trip in the
 pipeline (it shows in `hn travel trips` with a live countdown).

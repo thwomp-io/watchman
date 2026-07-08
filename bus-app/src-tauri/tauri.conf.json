@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Watchman",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "identifier": "io.thwomp.watchman.bus",
   "build": {
     "beforeDevCommand": "node scripts/stage-engine.mjs && npm run dev",
@@ -45,6 +45,12 @@
         "bannerPath": "installer-assets/wix-banner.bmp",
         "dialogImagePath": "installer-assets/wix-dialog.bmp"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM4M0RBOTczM0QxMEM1NApSV1JVRE5Femw5cURBeThBOEVIUlA4RHlrbDBaNExuL3BCZTQ0T053MzhUUHliN1BocFNXZHVNKwo="
     }
   }
 }

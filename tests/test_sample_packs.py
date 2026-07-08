@@ -129,7 +129,7 @@ def test_pack_ships_the_full_console(pack: Path) -> None:
 def test_pack_provides_every_dashboard_read_source(pack: Path) -> None:
     # The completeness contract: every File/command source the curated dashboards read must resolve to
     # pack data, else the panel goes empty under that pack (the company-profiles + key-dates gaps caught
-    # 2026-06-20). Pin the categories the dashboards consume so a missing stub fails here, not in a demo.
+    # during pack QA). Pin the categories the dashboards consume so a missing stub fails here, not in a demo.
     assert (pack / "finance" / "networth-history.json").is_file()  # net-worth trend (File source)
     # the Market tab's take panel (doc_series) — at least one market take so it isn't an empty "No takes"
     assert any((pack / "finance" / "market" / "takes").glob("*.md")), \

@@ -52,9 +52,32 @@ class PublishResult(BaseModel):
     idempotency_key: str
 
 
+class PushSubscription(BaseModel):
+    """One browser/device push endpoint (the PushSubscription.toJSON() essentials + an operator
+    label). Endpoint is the identity — a capability URL owned by the push service."""
+
+    endpoint: str
+    p256dh: str
+    auth: str
+    label: str = ""
+    created_at: str = ""
+
+
+class PushReport(BaseModel):
+    """Outcome of one push fan-out. `skipped` names why nothing was attempted (gated severity,
+    no subscriptions) — an honest answer for the test route, not an error."""
+
+    sent: int = 0
+    pruned: int = 0
+    failed: int = 0
+    skipped: str | None = None
+
+
 class BusStats(BaseModel):
     total: int
     unread: int
+    # alert+warn only — the badge count (severity doctrine; 0-default keeps old readers)
+    urgent_unread: int = 0
     by_lane: dict[str, int]
     by_kind: dict[str, int]
     db_path: str

@@ -6,30 +6,604 @@
    micro-labels, and machined detailing — not from a font download.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 
+/* ————— DARK (default): night watch — the original instrument panel ——————————————————————————
+   `:root` IS the dark theme; light overrides the same names below. Never introduce parallel
+   token names — every rule reads one vocabulary, the theme swaps the values. */
 :root {
   color-scheme: dark;
   /* chassis */
   --graphite-0: #0b0d0e;          /* deepest — app well */
   --graphite-1: #121517;          /* panel face */
   --graphite-2: #191d20;          /* raised face */
+  --masthead-hi: #1a1e21;         /* masthead gradient top — machined sheen on the nameplate */
+  --bezel-low: #101314;           /* bezel gradient bottom — panels dip away from the light */
+  --panel-translucent: rgba(18, 21, 23, 0.88);  /* sticky band-heads: panel tone + backdrop blur */
   --etch: rgba(255, 255, 255, 0.07);   /* engraved hairlines */
   --etch-deep: rgba(0, 0, 0, 0.55);
+  /* alpha washes (row hairlines, hover washes, zebra stripes) mix THIS base at rule-local
+     alphas — light over dark chassis here; ink over paper in the light theme */
+  --etch-rgb: 255, 255, 255;
+  --input-well: rgba(0, 0, 0, 0.55);   /* recessed input fields (search) */
   /* ink */
   --ink: #d7dcd9;
   --ink-dim: #79827f;
   --ink-faint: #4a514f;
+  --ink-strong: #f2f4f3;          /* nameplate / big values — one notch over body ink */
+  --ink-max: #fff;                /* hover/selection peak — the brightest the chrome gets */
   /* the one chrome accent: instrument amber */
   --amber: #e8a33d;
-  --amber-dim: rgba(232, 163, 61, 0.14);
+  --amber-rgb: 232, 163, 61;      /* rgba(var(--amber-rgb), α) — one hue, rule-local alphas */
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #ffd9a0;        /* amber pushed toward the light (selected book-badge) */
   /* signal phosphors — the ONLY other color in the room */
   --sig-alert: #ff5d49;
   --sig-warn: #ffb454;
   --sig-info: #59b9ff;
   --pos: #7dd6a0;
   --neg: #ff8a7a;
+  --sig-alert-rgb: 255, 93, 73;
+  --sig-warn-rgb: 255, 180, 84;
+  --sig-info-rgb: 89, 185, 255;
+  --pos-rgb: 125, 214, 160;
+  --sig-contrast: #14100f;        /* text ON a signal chip (unread badge) — near-black on phosphor */
+  --standby-glow: rgba(140, 140, 150, 0.35);
+  /* file-type tints in the vault/viz rails */
+  --doc-tint: #aeb6b2;
+  --image-tint: #8fb6c9;
+  /* the app well: faint CRT scanlines over a top-lit radial vignette */
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 255, 255, 0.012) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #14181a 0%, var(--graphite-0) 70%);
+  /* depth: dark chassis floats on black; shadows are heavy and cold */
+  --bezel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --img-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --pop-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);
+  --tabbar-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+  /* categorical viz set — mirrors COLORS / COLORS_LIGHT in src/viz/common.ts (keep in sync).
+     Hue ORDER is deliberate (adjacent distinctness) — reorder in neither place. */
+  --cat-0: #e8a33d; --cat-1: #59b9ff; --cat-2: #7dd6a0; --cat-3: #ff8a7a; --cat-4: #b48ead;
+  --cat-5: #6fc7c0; --cat-6: #d98fb6; --cat-7: #c9d65e; --cat-8: #ffb454; --cat-9: #8fbcbb;
 
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --hairline: 1px solid var(--etch);
+}
+
+/* ————— LIGHT: daylight cockpit / engineering paper ——————————————————————————————————————————
+   A deliberate sibling design, not inverted graphite: warm bone/drafting-paper panel faces,
+   warm near-black ink, the SAME instrument identity (mono, tracked micro-labels, machined
+   bezels). The engraved hairlines become pencil-rule lines (ink at low alpha); the phosphor
+   signals re-tune to the same hues at higher saturation + lower luminance so they carry on
+   paper. The amber accent darkens to a drafting-ochre — measured 5.0:1 on the panel face
+   (WCAG AA for the 9-12px chrome text it colors); body ink is 11.8:1, dim ink 5.7:1.
+   Color still belongs ONLY to signals + the amber accent. */
+:root[data-theme="paper"] {
+  color-scheme: light;
+  /* chassis — aged drafting paper, NOT sterile white; the well is the darker board the
+     paper panels sit on (same raised-toward-the-light ordering as the dark chassis) */
+  --graphite-0: #d8d0bc;          /* deepest — the drafting board */
+  --graphite-1: #eae2cd;          /* panel face — aged paper */
+  --graphite-2: #f4eeda;          /* raised face — bone highlight */
+  --masthead-hi: #f6f0dd;
+  --bezel-low: #e2d9c1;
+  --panel-translucent: rgba(234, 226, 205, 0.88);
+  --etch: rgba(43, 33, 15, 0.26); /* the pencil rule — dark, low-alpha graphite line */
+  --etch-deep: rgba(105, 90, 60, 0.35);  /* the under-shadow softens to warm graphite */
+  --etch-rgb: 43, 33, 15;         /* washes flip to ink-over-paper */
+  --input-well: rgba(43, 33, 15, 0.07);
+  /* ink — warm sepia-black, like india ink on paper (11.8:1 on the panel face) */
+  --ink: #2b251a;
+  --ink-dim: #5d5644;             /* 5.7:1 on panel — clears AA for the small dim chrome */
+  --ink-faint: #8a816a;           /* 3.0:1 — deliberately faint, same role as dark's faint */
+  --ink-strong: #16120a;
+  --ink-max: #000;
+  /* drafting-ochre: the SAME amber identity, darkened for paper (5.0:1 on panel, 4.2:1 on
+     the well — the well only carries large/bold amber, never fine text) */
+  --amber: #7f5606;
+  --amber-rgb: 127, 86, 6;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #5c3e02;        /* "brighter" flips to DEEPER on paper — emphasis darkens */
+  /* signals: same hues, higher saturation + lower luminance — ink-weight phosphors.
+     All ≥4.5:1 on the panel face (alert 6.4, warn 4.8, info 5.8, pos 5.4, neg 5.2). */
+  --sig-alert: #a32414;
+  --sig-warn: #875600;
+  --sig-info: #14588f;
+  --pos: #1f663c;
+  --neg: #a03a20;
+  --sig-alert-rgb: 163, 36, 20;
+  --sig-warn-rgb: 135, 86, 0;
+  --sig-info-rgb: 20, 88, 143;
+  --pos-rgb: 31, 102, 60;
+  --sig-contrast: #f6efdd;        /* badge text flips light — bone on the deep signal chips */
+  --standby-glow: rgba(105, 100, 90, 0.3);
+  --doc-tint: #4a4234;
+  --image-tint: #2c5a75;
+  /* the drafting table: paper grain (faint ink scanlines) over a daylight vignette */
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(43, 33, 15, 0.015) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #f0e9d6 0%, var(--graphite-0) 70%);
+  /* depth: paper casts soft warm shadows; the inset top edge is a paper sheen, not a glint */
+  --bezel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(90, 75, 45, 0.18);
+  --img-shadow: 0 2px 10px rgba(90, 75, 45, 0.25);
+  --pop-shadow: 0 6px 22px rgba(70, 58, 34, 0.3);
+  --tabbar-shadow: 0 -6px 18px rgba(90, 75, 45, 0.25);
+  /* categorical set: SAME hue order, luminance dropped for paper — every swatch ≥3:1 on the
+     panel face (charts read as drafting-ink plots, not pastel). Mirrors COLORS_LIGHT. */
+  --cat-0: #a06c08; --cat-1: #1668a8; --cat-2: #23784a; --cat-3: #b44a2e; --cat-4: #7b5484;
+  --cat-5: #1f7a72; --cat-6: #a84a77; --cat-7: #77820e; --cat-8: #a85c00; --cat-9: #4e7876;
+}
+
+:root[data-theme="bright"] {
+  color-scheme: light;
+  /* BRIGHT — the clean console: predominantly bright pure white
+     + deep near-black ink, deliberately FUTURISTIC-CLEAN where paper is deliberately vintage.
+     The reference image is the white corridor / black console: cool neutrals only (zero warm
+     tint — warmth is paper's identity), crisp hairlines, and color reserved for signals —
+     imperial red leads the alerts, gold carries the accent, exactly the occasional-red/yellow
+     grammar. Same raised-toward-the-light chassis ordering as the siblings. */
+  --graphite-0: #e3e7eb;          /* deepest — cool porcelain well */
+  --graphite-1: #f8fafc;          /* panel face — luminous corridor white */
+  --graphite-2: #ffffff;          /* raised face — pure white */
+  --masthead-hi: #ffffff;
+  --bezel-low: #eceef1;
+  --panel-translucent: rgba(248, 250, 252, 0.9);
+  --etch: rgba(8, 12, 18, 0.16);  /* crisp cool hairline — machined, not penciled */
+  --etch-deep: rgba(8, 12, 18, 0.3);
+  --etch-rgb: 8, 12, 18;
+  --input-well: rgba(8, 12, 18, 0.05);
+  /* ink — console black on white (16.4:1 on the panel face) */
+  --ink: #0d1117;
+  --ink-dim: #4a5058;             /* 6.6:1 — comfortably AA at chrome sizes */
+  --ink-faint: #8b929b;           /* 3.0:1 — the deliberate faint register */
+  --ink-strong: #000205;
+  --ink-max: #000;
+  /* the accent slot: IMPERIAL RED — the palette grammar's only accent (bright red on white/black;
+     the earlier gold pick read as brown/orange wash). 5.0:1 on
+     the panel face. Same SLOT the amber identity holds in the siblings; different blood. */
+  --amber: #c8102e;
+  --amber-rgb: 200, 16, 46;
+  --amber-dim: rgba(var(--amber-rgb), 0.10);
+  --amber-strong: #96001d;        /* emphasis darkens on light chassis (the paper rule holds) */
+  /* signals: imperial red leads; semantics keep their hues (pos/neg stay green/red — the
+     sign-coloring doctrine outranks the movie palette). All ≥4.5:1 on the panel face. */
+  --sig-alert: #a50e21;
+  --sig-warn: #8f7500;
+  --sig-info: #1f5bc4;
+  --pos: #157a3a;
+  --neg: #c03018;
+  --sig-alert-rgb: 165, 14, 33;
+  --sig-warn-rgb: 143, 117, 0;
+  --sig-info-rgb: 31, 91, 196;
+  --pos-rgb: 21, 122, 58;
+  --sig-contrast: #ffffff;        /* badge text on the deep signal chips */
+  --standby-glow: rgba(100, 108, 116, 0.28);
+  --doc-tint: #3c434b;
+  --image-tint: #1f5bc4;
+  /* the well: FLAT + clean — no scanline grain (grain is the vintage registers' texture);
+     just a cool daylight falloff */
+  --app-bg: radial-gradient(140% 100% at 50% 0%, #ffffff 0%, var(--graphite-0) 78%);
+  /* depth: tight cool shadows — machined edges, not paper-soft ones */
+  --bezel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 4px rgba(15, 22, 32, 0.14);
+  --img-shadow: 0 2px 8px rgba(15, 22, 32, 0.18);
+  --pop-shadow: 0 6px 20px rgba(10, 16, 24, 0.22);
+  --tabbar-shadow: 0 -6px 16px rgba(15, 22, 32, 0.16);
+  /* categorical set: SAME hue order as the siblings (adjacent distinctness is settled design),
+     crisp + saturated for white — gold leads, imperial red in the slot-3 hot seat.
+     Mirrors COLORS_BRIGHT. */
+  --cat-0: #c8102e; --cat-1: #1f5bc4; --cat-2: #157a3a; --cat-3: #8f7500; --cat-4: #6d3fa8;
+  --cat-5: #0f766e; --cat-6: #b91c74; --cat-7: #5c7300; --cat-8: #b45309; --cat-9: #3b6e78;
+}
+
+/* BRIGHT's black frame — the two-tone the design brief actually asks for ("predominantly deep
+   black AND bright white"): the chrome strips (masthead + zone nav + baseplate) go console-black
+   and the white panels sit INSIDE the frame, the corridor-and-console composition. Done by
+   re-pointing the token vocabulary WITHIN the frame elements (custom properties cascade, so every
+   tab/button/readout inside re-themes itself — no per-element rules). Gold brightens on black
+   (the emphasis-darkens rule inverts with the surface, same as dark). */
+:root[data-theme="bright"] .masthead,
+:root[data-theme="bright"] nav.zones,
+:root[data-theme="bright"] .baseplate {
+  --graphite-0: #06080b;
+  --graphite-1: #0a0d12;          /* the frame's face — console black */
+  --graphite-2: #141920;          /* raised tab/button faces */
+  --masthead-hi: #10141a;
+  --bezel-low: #0d1117;
+  --etch: rgba(255, 255, 255, 0.14);
+  --etch-deep: rgba(0, 0, 0, 0.6);
+  --etch-rgb: 255, 255, 255;
+  --input-well: rgba(255, 255, 255, 0.07);
+  --ink: #eef1f4;
+  --ink-dim: #9aa2ab;
+  --ink-faint: #59616b;
+  --ink-strong: #ffffff;
+  --amber: #ff3b4e;               /* the glowing console red — red LIFTS on black */
+  --amber-rgb: 255, 59, 78;
+  --amber-strong: #ff6a78;
+  background: var(--graphite-1);
+  color: var(--ink-dim);
+}
+:root[data-theme="bright"] .masthead { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+:root[data-theme="bright"] .baseplate { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* PHOSPHOR — the P1 green CRT terminal: the ops-room ancestor of
+   the whole instrument-panel identity. Luminous green ink on near-black glass, heavier scanlines
+   (the tube), phosphor-green accent; alert red kept — semantics outrank the tube. */
+:root[data-theme="phosphor"] {
+  color-scheme: dark;
+  --graphite-0: #030805;
+  --graphite-1: #07130c;
+  --graphite-2: #0c1b12;
+  --masthead-hi: #0e2015;
+  --bezel-low: #0a1710;
+  --panel-translucent: rgba(7, 19, 12, 0.88);
+  --etch: rgba(122, 255, 178, 0.10);
+  --etch-deep: rgba(0, 0, 0, 0.6);
+  --etch-rgb: 122, 255, 178;
+  --input-well: rgba(122, 255, 178, 0.06);
+  --ink: #a8e6c0;
+  --ink-dim: #55a578;
+  --ink-faint: #2e5c44;
+  --ink-strong: #d8ffe8;
+  --ink-max: #fff;
+  --amber: #3ddc84;
+  --amber-rgb: 61, 220, 132;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #7dffb0;
+  --sig-alert: #ff5d49;
+  --sig-warn: #e0b83d;
+  --sig-info: #39c5cf;
+  --pos: #4ade80;
+  --neg: #ff7a5c;
+  --sig-alert-rgb: 255, 93, 73;
+  --sig-warn-rgb: 224, 184, 61;
+  --sig-info-rgb: 57, 197, 207;
+  --pos-rgb: 74, 222, 128;
+  --sig-contrast: #04140a;
+  --standby-glow: rgba(85, 165, 120, 0.3);
+  --doc-tint: #7ec49a;
+  --image-tint: #39c5cf;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(122, 255, 178, 0.02) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #0a1811 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(122, 255, 178, 0.06), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --img-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  --pop-shadow: 0 6px 22px rgba(0, 0, 0, 0.6);
+  --tabbar-shadow: 0 -6px 18px rgba(0, 0, 0, 0.55);
+  --cat-0: #3ddc84; --cat-1: #39c5cf; --cat-2: #a3d952; --cat-3: #e0b83d; --cat-4: #7dd6a0;
+  --cat-5: #5fb3e8; --cat-6: #c9d65e; --cat-7: #4ea88a; --cat-8: #ffb454; --cat-9: #8fbcbb;
+}
+
+/* REDWATCH — submarine night-lighting: red-on-black preserves the operator's
+   night vision on an actual night watch — thematically the most Watchman theme there is. Rose-white
+   ink, ember accent; pos keeps a DIMMED sea-green (sign-semantics survive the red room, the one
+   deliberate exception real dark-adapted instrument panels also make). */
+:root[data-theme="redwatch"] {
+  color-scheme: dark;
+  --graphite-0: #0a0304;
+  --graphite-1: #150608;
+  --graphite-2: #1f0a0d;
+  --masthead-hi: #240c10;
+  --bezel-low: #180709;
+  --panel-translucent: rgba(21, 6, 8, 0.88);
+  --etch: rgba(255, 110, 110, 0.12);
+  --etch-deep: rgba(0, 0, 0, 0.65);
+  --etch-rgb: 255, 110, 110;
+  --input-well: rgba(255, 110, 110, 0.06);
+  --ink: #f2b8b8;
+  --ink-dim: #a5646a;
+  --ink-faint: #5c3236;
+  --ink-strong: #ffdada;
+  --ink-max: #fff;
+  --amber: #ff4f58;
+  --amber-rgb: 255, 79, 88;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #ff8a90;
+  --sig-alert: #ff2e3f;
+  --sig-warn: #ff9a4d;
+  --sig-info: #b87ab8;
+  --pos: #74c69d;
+  --neg: #ff6b5c;
+  --sig-alert-rgb: 255, 46, 63;
+  --sig-warn-rgb: 255, 154, 77;
+  --sig-info-rgb: 184, 122, 184;
+  --pos-rgb: 116, 198, 157;
+  --sig-contrast: #1a0507;
+  --standby-glow: rgba(165, 100, 106, 0.3);
+  --doc-tint: #d99a9a;
+  --image-tint: #b87ab8;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 110, 110, 0.015) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #1c090c 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(255, 110, 110, 0.07), 0 2px 6px rgba(0, 0, 0, 0.55);
+  --img-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  --pop-shadow: 0 6px 22px rgba(0, 0, 0, 0.65);
+  --tabbar-shadow: 0 -6px 18px rgba(0, 0, 0, 0.6);
+  --cat-0: #ff4f58; --cat-1: #b87ab8; --cat-2: #74c69d; --cat-3: #ff9a4d; --cat-4: #d96a8f;
+  --cat-5: #c2554e; --cat-6: #ff8a90; --cat-7: #a8666e; --cat-8: #e0847a; --cat-9: #8f5f74;
+}
+
+/* FJORD — the arctic counterpart to NIGHT's warm graphite: blue-slate chassis,
+   ice accent, aurora signal set. The cool-dark register the daily-driver deliberately isn't. */
+:root[data-theme="fjord"] {
+  color-scheme: dark;
+  --graphite-0: #21252e;
+  --graphite-1: #2b303b;
+  --graphite-2: #343b48;
+  --masthead-hi: #3a4250;
+  --bezel-low: #272c36;
+  --panel-translucent: rgba(43, 48, 59, 0.88);
+  --etch: rgba(216, 222, 233, 0.10);
+  --etch-deep: rgba(0, 0, 0, 0.45);
+  --etch-rgb: 216, 222, 233;
+  --input-well: rgba(216, 222, 233, 0.06);
+  --ink: #d8dee9;
+  --ink-dim: #8792a3;
+  --ink-faint: #545d6e;
+  --ink-strong: #eceff4;
+  --ink-max: #fff;
+  --amber: #88c0d0;
+  --amber-rgb: 136, 192, 208;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #b8e4f0;
+  --sig-alert: #bf616a;
+  --sig-warn: #ebcb8b;
+  --sig-info: #81a1c1;
+  --pos: #a3be8c;
+  --neg: #d08770;
+  --sig-alert-rgb: 191, 97, 106;
+  --sig-warn-rgb: 235, 203, 139;
+  --sig-info-rgb: 129, 161, 193;
+  --pos-rgb: 163, 190, 140;
+  --sig-contrast: #1c2027;
+  --standby-glow: rgba(135, 146, 163, 0.3);
+  --doc-tint: #aeb8c8;
+  --image-tint: #81a1c1;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(216, 222, 233, 0.012) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #2c313d 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(216, 222, 233, 0.07), 0 2px 6px rgba(10, 12, 16, 0.45);
+  --img-shadow: 0 2px 10px rgba(10, 12, 16, 0.5);
+  --pop-shadow: 0 6px 22px rgba(10, 12, 16, 0.55);
+  --tabbar-shadow: 0 -6px 18px rgba(10, 12, 16, 0.5);
+  --cat-0: #88c0d0; --cat-1: #b48ead; --cat-2: #a3be8c; --cat-3: #bf616a; --cat-4: #5e81ac;
+  --cat-5: #8fbcbb; --cat-6: #d08770; --cat-7: #ebcb8b; --cat-8: #81a1c1; --cat-9: #6e8aa8;
+}
+
+/* OUTRUN — synthwave: deep indigo night, neon magenta accent, cyan/spring
+   signal glow. The loud after-hours cousin of the noir GitHub house style — restraint lives in the
+   chassis (the indigo is quiet); the neon belongs to accents + signals only. */
+:root[data-theme="outrun"] {
+  color-scheme: dark;
+  --graphite-0: #120821;
+  --graphite-1: #1a0f2e;
+  --graphite-2: #241540;
+  --masthead-hi: #2a1a4a;
+  --bezel-low: #160c28;
+  --panel-translucent: rgba(26, 15, 46, 0.88);
+  --etch: rgba(224, 170, 255, 0.12);
+  --etch-deep: rgba(0, 0, 0, 0.6);
+  --etch-rgb: 224, 170, 255;
+  --input-well: rgba(224, 170, 255, 0.07);
+  --ink: #e8dcff;
+  --ink-dim: #9a86c4;
+  --ink-faint: #5b4a80;
+  --ink-strong: #f6efff;
+  --ink-max: #fff;
+  --amber: #ff2d95;
+  --amber-rgb: 255, 45, 149;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #ff7ab8;
+  --sig-alert: #ff3b5c;
+  --sig-warn: #ffd319;
+  --sig-info: #00e5ff;
+  --pos: #00ffa3;
+  --neg: #ff6b6b;
+  --sig-alert-rgb: 255, 59, 92;
+  --sig-warn-rgb: 255, 211, 25;
+  --sig-info-rgb: 0, 229, 255;
+  --pos-rgb: 0, 255, 163;
+  --sig-contrast: #160b28;
+  --standby-glow: rgba(154, 134, 196, 0.3);
+  --doc-tint: #c0aee0;
+  --image-tint: #00e5ff;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(224, 170, 255, 0.015) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #201238 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(224, 170, 255, 0.08), 0 2px 6px rgba(5, 2, 12, 0.55);
+  --img-shadow: 0 2px 10px rgba(5, 2, 12, 0.6);
+  --pop-shadow: 0 6px 22px rgba(255, 45, 149, 0.12);
+  --tabbar-shadow: 0 -6px 18px rgba(5, 2, 12, 0.6);
+  --cat-0: #ff2d95; --cat-1: #00e5ff; --cat-2: #00ffa3; --cat-3: #ffd319; --cat-4: #c86bff;
+  --cat-5: #4dc9ff; --cat-6: #ff6b35; --cat-7: #8f7fff; --cat-8: #39ff88; --cat-9: #ff5c8a;
+}
+
+/* ABYSS — the deep ocean: saturated navy chassis + bioluminescent teal accent.
+   Where FJORD is airy arctic slate, ABYSS is pressure-depth — the calm saturated dark. */
+:root[data-theme="abyss"] {
+  color-scheme: dark;
+  --graphite-0: #04101c;
+  --graphite-1: #071a2b;
+  --graphite-2: #0c2436;
+  --masthead-hi: #0e2a40;
+  --bezel-low: #061523;
+  --panel-translucent: rgba(7, 26, 43, 0.88);
+  --etch: rgba(120, 220, 232, 0.10);
+  --etch-deep: rgba(0, 0, 0, 0.55);
+  --etch-rgb: 120, 220, 232;
+  --input-well: rgba(120, 220, 232, 0.06);
+  --ink: #cfe8ef;
+  --ink-dim: #6f98a8;
+  --ink-faint: #3c5866;
+  --ink-strong: #e8f6fa;
+  --ink-max: #fff;
+  --amber: #2dd4bf;
+  --amber-rgb: 45, 212, 191;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #7af0e0;
+  --sig-alert: #ff5d6e;
+  --sig-warn: #f0b429;
+  --sig-info: #4aa8ff;
+  --pos: #34d399;
+  --neg: #ff8a7a;
+  --sig-alert-rgb: 255, 93, 110;
+  --sig-warn-rgb: 240, 180, 41;
+  --sig-info-rgb: 74, 168, 255;
+  --pos-rgb: 52, 211, 153;
+  --sig-contrast: #051520;
+  --standby-glow: rgba(111, 152, 168, 0.3);
+  --doc-tint: #9cc4d0;
+  --image-tint: #4aa8ff;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(120, 220, 232, 0.012) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #0a2033 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(120, 220, 232, 0.07), 0 2px 6px rgba(0, 5, 10, 0.55);
+  --img-shadow: 0 2px 10px rgba(0, 5, 10, 0.6);
+  --pop-shadow: 0 6px 22px rgba(0, 5, 10, 0.65);
+  --tabbar-shadow: 0 -6px 18px rgba(0, 5, 10, 0.6);
+  --cat-0: #2dd4bf; --cat-1: #4aa8ff; --cat-2: #34d399; --cat-3: #ff5d6e; --cat-4: #9d7bea;
+  --cat-5: #67e8f9; --cat-6: #e879a0; --cat-7: #a3d952; --cat-8: #f0b429; --cat-9: #5eaaa8;
+}
+
+/* DUSK — violet twilight: the low-stimulation wind-down register. Soft muted
+   lavender over deep plum; every tone pulled back from saturation so the console can sit in a dim
+   evening room without asking for attention. OUTRUN's neon is the party; this is the porch. */
+:root[data-theme="dusk"] {
+  color-scheme: dark;
+  --graphite-0: #191423;
+  --graphite-1: #221b2f;
+  --graphite-2: #2c243d;
+  --masthead-hi: #332a46;
+  --bezel-low: #1e1829;
+  --panel-translucent: rgba(34, 27, 47, 0.88);
+  --etch: rgba(220, 200, 255, 0.09);
+  --etch-deep: rgba(0, 0, 0, 0.5);
+  --etch-rgb: 220, 200, 255;
+  --input-well: rgba(220, 200, 255, 0.06);
+  --ink: #ddd3ea;
+  --ink-dim: #9285a8;
+  --ink-faint: #574d6b;
+  --ink-strong: #efe8f8;
+  --ink-max: #fff;
+  --amber: #b794d4;
+  --amber-rgb: 183, 148, 212;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #d9bcf0;
+  --sig-alert: #e06c75;
+  --sig-warn: #d19a66;
+  --sig-info: #7aa2f7;
+  --pos: #82c99a;
+  --neg: #d97a6a;
+  --sig-alert-rgb: 224, 108, 117;
+  --sig-warn-rgb: 209, 154, 102;
+  --sig-info-rgb: 122, 162, 247;
+  --pos-rgb: 130, 201, 154;
+  --sig-contrast: #1c1626;
+  --standby-glow: rgba(146, 133, 168, 0.3);
+  --doc-tint: #b3a6c8;
+  --image-tint: #7aa2f7;
+  --app-bg:
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(220, 200, 255, 0.01) 2px 4px),
+    radial-gradient(140% 100% at 50% 0%, #251d33 0%, var(--graphite-0) 70%);
+  --bezel-shadow: inset 0 1px 0 rgba(220, 200, 255, 0.06), 0 2px 6px rgba(8, 5, 14, 0.5);
+  --img-shadow: 0 2px 10px rgba(8, 5, 14, 0.55);
+  --pop-shadow: 0 6px 22px rgba(8, 5, 14, 0.6);
+  --tabbar-shadow: 0 -6px 18px rgba(8, 5, 14, 0.55);
+  --cat-0: #b794d4; --cat-1: #7aa2f7; --cat-2: #82c99a; --cat-3: #e06c75; --cat-4: #d19a66;
+  --cat-5: #6fc7c0; --cat-6: #d98fb6; --cat-7: #a5b85c; --cat-8: #e8a87c; --cat-9: #8b93c4;
+}
+
+/* SOLAR — warm daylight: crisp cream whites + a saturated sun-amber accent.
+   Deliberately WARM where BRIGHT is deliberately clinical, and vivid where PAPER is deliberately
+   faded — the reading-on-a-sunny-morning light. */
+:root[data-theme="solar"] {
+  color-scheme: light;
+  --graphite-0: #ecdfc3;
+  --graphite-1: #faf3e3;
+  --graphite-2: #fffcf2;
+  --masthead-hi: #fffdf4;
+  --bezel-low: #f2e8d2;
+  --panel-translucent: rgba(250, 243, 227, 0.9);
+  --etch: rgba(90, 60, 10, 0.20);
+  --etch-deep: rgba(140, 100, 40, 0.32);
+  --etch-rgb: 90, 60, 10;
+  --input-well: rgba(90, 60, 10, 0.06);
+  --ink: #3a2c14;
+  --ink-dim: #776448;
+  --ink-faint: #a89574;
+  --ink-strong: #241a08;
+  --ink-max: #000;
+  --amber: #b45309;
+  --amber-rgb: 180, 83, 9;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #8a3e05;
+  --sig-alert: #a50e21;
+  --sig-warn: #a16207;
+  --sig-info: #0e7490;
+  --pos: #3f6212;
+  --neg: #c53030;
+  --sig-alert-rgb: 165, 14, 33;
+  --sig-warn-rgb: 161, 98, 7;
+  --sig-info-rgb: 14, 116, 144;
+  --pos-rgb: 63, 98, 18;
+  --sig-contrast: #fdf8ec;
+  --standby-glow: rgba(120, 105, 80, 0.3);
+  --doc-tint: #5c4a2e;
+  --image-tint: #0e7490;
+  --app-bg:
+    radial-gradient(140% 100% at 50% 0%, #fdf6e5 0%, var(--graphite-0) 78%);
+  --bezel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 6px rgba(130, 95, 40, 0.16);
+  --img-shadow: 0 2px 10px rgba(130, 95, 40, 0.22);
+  --pop-shadow: 0 6px 22px rgba(110, 80, 30, 0.28);
+  --tabbar-shadow: 0 -6px 18px rgba(130, 95, 40, 0.22);
+  --cat-0: #d97706; --cat-1: #0e7490; --cat-2: #4d7c0f; --cat-3: #c53030; --cat-4: #7e22ce;
+  --cat-5: #0f766e; --cat-6: #be185d; --cat-7: #a16207; --cat-8: #ea580c; --cat-9: #64748b;
+}
+
+/* MONO — the achromatic functional: pure grayscale chassis, black as the
+   accent; COLOR EXISTS ONLY AS SIGNAL SEMANTICS (alert/warn/info/pos/neg keep their hues — the
+   sign-coloring doctrine is exactly what survives when everything else is stripped). Highest
+   contrast in the fleet: direct sun, e-ink, projector, docs screenshots. */
+:root[data-theme="mono"] {
+  color-scheme: light;
+  --graphite-0: #e6e6e6;
+  --graphite-1: #fbfbfb;
+  --graphite-2: #ffffff;
+  --masthead-hi: #ffffff;
+  --bezel-low: #efefef;
+  --panel-translucent: rgba(251, 251, 251, 0.92);
+  --etch: rgba(0, 0, 0, 0.22);
+  --etch-deep: rgba(0, 0, 0, 0.34);
+  --etch-rgb: 0, 0, 0;
+  --input-well: rgba(0, 0, 0, 0.05);
+  --ink: #111111;
+  --ink-dim: #4d4d4d;
+  --ink-faint: #8c8c8c;
+  --ink-strong: #000000;
+  --ink-max: #000;
+  --amber: #1a1a1a;
+  --amber-rgb: 26, 26, 26;
+  --amber-dim: rgba(var(--amber-rgb), 0.14);
+  --amber-strong: #000000;
+  --sig-alert: #bb0a1e;
+  --sig-warn: #8f6400;
+  --sig-info: #0057b8;
+  --pos: #1a7a3a;
+  --neg: #c00000;
+  --sig-alert-rgb: 187, 10, 30;
+  --sig-warn-rgb: 143, 100, 0;
+  --sig-info-rgb: 0, 87, 184;
+  --pos-rgb: 26, 122, 58;
+  --sig-contrast: #ffffff;
+  --standby-glow: rgba(120, 120, 120, 0.3);
+  --doc-tint: #3d3d3d;
+  --image-tint: #0057b8;
+  --app-bg:
+    radial-gradient(140% 100% at 50% 0%, #f4f4f4 0%, var(--graphite-0) 80%);
+  --bezel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.18);
+  --img-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --pop-shadow: 0 6px 20px rgba(0, 0, 0, 0.24);
+  --tabbar-shadow: 0 -6px 16px rgba(0, 0, 0, 0.18);
+  --cat-0: #333333; --cat-1: #0057b8; --cat-2: #1a7a3a; --cat-3: #c00000; --cat-4: #666699;
+  --cat-5: #008080; --cat-6: #993366; --cat-7: #667a00; --cat-8: #b35900; --cat-9: #5c7080;
 }
 
 * { box-sizing: border-box; }
@@ -38,9 +612,7 @@ body {
   margin: 0;
   font-family: var(--mono);
   font-size: 12px;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 2px, rgba(255, 255, 255, 0.012) 2px 4px),
-    radial-gradient(140% 100% at 50% 0%, #14181a 0%, var(--graphite-0) 70%);
+  background: var(--app-bg);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   user-select: none;
@@ -68,10 +640,10 @@ button {
   box-shadow: 0 1px 0 var(--etch-deep);
   transition: border-color 120ms, color 120ms, background 120ms;
 }
-button:hover:not(:disabled) { border-color: rgba(232, 163, 61, 0.45); color: #fff; }
+button:hover:not(:disabled) { border-color: rgba(var(--amber-rgb), 0.45); color: var(--ink-max); }
 button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
 button:disabled { opacity: 0.35; cursor: default; }
-button.primary { border-color: rgba(232, 163, 61, 0.5); color: var(--amber); }
+button.primary { border-color: rgba(var(--amber-rgb), 0.5); color: var(--amber); }
 button.primary:hover:not(:disabled) { background: var(--amber-dim); }
 
 select {
@@ -94,7 +666,7 @@ select {
   display: flex; align-items: center; gap: 14px;
   padding: 10px 16px;
   border-bottom: var(--hairline);
-  background: linear-gradient(180deg, #1a1e21, var(--graphite-1));
+  background: linear-gradient(180deg, var(--masthead-hi), var(--graphite-1));
   box-shadow: 0 1px 0 var(--etch-deep);
 }
 
@@ -104,7 +676,7 @@ select {
   margin: 0;
   font: 800 14px/1 var(--mono);
   letter-spacing: 0.22em;
-  color: #f2f4f3;
+  color: var(--ink-strong);
 }
 .model-no { font-size: 9px; letter-spacing: 0.18em; color: var(--ink-faint); }
 
@@ -113,10 +685,10 @@ select {
 .zones button { border: none; box-shadow: none; background: transparent; color: var(--ink-dim);
                 padding: 5px 14px; }
 .zones button.active { background: var(--graphite-2); color: var(--amber);
-                       box-shadow: inset 0 0 0 1px rgba(232, 163, 61, 0.35); }
+                       box-shadow: inset 0 0 0 1px rgba(var(--amber-rgb), 0.35); }
 .zones button em {
   font-style: normal; margin-left: 7px; padding: 1px 6px; border-radius: 8px;
-  background: var(--sig-alert); color: #14100f; font-size: 9.5px;
+  background: var(--sig-alert); color: var(--sig-contrast); font-size: 9.5px;
 }
 
 /* scenario-switcher — load a sample weight pack (the console renders that scenario's data) */
@@ -127,23 +699,23 @@ select {
   color: var(--ink-dim); background: var(--graphite-0);
   border: var(--hairline); border-radius: 4px; padding: 4px 7px;
 }
-.pack-switch select:focus { outline: none; box-shadow: inset 0 0 0 1px rgba(232, 163, 61, 0.35); }
+.pack-switch select:focus { outline: none; box-shadow: inset 0 0 0 1px rgba(var(--amber-rgb), 0.35); }
 /* "Load…" — browse to any pack folder (the dialog plugin). Mirrors the select's chrome. */
 .pack-load {
   font: 600 10px/1 var(--mono); letter-spacing: 0.04em; cursor: pointer;
   color: var(--ink-dim); background: var(--graphite-0);
   border: var(--hairline); border-radius: 4px; padding: 4px 7px;
 }
-.pack-load:hover { color: var(--amber); border-color: rgba(232, 163, 61, 0.45); }
+.pack-load:hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
 /* a loaded pack reads amber so a scenario is never mistaken for real data */
 .pack-switch.active label { color: var(--amber); }
-.pack-switch.active select { color: var(--amber); border-color: rgba(232, 163, 61, 0.45); }
+.pack-switch.active select { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
 
 /* masthead back/forward — browser-style history across zones */
 .navhist { display: flex; gap: 2px; }
 .navhist-btn { border: var(--hairline); background: var(--graphite-0); color: var(--ink-dim);
                padding: 4px 9px; border-radius: 4px; font-size: 11px; }
-.navhist-btn:not(:disabled):hover { color: var(--amber); border-color: rgba(232, 163, 61, 0.4); }
+.navhist-btn:not(:disabled):hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.4); }
 .navhist-btn:disabled { opacity: 0.3; cursor: default; }
 
 .clock { color: var(--ink-dim); letter-spacing: 0.12em; font-size: 11px;
@@ -151,25 +723,25 @@ select {
 
 /* inbox signal → deep-link jump */
 .detail-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-.detail-actions .goto { background: transparent; border: 1px solid rgba(232, 163, 61, 0.5);
+.detail-actions .goto { background: transparent; border: 1px solid rgba(var(--amber-rgb), 0.5);
                         color: var(--amber); padding: 6px 13px; border-radius: 4px;
                         letter-spacing: 0.05em; font-size: 12px; }
-.detail-actions .goto:hover { background: rgba(232, 163, 61, 0.14); border-color: var(--amber); }
+.detail-actions .goto:hover { background: rgba(var(--amber-rgb), 0.14); border-color: var(--amber); }
 
 /* ————— bezel: the engraved panel idiom ———————————————————————————————————————————————————— */
 
 .bezel {
   position: relative;
-  background: linear-gradient(180deg, var(--graphite-1), #101314);
+  background: linear-gradient(180deg, var(--graphite-1), var(--bezel-low));
   border: var(--hairline);
   border-radius: 4px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--bezel-shadow);
 }
 /* corner brackets — the calibrated-instrument signature */
 .bezel::before, .bezel::after {
   content: "";
   position: absolute; width: 8px; height: 8px; pointer-events: none;
-  border-color: rgba(232, 163, 61, 0.4); border-style: solid;
+  border-color: rgba(var(--amber-rgb), 0.4); border-style: solid;
 }
 .bezel::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
 .bezel::after { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
@@ -185,11 +757,11 @@ select {
 .feed li {
   display: flex; align-items: center; gap: 9px;
   padding: 9px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(var(--etch-rgb), 0.04);
   cursor: pointer;
   animation: arrive 240ms ease-out backwards;
 }
-.feed li:hover { background: rgba(255, 255, 255, 0.025); }
+.feed li:hover { background: rgba(var(--etch-rgb), 0.025); }
 .feed li.selected { background: var(--amber-dim); box-shadow: inset 2px 0 0 var(--amber); }
 .feed li.read { opacity: 0.45; }
 
@@ -252,7 +824,7 @@ select {
 .band-head {
   display: flex; align-items: center; gap: 8px; padding: 5px 10px; margin-bottom: 2px;
   border-bottom: var(--hairline); position: sticky; top: 0; z-index: 1;
-  background: linear-gradient(180deg, var(--graphite-1), rgba(18, 21, 23, 0.88));
+  background: linear-gradient(180deg, var(--graphite-1), var(--panel-translucent));
   backdrop-filter: blur(3px);
 }
 .band-led { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--ink-faint); }
@@ -320,10 +892,10 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .readout th { text-align: left; font-size: 8.5px; letter-spacing: 0.14em;
               text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
               padding: 4px 8px; border-bottom: var(--hairline); }
-.readout td { padding: 5px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+.readout td { padding: 5px 8px; border-bottom: 1px solid rgba(var(--etch-rgb), 0.035);
               font-variant-numeric: tabular-nums; max-width: 260px; white-space: nowrap;
               overflow: hidden; text-overflow: ellipsis; }
-.readout tr:hover td { background: rgba(255, 255, 255, 0.02); }
+.readout tr:hover td { background: rgba(var(--etch-rgb), 0.02); }
 
 .pos { color: var(--pos); }
 .neg { color: var(--neg); }
@@ -339,20 +911,84 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   padding: 7px 16px;
   border-top: var(--hairline);
   background: var(--graphite-1);
-  color: rgba(232, 163, 61, 0.78);
+  color: rgba(var(--amber-rgb), 0.78);
   font-size: 9.5px; letter-spacing: 0.12em;
 }
 .led-ok { width: 6px; height: 6px; border-radius: 50%; background: var(--pos);
           box-shadow: 0 0 6px var(--pos); }
-.baseplate .path { color: var(--amber); }
+.baseplate .path {
+  color: var(--amber);
+  /* The path is informational, the CONTROLS are functional: on a narrow chassis the path yields
+     (shrink + ellipsis) so the theme toggle / push bell / build stamp never get shoved off the
+     plate — the bug that hid the bell on the installed phone PWA. */
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .baseplate .status { color: var(--amber); }
 /* build stamp — an engraved serial on the baseplate: quieter than the live indicators,
    hairline-delineated, tabular so the version sits still across rerenders */
 .baseplate .build {
   padding-left: 12px; border-left: var(--hairline);
-  color: rgba(232, 163, 61, 0.62);
+  color: rgba(var(--amber-rgb), 0.62);
   letter-spacing: 0.16em; font-variant-numeric: tabular-nums;
 }
+/* push bell (web console only) — a machined baseplate switch, not a nav element. Armed state
+   borrows the amber accent exactly like button.primary; the diamond glyph is the LED. */
+.push-bell { display: inline-flex; align-items: center; gap: 6px; }
+.push-bell .bell-btn {
+  font-size: 9px; padding: 3px 8px;
+  letter-spacing: 0.14em;
+  color: rgba(var(--amber-rgb), 0.78);
+}
+.push-bell .bell-btn.armed { border-color: rgba(var(--amber-rgb), 0.5); color: var(--amber);
+                             background: var(--amber-dim); }
+.push-bell .bell-btn.dim { color: var(--ink-faint); }
+.push-bell .bell-hint { color: var(--ink-dim); letter-spacing: 0.1em; }
+/* theme selector — a machined mode switch on the baseplate (the low-collision chrome zone).
+   Reads as an instrument setting, not an app preference: glyph + tracked micro-label, amber
+   only on hover. Lives left of the build stamp; hairline-delineated like the stamp. */
+.theme-menu {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--ink-dim);
+}
+.theme-menu .glyph { font-size: 10px; line-height: 1; }
+.theme-menu select {
+  /* the pack-loader select, baseplate-sized: engraved chrome, micro-caps, no webview default UI */
+  appearance: none; -webkit-appearance: none;
+  background: transparent; color: inherit;
+  border: 1px solid var(--etch); border-radius: 3px;
+  font: inherit; font-size: 9px; letter-spacing: 0.14em;
+  padding: 2px 6px;
+}
+.theme-menu select:hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
+
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; margin-left: 4px;
+  background: transparent; border: var(--hairline); border-radius: 3px; box-shadow: none;
+  color: rgba(var(--amber-rgb), 0.62);
+  font-size: 9px; letter-spacing: 0.16em;
+}
+.theme-toggle:hover:not(:disabled) { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45);
+                                     background: transparent; }
+.theme-toggle .glyph { font-size: 10px; line-height: 1; }
+/* self-update pill — rides the baseplate beside the build stamp (the version is the noun, this is
+   the verb). Footer register throughout: hairline chrome, micro-caps, no new colors — failures are
+   ink-dim weather notes, the ready state borrows the amber accent, a refused signature reads in the
+   alert signal color. */
+.updater { display: inline-flex; align-items: center; gap: 8px;
+           padding-left: 12px; border-left: var(--hairline); }
+.updater-btn {
+  padding: 3px 8px; font-size: 9px; letter-spacing: 0.14em;
+  color: var(--ink-dim); background: transparent;
+}
+.updater-btn:hover:not(:disabled) { color: var(--amber); border-color: rgba(232, 163, 61, 0.45); }
+.updater-btn.updater-go { color: var(--amber); border-color: rgba(232, 163, 61, 0.5); }
+.updater-btn.updater-go:hover:not(:disabled) { background: var(--amber-dim); }
+.updater-note { font-size: 9px; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; }
+.updater-avail { color: var(--amber); }
+.updater-dim { color: var(--ink-faint); }
+.updater-bad { color: var(--sig-alert); }
 
 /* ————— VIZ zone ————————————————————————————————————————————————————————————— */
 
@@ -366,7 +1002,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .viz-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
             background: transparent; border: none; box-shadow: none; border-radius: 0;
             padding: 6px 12px; }
-.viz-item:hover:not(:disabled) { background: rgba(255, 255, 255, 0.03); }
+.viz-item:hover:not(:disabled) { background: rgba(var(--etch-rgb), 0.03); }
 .viz-item.active { background: var(--amber-dim); box-shadow: inset 2px 0 0 var(--amber); }
 .viz-item.unsupported { opacity: 0.35; cursor: default; }
 .viz-item-name { font-size: 11.5px; color: var(--ink); text-transform: capitalize; }
@@ -387,7 +1023,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   flex: none; padding: 4px 9px; background: var(--graphite-0); border: var(--hairline);
   border-radius: 4px; color: var(--ink-dim); font-size: 12px; line-height: 1;
 }
-.vault-refresh:hover { color: var(--amber); border-color: rgba(232, 163, 61, 0.4); }
+.vault-refresh:hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.4); }
 .vault-dir-label {
   display: block; font-size: 8.5px; letter-spacing: 0.16em; color: var(--ink-dim);
   padding: 6px 12px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -395,7 +1031,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 
 /* recursive folder tree — rows indent via inline paddingLeft per depth */
 .vault-row { display: flex; align-items: center; gap: 1px; padding-right: 8px; border-radius: 3px; }
-.vault-row:hover { background: rgba(255, 255, 255, 0.04); }
+.vault-row:hover { background: rgba(var(--etch-rgb), 0.04); }
 .vault-row.active { background: var(--amber-dim); box-shadow: inset 2px 0 0 var(--amber); }
 .vault-chev, .vault-chev-spacer {
   flex: none; width: 15px; text-align: center; font-size: 9px; color: var(--ink-dim);
@@ -410,8 +1046,8 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 /* contrast fix: docs read at a bright tone (was ink-dim #79827f = too faint on the dark rail);
    folders at full ink + weight so structure reads first; active = amber */
 .vault-label.is-folder { color: var(--ink); font-weight: 600; }
-.vault-label.is-doc { color: #aeb6b2; }
-.vault-label.is-image { color: #8fb6c9; font-style: italic; } /* image files read as a distinct tint */
+.vault-label.is-doc { color: var(--doc-tint); }
+.vault-label.is-image { color: var(--image-tint); font-style: italic; } /* image files read as a distinct tint */
 .vault-row:hover .vault-label.is-doc,
 .vault-row:hover .vault-label.is-image { color: var(--ink); }
 .vault-row.active .vault-label { color: var(--amber); }
@@ -428,11 +1064,11 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vault-stage-head {
   display: flex; align-items: center; gap: 10px; padding: 10px 16px;
   border-bottom: var(--hairline); position: sticky; top: 0; z-index: 2;
-  background: linear-gradient(180deg, var(--graphite-1), #101314);
+  background: linear-gradient(180deg, var(--graphite-1), var(--bezel-low));
 }
 .vault-stage-head .lane-tag {
   font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber);
-  border: 1px solid rgba(232, 163, 61, 0.4); border-radius: 3px; padding: 2px 7px;
+  border: 1px solid rgba(var(--amber-rgb), 0.4); border-radius: 3px; padding: 2px 7px;
 }
 .vault-stage-head .surface-when { margin-left: auto; }
 .vault-doc-view { padding: 14px 22px 40px; max-width: 820px; }
@@ -462,7 +1098,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vault-md p { margin: 0.7em 0; }
 .vault-md a { color: var(--sig-info); text-decoration: none; }
 .vault-md a:hover { text-decoration: underline; }
-.vault-md a.wikilink { color: var(--amber); border-bottom: 1px dotted rgba(232, 163, 61, 0.5); }
+.vault-md a.wikilink { color: var(--amber); border-bottom: 1px dotted rgba(var(--amber-rgb), 0.5); }
 .vault-md a.wikilink.dead { color: var(--ink-faint); border-bottom-style: none; cursor: help; }
 .vault-md ul, .vault-md ol { margin: 0.6em 0; padding-left: 1.5em; }
 .vault-md li { margin: 0.25em 0; }
@@ -484,12 +1120,12 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vault-md th, .vault-md td { border: var(--hairline); padding: 5px 10px; text-align: left; }
 .vault-md th { background: var(--graphite-2); color: var(--ink); letter-spacing: 0.04em;
                font-weight: 700; }
-.vault-md tr:nth-child(even) td { background: rgba(255, 255, 255, 0.015); }
+.vault-md tr:nth-child(even) td { background: rgba(var(--etch-rgb), 0.015); }
 .vault-md img { max-width: 100%; }
 .vault-img {
   display: block; max-width: 100%; max-height: 460px; margin: 0.8em 0;
   border: var(--hairline); border-radius: 5px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--img-shadow);
 }
 /* standalone image view (clicking an image file in the tree) */
 .vault-image-view { display: flex; justify-content: center; padding: 8px 0; }
@@ -514,7 +1150,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .barchart .bar-row { display: grid; grid-template-columns: 132px 1fr 34px; align-items: center; gap: 10px; }
 .barchart .bar-label { font-size: 11.5px; font-weight: 600; color: var(--ink); text-align: right;
                        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.barchart .bar-track { display: flex; height: 22px; background: rgba(255, 255, 255, 0.04);
+.barchart .bar-track { display: flex; height: 22px; background: rgba(var(--etch-rgb), 0.04);
                        border-radius: 3px; overflow: hidden; }
 .barchart .bar-seg { height: 100%; border-radius: 2px; opacity: 0.9; transition: filter 0.1s; }
 .barchart .bar-seg:hover { filter: brightness(1.2); }
@@ -526,27 +1162,27 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .viz-hint { color: var(--ink-faint); font-size: 9px; letter-spacing: 0.16em; margin: 8px 0 0;
             text-align: center; }
 .viz-tip { position: absolute; pointer-events: none; background: var(--graphite-0);
-           border: 1px solid rgba(232, 163, 61, 0.6); border-radius: 6px; padding: 11px 14px;
+           border: 1px solid rgba(var(--amber-rgb), 0.6); border-radius: 6px; padding: 11px 14px;
            font-size: 13px; line-height: 1.45; max-width: 320px; white-space: normal; z-index: 5;
-           box-shadow: 0 6px 22px rgba(0, 0, 0, 0.6); }
+           box-shadow: var(--pop-shadow); }
 .viz-tip-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
 .viz-tip-head strong { font-size: 15.5px; letter-spacing: 0.02em; }
 .viz-tip-dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
 .viz-tip-rows { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; }
 .viz-tip-rows .k { color: var(--ink-faint); }
 .viz-tip-rows .v { color: var(--ink); justify-self: end; text-align: right; }
-.viz-tip-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.09);
+.viz-tip-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(var(--etch-rgb), 0.09);
                   color: var(--ink-dim); font-size: 12.5px; line-height: 1.5; }
 /* a link-bearing tooltip becomes interactive (the default tip stays click-through) so the in-tooltip
    link is hoverable/clickable; the hover-bridge timer keeps it alive across the cursor gap. */
 .viz-tip.has-link { pointer-events: auto; }
 .viz-tip-link { display: block; width: 100%; margin-top: 9px; padding: 5px 8px; background: transparent;
-                border: 1px solid rgba(232, 163, 61, 0.5); border-radius: 4px; color: var(--amber);
+                border: 1px solid rgba(var(--amber-rgb), 0.5); border-radius: 4px; color: var(--amber);
                 font-size: 12px; letter-spacing: 0.04em; text-align: left; cursor: pointer; }
-.viz-tip-link:hover { background: rgba(232, 163, 61, 0.14); border-color: var(--amber); }
+.viz-tip-link:hover { background: rgba(var(--amber-rgb), 0.14); border-color: var(--amber); }
 
 .viz-crumbs { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.viz-crumbs .active { color: var(--amber); border-color: rgba(232, 163, 61, 0.5); }
+.viz-crumbs .active { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.5); }
 .crumb-sep { color: var(--ink-faint); }
 .crumb-total { margin-left: auto; font-size: 9.5px; color: var(--ink-dim);
                letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
@@ -556,14 +1192,14 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .tm-label { font: 600 11px var(--mono); fill: var(--ink); }
 .tm-value { font: 700 10px var(--mono); }
 
-.sk-link { fill: none; stroke: rgba(255, 255, 255, 0.10); transition: stroke 120ms; }
-.sk-link.hover { stroke: rgba(232, 163, 61, 0.55); }
+.sk-link { fill: none; stroke: rgba(var(--etch-rgb), 0.10); transition: stroke 120ms; }
+.sk-link.hover { stroke: rgba(var(--amber-rgb), 0.55); }
 .sk-link-label { font: 700 11px var(--mono); fill: var(--amber); paint-order: stroke;
                  stroke: var(--graphite-0); stroke-width: 4px; }
 .sk-node { cursor: pointer; }
 .sk-node rect { fill: var(--amber); fill-opacity: 0.65; }
 .sk-node.pinned rect, .sk-node:hover rect { fill-opacity: 1;
-                                            filter: drop-shadow(0 0 5px rgba(232,163,61,0.6)); }
+                                            filter: drop-shadow(0 0 5px rgba(var(--amber-rgb), 0.6)); }
 .sk-node text { font: 600 10.5px var(--mono); fill: var(--ink); }
 .sk-detail { border-top: var(--hairline); margin-top: 8px; padding: 10px 2px 0; }
 .sk-detail p { margin: 4px 0; font-size: 10.5px; color: var(--ink-dim);
@@ -572,7 +1208,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .viz-detail { border-top: var(--hairline); margin-top: 10px; padding-top: 10px;
               animation: arrive 200ms ease-out; }
 
-/* ————— VIZ Phase B types ———————————————————————————————————————————————————— */
+/* ————— VIZ extended types ———————————————————————————————————————————————————————————————— */
 
 .viz-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 10px 0 0;
               padding: 0; }
@@ -599,9 +1235,9 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vt-date { font-size: 11px; fill: var(--ink-dim); }
 .vt-amount { font-size: 12.5px; font-weight: 700; }
 .vt-legend-label { font: 600 9.5px var(--mono); fill: var(--ink-dim); letter-spacing: 0.06em; }
-.crosshair { stroke: rgba(232, 163, 61, 0.5); stroke-dasharray: 3 3; }
-.crosshair-dot { fill: var(--amber); filter: drop-shadow(0 0 4px rgba(232, 163, 61, 0.7)); }
-.brush-rect { fill: rgba(232, 163, 61, 0.12); stroke: rgba(232, 163, 61, 0.45); }
+.crosshair { stroke: rgba(var(--amber-rgb), 0.5); stroke-dasharray: 3 3; }
+.crosshair-dot { fill: var(--amber); filter: drop-shadow(0 0 4px rgba(var(--amber-rgb), 0.7)); }
+.brush-rect { fill: rgba(var(--amber-rgb), 0.12); stroke: rgba(var(--amber-rgb), 0.45); }
 
 .matrix-wrap { position: relative; overflow-x: auto; }
 .matrix { border-collapse: collapse; width: 100%; font-size: 11px; }
@@ -614,7 +1250,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .matrix tbody th { display: flex; gap: 7px; align-items: center; white-space: nowrap;
                    text-transform: none; font-size: 11px; color: var(--ink); }
 .matrix td { padding: 6px 9px; text-align: center; font-variant-numeric: tabular-nums;
-             border: 1px solid rgba(255, 255, 255, 0.04); color: var(--ink); }
+             border: 1px solid rgba(var(--etch-rgb), 0.04); color: var(--ink); }
 .matrix td.reach { font-size: 9.5px; color: var(--ink-dim); text-align: left;
                    white-space: nowrap; background: none; }
 
@@ -632,7 +1268,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .radar-dot:hover { filter: drop-shadow(0 0 5px currentColor); }
 .radar-legend { justify-content: center; }
 
-/* ————— VIZ Phase C travel types ————————————————————————————————————————————— */
+/* ————— VIZ travel types ————————————————————————————————————————————————————————————————— */
 
 .sched-day { font: 600 10.5px var(--mono); fill: var(--ink-dim); letter-spacing: 0.08em; }
 .sched-item { cursor: pointer; }
@@ -645,17 +1281,17 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .food-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
              gap: 8px; margin-top: 8px; }
 .food-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px; }
-.food-card.selected { border-color: rgba(232, 163, 61, 0.6);
-                      box-shadow: inset 0 0 0 1px rgba(232, 163, 61, 0.3); }
+.food-card.selected { border-color: rgba(var(--amber-rgb), 0.6);
+                      box-shadow: inset 0 0 0 1px rgba(var(--amber-rgb), 0.3); }
 .food-name { font-size: 12px; font-weight: 700; color: var(--ink); letter-spacing: 0.02em; }
 .food-meta { font-size: 9.5px; color: var(--ink-dim); letter-spacing: 0.04em; }
 .food-status { align-self: flex-start; font-size: 8.5px; letter-spacing: 0.14em; padding: 2px 6px;
                border-radius: 2px; border: var(--hairline); color: var(--ink-dim); }
-.food-status.pos { color: var(--pos); border-color: rgba(125, 214, 160, 0.4); }
-.food-status.warn { color: var(--sig-warn); border-color: rgba(255, 180, 84, 0.4); }
-.food-status.neg { color: var(--sig-alert); border-color: rgba(255, 93, 73, 0.4); }
+.food-status.pos { color: var(--pos); border-color: rgba(var(--pos-rgb), 0.4); }
+.food-status.warn { color: var(--sig-warn); border-color: rgba(var(--sig-warn-rgb), 0.4); }
+.food-status.neg { color: var(--sig-alert); border-color: rgba(var(--sig-alert-rgb), 0.4); }
 
-.live-chip { font-style: normal; color: var(--pos); border: 1px solid rgba(125, 214, 160, 0.4);
+.live-chip { font-style: normal; color: var(--pos); border: 1px solid rgba(var(--pos-rgb), 0.4);
              border-radius: 2px; padding: 0 4px; margin-right: 6px; font-size: 8px;
              letter-spacing: 0.14em; animation: pulse 2.4s infinite; }
 
@@ -723,12 +1359,12 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   color: var(--ink-dim); background: transparent; border: var(--hairline); border-radius: 3px;
   padding: 3px 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
 .news-chip:hover { color: var(--ink); border-color: var(--ink-faint); }
-.news-chip.on { color: #fff; border-color: var(--amber); background: var(--amber-dim); }
+.news-chip.on { color: var(--ink-max); border-color: var(--amber); background: var(--amber-dim); }
 .news-chip.book .dot { color: var(--amber); font-size: 8px; }
 .news-chip .chip-n { color: var(--ink-faint); font-size: 9.5px; }
 .news-chip.on .chip-n { color: var(--amber); }
 .news-search { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--ink);
-  background: var(--etch-deep); border: var(--hairline); border-radius: 3px; padding: 4px 9px;
+  background: var(--input-well); border: var(--hairline); border-radius: 3px; padding: 4px 9px;
   min-width: 180px; outline: none; }
 .news-search:focus { border-color: var(--amber); }
 .news-search::placeholder { color: var(--ink-faint); }
@@ -746,7 +1382,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .news-src { color: var(--amber); white-space: nowrap; }
 .news-when { color: var(--ink-faint); white-space: nowrap; }
 .news-title { color: var(--ink); font-size: 12.5px; line-height: 1.35; }
-.news-list li.sel .news-title { color: #fff; }
+.news-list li.sel .news-title { color: var(--ink-max); }
 /* detail pane */
 .news-detail { padding: 14px 18px; overflow-y: auto; max-height: 100%; }
 .news-detail-meta { display: flex; align-items: center; gap: 12px; font-size: 10px;
@@ -761,7 +1397,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 /* relevance badge (held/watchlist name in the headline) + the detail's matched tickers */
 .book-badge { color: var(--amber); font-size: 8px; margin-right: 6px; vertical-align: middle; }
 .book-tags { color: var(--amber); font-weight: 600; }
-.news-list li.sel .book-badge { color: #ffd9a0; }
+.news-list li.sel .book-badge { color: var(--amber-strong); }
 /* footer: counts · feeds · failed · kbd hint */
 .news-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 6px 10px 2px;
   border-top: var(--hairline); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
@@ -816,22 +1452,22 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .stat-big.neg { color: var(--neg); }
 
 .widget-table { padding: 4px 8px 8px; overflow-x: auto; }
-.readout .ext-link { color: var(--amber, #e8a33d); text-decoration: none; white-space: nowrap; font-weight: 600; }
+.readout .ext-link { color: var(--amber); text-decoration: none; white-space: nowrap; font-weight: 600; }
 .readout .ext-link:hover { text-decoration: underline; }
 .widget-feed { list-style: none; margin: 0; padding: 4px 0; }
 .widget-feed li { display: flex; align-items: center; gap: 8px; padding: 6px 12px;
-                  border-bottom: 1px solid rgba(255, 255, 255, 0.03); font-size: 11px; }
+                  border-bottom: 1px solid rgba(var(--etch-rgb), 0.03); font-size: 11px; }
 .widget-feed li.read { opacity: 0.45; }
 
-.cached-chip { color: var(--sig-info); border-color: rgba(89, 185, 255, 0.35); }
+.cached-chip { color: var(--sig-info); border-color: rgba(var(--sig-info-rgb), 0.35); }
 
 .symbol-pills { display: flex; gap: 3px; }
 .symbol-pills button { padding: 3px 8px; font-size: 9px; border: var(--hairline);
                        background: transparent; box-shadow: none; color: var(--ink-faint); }
-.symbol-pills button.active { color: var(--amber); border-color: rgba(232, 163, 61, 0.5);
+.symbol-pills button.active { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.5);
                               background: var(--amber-dim); }
-.ref-level { stroke: rgba(232, 163, 61, 0.35); stroke-dasharray: 5 4; }
-.ref-level-label { font: 600 9px var(--mono); fill: rgba(232, 163, 61, 0.75); }
+.ref-level { stroke: rgba(var(--amber-rgb), 0.35); stroke-dasharray: 5 4; }
+.ref-level-label { font: 600 9px var(--mono); fill: rgba(var(--amber-rgb), 0.75); }
 
 /* scatter: positioning plot — point labels, quadrant tag, leader lines */
 .scatter-pt-label { font: 600 10px var(--mono); fill: var(--ink); }
@@ -844,12 +1480,12 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .viz-stage .scatter-canvas .scatter-plot .viz-svg { width: 100%; height: 100%; }
 
 /* viz rail: vault-mirroring collapsible tree */
-.viz-tree-top { border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+.viz-tree-top { border-bottom: 1px solid rgba(var(--etch-rgb), 0.04); }
 .viz-top-toggle { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left;
                   background: transparent; border: none; box-shadow: none; border-radius: 0;
                   padding: 9px 12px; font: 700 10px var(--mono); letter-spacing: 0.16em;
                   color: var(--ink-dim); }
-.viz-top-toggle:hover { color: var(--ink); background: rgba(255, 255, 255, 0.02); }
+.viz-top-toggle:hover { color: var(--ink); background: rgba(var(--etch-rgb), 0.02); }
 .viz-top-toggle .chev { color: var(--amber); font-size: 9px; width: 10px; }
 .viz-top-count { margin-left: auto; font-size: 8.5px; color: var(--ink-faint);
                  border: var(--hairline); border-radius: 8px; padding: 1px 6px; }
@@ -861,9 +1497,9 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
    healthy + quiet; amber/red only when a watch/alert earns it. Per-health rgba vars (no
    color-mix dependency) keep it portable across WebKit versions.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
-.glow-green { --glow: #7dd6a0; --glow-soft: rgba(125, 214, 160, 0.13); --glow-edge: rgba(125, 214, 160, 0.38); }
-.glow-amber { --glow: #ffb454; --glow-soft: rgba(255, 180, 84, 0.14); --glow-edge: rgba(255, 180, 84, 0.42); }
-.glow-red   { --glow: #ff5d49; --glow-soft: rgba(255, 93, 73, 0.16);  --glow-edge: rgba(255, 93, 73, 0.46); }
+.glow-green { --glow: var(--pos); --glow-soft: rgba(var(--pos-rgb), 0.13); --glow-edge: rgba(var(--pos-rgb), 0.38); }
+.glow-amber { --glow: var(--sig-warn); --glow-soft: rgba(var(--sig-warn-rgb), 0.14); --glow-edge: rgba(var(--sig-warn-rgb), 0.42); }
+.glow-red   { --glow: var(--sig-alert); --glow-soft: rgba(var(--sig-alert-rgb), 0.16);  --glow-edge: rgba(var(--sig-alert-rgb), 0.46); }
 
 /* (A) vitals band — a SUBSTANTIAL instrument panel above the baseplate, scannable at a glance.
    Big labeled stat columns spread across the full width; the calm phosphor underglow is the
@@ -888,9 +1524,9 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vital { display: flex; align-items: center; gap: 24px; }
 .vital-id { display: flex; align-items: center; gap: 14px; flex: 0 0 auto; min-width: 210px; }
 .vital-led { width: 13px; height: 13px; border-radius: 50%; flex: none; }
-.led-green { background: var(--pos); box-shadow: 0 0 12px rgba(125, 214, 160, 0.6); }
+.led-green { background: var(--pos); box-shadow: 0 0 12px rgba(var(--pos-rgb), 0.6); }
 .led-red   { background: var(--sig-alert); box-shadow: 0 0 12px var(--sig-alert); animation: pulse 2.2s infinite; }
-.led-standby { background: var(--ink-dim); box-shadow: 0 0 10px rgba(140, 140, 150, 0.35); }
+.led-standby { background: var(--ink-dim); box-shadow: 0 0 10px var(--standby-glow); }
 .vital-id-text { display: flex; flex-direction: column; gap: 4px; }
 .vital-name { color: var(--ink); font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
 .vital-status { font-size: 10px; letter-spacing: 0.18em; }
@@ -906,7 +1542,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 
 .cadence { display: inline-flex; gap: 5px; align-items: flex-end; }
 .cadence .tick { width: 5px; height: 22px; border-radius: 1.5px; background: var(--ink-faint); opacity: 0.3; }
-.cadence .tick-ran { background: var(--pos); opacity: 0.9; box-shadow: 0 0 6px rgba(125, 214, 160, 0.35); }
+.cadence .tick-ran { background: var(--pos); opacity: 0.9; box-shadow: 0 0 6px rgba(var(--pos-rgb), 0.35); }
 .cadence .tick-missed { background: var(--sig-alert); opacity: 0.95; }
 .cadence .tick-pending { background: var(--ink-faint); opacity: 0.28; }
 
@@ -936,8 +1572,8 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .digest-foot { margin: auto 0 0; color: var(--ink-faint); font-size: 9px; letter-spacing: 0.16em;
                text-transform: uppercase; text-align: center; }
 
-/* ————— responsive pass — phone testing, rounds 1-3 ——————————
-   Round 3's lesson: the desktop layout system (span-1..6 columns, rows-2/3 spans, dense flow) is
+/* ————— responsive pass — phone-width lessons ——————————
+   The phone-width lesson: the desktop layout system (span-1..6 columns, rows-2/3 spans, dense flow) is
    a single interacting SYSTEM — overriding pieces of it at phone width creates grid states the
    desktop never sees (a span-6 widget on a 2-col grid grows IMPLICIT auto columns; row spans
    starve implicit rows; stat tiles clipped, then collapsed). At ≤720px we RETIRE the system
@@ -959,14 +1595,14 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   }
   .dash-grid .widget.kind-stat { grid-column: auto !important; } /* ...except stats: 2-up */
   .dash-grid .widget.doc-series { min-height: 340px; }
-  /* THE NUMBER IS THE WIDGET (the maintainer, round 4): on a phone the stat tile's freshness/cadence
+  /* THE NUMBER IS THE WIDGET: on a phone the stat tile's freshness/cadence
      chrome (AS-OF · age · CACHED · AUTO chips) yields entirely — it was wrapping 3-4 header rows
      and eating the value. Title + number + refresh only; freshness stays visible on every
      non-stat widget and on desktop. */
   .widget.kind-stat .surface-when { display: none; }
   .dash-grid .widget.kind-stat { min-height: 64px; }
   .stat-big { font-size: 24px; padding: 4px 10px 12px; }
-  /* thinner bezels at phone width (the maintainer's call): tighter chrome, more data per screen */
+  /* thinner bezels at phone width: tighter chrome, more data per screen */
   .widget > header { padding: 6px 9px; gap: 6px; }
   .dash-grid { gap: 7px; padding: 8px; }
   /* chip rows + masthead wrap instead of clipping off-screen */
@@ -980,11 +1616,11 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
    Standalone mode owns the FULL screen — no Safari chrome means the masthead sat under the
    status bar/notch, and the top zone nav lost the reachability Safari's bottom bar was quietly
    providing. Scoped to installed-app-on-phone ONLY (display-mode: standalone) so browsing in
-   Safari keeps the layout the maintainer approved. Two moves: pad the chrome into the safe areas
+   Safari keeps the desktop-audited layout. Two moves: pad the chrome into the safe areas
    (env() insets), and drop the zone nav to a thumb-reach bottom tab bar. */
 @media (max-width: 720px) {
   html.pwa .masthead { padding-top: calc(env(safe-area-inset-top, 0px) + 6px); }
-  /* stacking order (the maintainer's call, round 2): the amber BUS.DB baseplate is the app's ground truth
+  /* stacking order: the amber BUS.DB baseplate is the app's ground truth
      line — it keeps the TRUE bottom (padded into the home-indicator safe area); the zone tab bar
      rides just ABOVE it. --baseplate-h = its 9.5px line + 7px×2 padding + hairline ≈ 27px. */
   html.pwa .baseplate {
@@ -1007,7 +1643,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
     background: var(--graphite-1);
     border-top: var(--hairline);
     padding: 10px 8px;
-    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--tabbar-shadow);
   }
   html.pwa nav.zones button { flex: 1; padding: 8px 4px; }
   /* the content column clears both fixed bars */

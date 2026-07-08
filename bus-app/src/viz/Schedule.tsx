@@ -1,12 +1,12 @@
 // Interactive schedule — the `schedule`/`schedule-bank` family ({title, start,
 // end, dayStart, dayEnd, availability?, items?:[{date, start, end, label, lane, note?}],
-// markers?}). Day columns × time rows; click an item block → its full record (the maintainer's literal
-// Phase-C ask). Availability-only schedules (no items) render the empty grid honestly.
+// markers?}). Day columns × time rows; click an item block → its full record. Availability-only
+// schedules (no items) render the empty grid honestly.
 
 import { useMemo, useState } from "react";
 import * as d3 from "d3";
 import JsonView from "../JsonView";
-import { COLORS, type Tip } from "./common";
+import { useCatColors, type Tip } from "./common";
 
 interface ScheduleItem {
   date: string; start: string; end: string; label: string; lane?: string; note?: string;
@@ -34,6 +34,7 @@ const mins = (raw: string | undefined): number | null => {
 };
 
 export default function Schedule({ data }: { data: ScheduleData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [sel, setSel] = useState<ScheduleItem | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
 

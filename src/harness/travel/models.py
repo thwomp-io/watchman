@@ -135,7 +135,7 @@ class CityEvents(BaseModel):
 class ImageCandidate(BaseModel):
     """Pre-download image metadata from a provider search (bytes fetched separately)."""
 
-    subject: str  # what we searched for, e.g. "Hotel del Coronado"
+    subject: str  # what we searched for, e.g. "The Grand Hotel"
     title: str  # the provider's title for the matched image/page
     image_url: str  # direct URL to the image bytes
     source: str  # provider name, e.g. "wikimedia"
@@ -331,6 +331,12 @@ class Eatery(BaseModel):
     reviews: int | None = None
     price: str = ""  # $..$$$$ (live-ratings tier only)
     sources: list[str] = Field(default_factory=list)
+    # imagery:
+    thumbnail: str = ""  # Google local-pack thumbnail — rides the live-ratings search FREE
+    data_id: str = ""  # Google Maps place id — the key the google_maps_photos engine wants
+    hero_image: str = ""  # og:image scraped from the place's OWN website (keyless enrichment)
+    # full gallery (google_maps_photos engine, 1 quota per place — finalists only, never the sweep)
+    photos: list[str] = Field(default_factory=list)
 
 
 class FoodReport(BaseModel):
@@ -518,7 +524,7 @@ class FerryVessel(BaseModel):
     at_dock: bool = False
     eta: str | None = None  # ISO-8601 UTC
     left_dock: str | None = None  # ISO-8601 UTC
-    route: list[str] = Field(default_factory=list)  # OpRouteAbbrev (e.g. ["edm-king"])
+    route: list[str] = Field(default_factory=list)  # OpRouteAbbrev (e.g. ["sea-bi"])
 
 
 class FerryReport(BaseModel):

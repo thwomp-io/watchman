@@ -12,6 +12,9 @@ Design contract (full spec: docs/BUS.md):
   producer #2 (career watchman) inherits once-per-day semantics for free and producers stay
   stateless (supersedes any producer-side dedup cache).
 - stdlib ``sqlite3`` only — no new dependency (API-over-library rule).
+- ``push_subscriptions`` (web-push endpoints, harness.bus.push) is an ADDITIVE table riding the
+  same idempotent DDL: both language surfaces create it so either can boot a fresh db, but only
+  Python ever reads/writes it. Schema version stays 1 — CREATE IF NOT EXISTS self-migrates.
 """
 
 from __future__ import annotations
@@ -42,6 +45,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_events_idem ON events(idempotency_key);
 CREATE INDEX IF NOT EXISTS ix_events_unread ON events(read_at) WHERE read_at IS NULL;
 CREATE INDEX IF NOT EXISTS ix_events_lane_kind ON events(lane, kind);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint   TEXT PRIMARY KEY,
+    p256dh     TEXT NOT NULL,
+    auth       TEXT NOT NULL,
+    label      TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
 """
 
 

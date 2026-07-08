@@ -1,12 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window: core defaults only \u2014 custom commands carry the app logic; notification/autostart run Rust-side (least privilege).",
+  "description": "Main window: core defaults only \u2014 custom commands carry the app logic; notification/autostart run Rust-side (least privilege). Self-update grants are exactly the three verbs the footer flow uses (check \u2192 download+install \u2192 relaunch), never the plugins' broader default sets \u2014 and the updater/process plugins only register in release builds (lib.rs), so in debug these grants point at nothing.",
   "windows": [
     "main"
   ],
   "permissions": [
     "core:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:allow-restart"
   ]
 }

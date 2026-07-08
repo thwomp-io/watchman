@@ -18,12 +18,13 @@ from pydantic import BaseModel
 from harness.bus.store import harness_state_dir
 
 # The finance-pulse schedule — 9 runs per market day, Mon-Fri, local time.
-# (Illustrative slots for a 9-run market day; set the StartCalendarInterval to your market + timezone.)
+# Example slots expressed in US-Eastern market time — edit PULSE_SCHEDULE to your local clock;
+# keep in sync with whatever scheduler runs the pulse.
 # MANUAL-SYNC with the launchd plist (its StartCalendarInterval slots).
 PULSE_SCHEDULE: list[time] = [
-    time(6, 48), time(7, 33), time(8, 18),
-    time(9, 33), time(10, 33), time(11, 18),
-    time(12, 3), time(12, 27), time(12, 48),
+    time(9, 45), time(10, 30), time(11, 15),
+    time(12, 0), time(12, 45), time(13, 30),
+    time(14, 15), time(15, 0), time(15, 45),
 ]
 PULSE_LOG = harness_state_dir() / "pulse.log"  # HARNESS_STATE_DIR-sealed (sandbox reads its own log)
 _LAST_SLOT_GRACE = timedelta(minutes=30)  # window for the final daily slot to land a run

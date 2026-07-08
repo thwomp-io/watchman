@@ -32,8 +32,8 @@ npm run tauri dev # needs Rust (rustup) + Xcode CLT
 ```
 
 Dev-mode notifications post under **the launching terminal's identity** (a dev binary isn't a
-bundled .app — macOS attributes to the parent process; confirmed live 2026-06-12: Terminal.app
-needed whitelisting). Don't judge notification identity/styling until the installed bundle
+bundled .app — macOS attributes to the parent process, so the launching terminal app may need
+whitelisting). Don't judge notification identity/styling until the installed bundle
 — it posts as "Watchman" with its own authorization prompt.
 
 > **Crate pin**: `time` is lock-pinned to 0.3.47 — 0.3.48 breaks trait coherence in

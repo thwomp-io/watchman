@@ -1,0 +1,52 @@
+{
+ "title": "Shoulder-season shortlist \u2014 the cross-lane leaders",
+ "subtitle": "illustrative persona data (fictional) \u00b7 agent-scored 1-5, a surface to react to",
+ "axes": [
+  "Romance",
+  "Food",
+  "Relax",
+  "Scenery",
+  "Explore",
+  "Energy",
+  "Low-friction"
+ ],
+ "max": 5,
+ "candidates": [
+  {
+   "label": "Scottsdale, AZ",
+   "values": [
+    4,
+    4,
+    5,
+    4,
+    3,
+    2,
+    5
+   ]
+  },
+  {
+   "label": "Santa Fe, NM",
+   "values": [
+    4,
+    4,
+    4,
+    5,
+    4,
+    2,
+    4
+   ]
+  },
+  {
+   "label": "Victoria, BC",
+   "values": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    2,
+    3
+   ]
+  }
+ ]
+}

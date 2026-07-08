@@ -5,7 +5,13 @@ Composes mechanical checks the corpus previously held only as prose:
   rebalance-band drift check made mechanical. Symbols without bands aren't checked.
 - **Concentrated-holding wash-sale window** — vest dates (manual-synced from a vesting calendar)
   poison loss-sales ±30 days; reports poisoned/clean *today* + the next clean window.
-- **Days-to-print** — next 10-Q/10-K window per CIK-resolvable holding, from filing cadence.
+- **Days-to-print** — CONFIRMED earnings dates (nasdaq analyst API, day-TTL cache) where
+  available, honest `est.` from 10-Q/10-K filing cadence where not. The label is the contract:
+  a consumer can always tell an announcement from a projection (the wire-integrity fix for the
+  month-off cadence-estimate class).
+- **Ratings wire** — consensus PT + rating-mix snapshots per held name (same nasdaq API, same
+  TTL), diffed run-over-run; a material move surfaces as a `[RATING]` wire item so a price-target
+  cut on a holding is first-class news, not luck-of-the-RSS.
 - **New headlines only** — the news scan filtered through a seen-cache
   (`~/.cache/harness/news-seen.json`), so repeat watches surface deltas, not repeats.
 
@@ -20,9 +26,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from harness.finance.models import NewsItem, Position, PrintCountdown, Quote
+from harness.finance.models import ConsensusPT, EarningsDate, NewsItem, Position, PrintCountdown, Quote
 
 SEEN_CACHE = Path.home() / ".cache" / "harness" / "news-seen.json"
+EARNINGS_CACHE = Path.home() / ".cache" / "harness" / "earnings-dates.json"
+CONSENSUS_STATE = Path.home() / ".cache" / "harness" / "ratings-consensus.json"
 _WASH_DAYS = 30
 
 
@@ -96,7 +104,7 @@ def wash_sale_status(vest_dates: list[str], today: date | None = None) -> WashSa
 class WatchlistMove(BaseModel):
     """A watchlist (non-held) symbol's day read.
 
-    `available=False` = not on the IEX feed (OTC ADRs) — quoted nowhere, but still news-covered;
+    `available=False` = not on the IEX feed (e.g. OTC ADRs) — quoted nowhere, but still news-covered;
     the miss is stated, never a false-empty."""
 
     symbol: str
@@ -179,5 +187,122 @@ class SeenCache(BaseModel):
         self.seen = sorted(s)[-2000:]  # bounded; oldest URLs age out
 
     def save(self, path: Path = SEEN_CACHE) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.model_dump_json())
+
+
+class EarningsDateCache(BaseModel):
+    """Per-symbol confirmed-earnings-date cache (nasdaq provider), day-scale TTL.
+
+    Volume discipline for an unofficial API: the standing pulse runs many times per market day —
+    without this cache each run would re-sweep the whole book against api.nasdaq.com. One fetch
+    per symbol per `ttl_days` keeps the footprint at ~one sweep/day; the date itself moves on a
+    quarter timescale, so a day-stale confirmed date is still better than a cadence estimate.
+    """
+
+    # symbol → {"date": "YYYY-MM-DD", "confirmed": bool, "fetched": "YYYY-MM-DD"}
+    entries: dict[str, dict[str, str | bool]] = Field(default_factory=dict)
+
+    @classmethod
+    def load(cls, path: Path = EARNINGS_CACHE) -> EarningsDateCache:
+        if path.exists():
+            try:
+                return cls.model_validate(json.loads(path.read_text()))
+            except (json.JSONDecodeError, ValueError):
+                return cls()
+        return cls()
+
+    def fresh(self, symbol: str, today: date, ttl_days: int = 1) -> EarningsDate | None:
+        """The cached date, if fetched within the TTL — else None (caller refetches)."""
+        e = self.entries.get(symbol.upper())
+        if not e:
+            return None
+        try:
+            fetched = date.fromisoformat(str(e["fetched"]))
+            if (today - fetched).days > ttl_days:
+                return None
+            return EarningsDate(
+                symbol=symbol.upper(),
+                report_date=date.fromisoformat(str(e["date"])),
+                confirmed=bool(e["confirmed"]),
+            )
+        except (KeyError, ValueError):
+            return None
+
+    def put(self, ed: EarningsDate, today: date) -> None:
+        self.entries[ed.symbol] = {
+            "date": ed.report_date.isoformat(),
+            "confirmed": ed.confirmed,
+            "fetched": today.isoformat(),
+        }
+
+    def save(self, path: Path = EARNINGS_CACHE) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.model_dump_json())
+
+
+class ConsensusState(BaseModel):
+    """Last-seen consensus PT snapshot per symbol — the diff baseline for the ratings wire.
+
+    `diff()` is pure (no I/O): given a fresh snapshot it returns a one-line change description
+    when the move is material (mean PT moved ≥ `pt_move_pct`, or the buy/hold/sell mix changed),
+    else None. First sight of a symbol just seeds the baseline silently — a baseline is not news.
+    The same TTL discipline as EarningsDateCache bounds fetch volume (`stale()` gates refetch).
+    """
+
+    # symbol → {"mean": float, "buy": int, "hold": int, "sell": int, "fetched": "YYYY-MM-DD"}
+    entries: dict[str, dict[str, float | int | str]] = Field(default_factory=dict)
+
+    @classmethod
+    def load(cls, path: Path = CONSENSUS_STATE) -> ConsensusState:
+        if path.exists():
+            try:
+                return cls.model_validate(json.loads(path.read_text()))
+            except (json.JSONDecodeError, ValueError):
+                return cls()
+        return cls()
+
+    def stale(self, symbol: str, today: date, ttl_days: int = 1) -> bool:
+        e = self.entries.get(symbol.upper())
+        if not e:
+            return True
+        try:
+            return (today - date.fromisoformat(str(e["fetched"]))).days > ttl_days
+        except (KeyError, ValueError):
+            return True
+
+    def diff(self, pt: ConsensusPT, pt_move_pct: float = 2.0) -> str | None:
+        """Material-change line vs the stored baseline, or None (incl. first sight)."""
+        e = self.entries.get(pt.symbol)
+        if not e:
+            return None
+        try:
+            prior_mean = float(e["mean"])
+            prior_mix = (int(e["buy"]), int(e["hold"]), int(e["sell"]))
+        except (KeyError, TypeError, ValueError):
+            return None
+        parts: list[str] = []
+        if prior_mean > 0:
+            move = (pt.mean - prior_mean) / prior_mean * 100
+            if abs(move) >= pt_move_pct:
+                parts.append(f"consensus PT ${prior_mean:,.2f} → ${pt.mean:,.2f} ({move:+.1f}%)")
+        mix = (pt.buy, pt.hold, pt.sell)
+        if mix != prior_mix:
+            parts.append(
+                f"rating mix {prior_mix[0]}B/{prior_mix[1]}H/{prior_mix[2]}S"
+                f" → {mix[0]}B/{mix[1]}H/{mix[2]}S"
+            )
+        return "; ".join(parts) if parts else None
+
+    def put(self, pt: ConsensusPT, today: date) -> None:
+        self.entries[pt.symbol] = {
+            "mean": pt.mean,
+            "buy": pt.buy,
+            "hold": pt.hold,
+            "sell": pt.sell,
+            "fetched": today.isoformat(),
+        }
+
+    def save(self, path: Path = CONSENSUS_STATE) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.model_dump_json())

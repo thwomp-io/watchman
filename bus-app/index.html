@@ -2,14 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- the tab/bookmark favicon is the REAL radar mark (the PWA icons' sibling) — the Vite
+         default triangle is easy to ship unnoticed. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/watchman-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/watchman-512.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- PWA install identity: standalone launch, noir status bar, the radar
          icon — the manifest is what turns Add-to-Home-Screen from a bookmark into an app.
          viewport-fit=cover + standalone metas are the iOS half (iOS reads both). -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <meta name="theme-color" content="#0b0d0e" />
+    <!-- theme-color per scheme (the pre-JS answer); src/theme.ts re-points BOTH to the ACTIVE
+         theme once booted, so an explicit in-app preference beats the OS match too. Keep the
+         values in sync with --graphite-0 in the App.css token blocks (dark + bright carry the metas; paper is an explicit pick, re-pointed by theme.ts at boot). -->
+    <meta name="theme-color" content="#0b0d0e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0a0d12" media="(prefers-color-scheme: light)" />
+    <!-- Theme before first paint: resolve stored-preference-else-OS and stamp
+         data-theme on <html> BEFORE the bundle loads — no dark flash for a light-theme user
+         (and vice versa). Mirrors src/theme.ts resolveTheme(); keep the two in sync. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("watchman.theme");
+          if (t === "light") t = "paper"; // pre-menu builds stored "light" for the paper design
+          if (t !== "paper" && t !== "dark" && t !== "bright") {
+            t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "bright" : "dark"; // OS-light = BRIGHT, the canonical light
+          }
+          document.documentElement.dataset.theme = t;
+        } catch (e) { /* storage denied → App.css's dark default stands until theme.ts boots */ }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Watchman" />

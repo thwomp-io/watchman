@@ -58,7 +58,10 @@ pub fn poll_once<R: Runtime>(app: &AppHandle<R>) {
         }
     }
 
-    let unread = handle.unread_count().unwrap_or(0);
+    // Tray badge = URGENT unread only (alert+warn) — the severity doctrine: the catalyst wire
+    // and filings are skim-streams; counting them turns the badge into an ignorable scream.
+    // The webview badge already filtered (Inbox onUnread); the tray was the straggler.
+    let unread = handle.urgent_unread_count().unwrap_or(0);
     let recent = handle.list_events(true, None, None, 5).unwrap_or_default();
     tray::update(app, unread, &recent);
     let _ = app.emit("bus-updated", unread);

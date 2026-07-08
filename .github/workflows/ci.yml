@@ -150,6 +150,11 @@ jobs:
             bundles: "deb/*.deb"
             build_args: "-- --bundles deb"   # deb only — the AppImage isn't shipped
     runs-on: ${{ matrix.os }}
+    env:
+      # Self-update signing is OPT-IN: a boolean computed from secret presence, because secrets
+      # can't be referenced in step `if:` directly. Before the operator generates the updater
+      # keypair (docs/UPDATER.md), this is false and the plain unsigned build runs — CI stays green.
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     defaults:
       run:
         working-directory: bus-app
@@ -173,8 +178,50 @@ jobs:
         with:
           workspaces: bus-app/src-tauri
       - run: npm ci
+      # Self-update lane (Windows): with the updater signing key configured as a repo secret, build
+      # with the release overlay config (createUpdaterArtifacts + the GitHub releases endpoint) so
+      # tauri emits the NSIS installer PLUS its minisign .sig. The overlay merges over the base
+      # tauri.conf.json, whose updater endpoint list is deliberately empty (dev builds point nowhere).
+      - name: tauri build (signed + updater artifacts)
+        if: matrix.platform == 'windows' && env.HAS_UPDATER_KEY == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri build -- --config src-tauri/tauri.release.conf.json
       - name: tauri build
+        if: matrix.platform != 'windows' || env.HAS_UPDATER_KEY != 'true'
         run: npm run tauri build ${{ matrix.build_args }}
+      # Assemble latest.json — the updater endpoint document. tauri-cli emits per-artifact .sig
+      # files but (outside tauri-action) no manifest; build it from the versioned installer + its
+      # signature. `releases/latest/download/latest.json` is the app's stable check endpoint; the
+      # url INSIDE pins the concrete versioned asset it describes.
+      - name: Assemble latest.json (updater manifest)
+        if: matrix.platform == 'windows' && env.HAS_UPDATER_KEY == 'true' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          EXE=$(ls src-tauri/target/release/bundle/nsis/*-setup.exe | head -1)
+          SIG="${EXE}.sig"
+          test -f "$SIG" || { echo "::error::updater .sig missing next to $EXE"; exit 1; }
+          TAG="$TAG" EXE="$EXE" SIG="$SIG" python3 - <<'PY'
+          import datetime, json, os
+          tag, exe, sig = os.environ["TAG"], os.environ["EXE"], os.environ["SIG"]
+          manifest = {
+              "version": tag.lstrip("v"),
+              "pub_date": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "platforms": {
+                  "windows-x86_64": {
+                      "signature": open(sig).read().strip(),
+                      "url": (
+                          f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+                          f"/releases/download/{tag}/{os.path.basename(exe)}"
+                      ),
+                  }
+              },
+          }
+          with open("latest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          print("latest.json ->", manifest["platforms"]["windows-x86_64"]["url"])
+          PY
       - name: Collect installers
         # One flat dir regardless of platform; if-no-files-found below turns a bundler path drift
         # into a loud red instead of a silently-empty artifact.
@@ -190,6 +237,10 @@ jobs:
           for f in dist-bundles/*-setup.exe; do cp "$f" dist-bundles/Watchman-Setup-x64.exe; done
           for f in dist-bundles/*.msi;       do cp "$f" dist-bundles/Watchman-x64.msi; done
           for f in dist-bundles/*.deb;       do cp "$f" dist-bundles/watchman-amd64.deb; done
+          # Updater sidecars ride along when the signed lane ran (the versioned .sig must ship
+          # beside the versioned exe; latest.json is the check endpoint).
+          for f in src-tauri/target/release/bundle/nsis/*-setup.exe.sig; do cp "$f" dist-bundles/; done
+          [ -f latest.json ] && cp latest.json dist-bundles/
           ls -la dist-bundles/
       - uses: actions/upload-artifact@v4
         with:

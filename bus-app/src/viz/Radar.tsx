@@ -3,7 +3,7 @@
 // for its exact score.
 
 import { useState } from "react";
-import { COLORS, type Tip } from "./common";
+import { useCatColors, type Tip } from "./common";
 
 interface Candidate { label: string; values: number[] }
 interface RadarData { title?: string; subtitle?: string; max?: number; axes: string[]; candidates: Candidate[] }
@@ -11,6 +11,7 @@ interface RadarData { title?: string; subtitle?: string; max?: number; axes: str
 const R = 165, CX = 0, CY = 0, PAD = 110;
 
 export default function Radar({ data }: { data: RadarData }) {
+  const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [off, setOff] = useState<Set<string>>(new Set());
   const [tip, setTip] = useState<Tip | null>(null);
   const max = data.max ?? Math.max(...data.candidates.flatMap((c) => c.values), 1);

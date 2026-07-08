@@ -42,6 +42,6 @@ feeds:
   - name: topic-macro-rates
     category: thesis
     url: https://news.google.com/rss/search?q=Federal%20Reserve%20interest%20rates%20inflation&hl=en-US&gl=US&ceid=US:en
-  - name: topic-ai-infrastructure
+  - name: topic-semiconductors
     category: thesis
-    url: https://news.google.com/rss/search?q=AI%20datacenter%20power%20demand&hl=en-US&gl=US&ceid=US:en
+    url: https://news.google.com/rss/search?q=semiconductor%20supply%20chain&hl=en-US&gl=US&ceid=US:en

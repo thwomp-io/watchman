@@ -1,7 +1,7 @@
 """Trip-prep enrichers — a bundle of small KEYLESS senses for trip/destination prep.
 
-Four read-only public-data GETs, no key + no new library (the API-over-library opsec posture; cf.
-the operator skill — e.g. sunrise via the sunrise-sunset.org *API*, not the `astral` lib; country facts
+Four read-only public-data GETs, no key + no new library (the API-over-library opsec posture —
+e.g. sunrise via the sunrise-sunset.org *API*, not the `astral` lib; country facts
 via REST Countries, not a vendored dataset):
 
 - **FX** (open.er-api.com) — USD-base exchange rates (also finance-useful). [frankfurter was the

@@ -27,6 +27,8 @@ export async function listEvents(opts: {
 
 export const ackEvents = (ids: number[]): Promise<number> => invoke("ack_events", { ids });
 export const unreadCount = (): Promise<number> => invoke("unread_count");
+// The BADGE count — alert+warn only (the severity doctrine: the wire never screams from the tray)
+export const urgentUnreadCount = (): Promise<number> => invoke("urgent_unread_count");
 export const distinctMeta = (): Promise<DistinctMeta> => invoke("distinct_meta");
 export const appVersion = (): Promise<string> => invoke("app_version");
 export const getConfig = (): Promise<AppConfig> => invoke("get_config");

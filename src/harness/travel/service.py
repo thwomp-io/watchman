@@ -577,6 +577,7 @@ class TravelService:
         radius_m: int = 1500,
         live_ratings: bool = False,
         refresh: bool = False,
+        hero_images: bool = False,
     ) -> FoodReport:
         """Eateries near `place` — two-tier. Tier 1 (default, KEYLESS): OSM Overpass
         enumeration — what exists, from data instead of memory. Tier 2 (`live_ratings=True`, QUOTA
@@ -607,6 +608,11 @@ class TravelService:
             )
         else:
             notes.append("ratings tier NOT spent (opt-in: --live-ratings) — enumeration only")
+        if hero_images:
+            from harness.travel.providers.food_provider import enrich_hero_images
+
+            hits = enrich_hero_images(eateries)
+            notes.append(f"og:image heroes (keyless, own-website GETs): {hits} landed")
         return FoodReport(
             location=geocode_label(loc),
             latitude=loc.latitude,
@@ -617,6 +623,35 @@ class TravelService:
             eateries=eateries,
             notes=notes,
         )
+
+    def food_photos(
+        self, place: str, names: list[str], *, radius_m: int = 1500, limit_per: int = 12,
+        refresh: bool = False,
+    ) -> dict[str, list[str]]:
+        """Full photo galleries for NAMED finalists near `place` (google_maps_photos — 1 quota
+        search PER NAME; deliberate-spend, finalists only). Resolves each name → data_id via the
+        cached live-ratings sweep (run `find_food(..., live_ratings=True)` first — the sweep must
+        exist or the name can't resolve; a cached sweep read costs zero)."""
+        from harness.travel.providers.food_provider import (
+            SerpApiLocalFoodProvider,
+            normalize_name,
+        )
+
+        rep = self.find_food(place, radius_m=radius_m, live_ratings=True, refresh=False)
+        by_key = {normalize_name(e.name): e for e in rep.eateries if e.data_id}
+        provider = SerpApiLocalFoodProvider(get_settings().serpapi_key)
+        out: dict[str, list[str]] = {}
+        for name in names:
+            hit = by_key.get(normalize_name(name))
+            if hit is None:
+                # Sweep miss → targeted per-name lookup: the local pack favors
+                # Google's prominent tier; institutions live below its fold. +1 quota search.
+                hit = provider.targeted_place(name, rep.latitude, rep.longitude, refresh=refresh)
+            if hit is None or not hit.data_id:
+                out[name] = []  # honest miss — never fabricated
+                continue
+            out[name] = provider.place_photos(hit.data_id, refresh=refresh, limit=limit_per)
+        return out
 
     # ---- trip-prep enrichers (keyless): FX · holidays · sun · country facts ----
     def fx_rates(self, to: list[str] | None = None, *, base: str = "USD") -> FxRates:

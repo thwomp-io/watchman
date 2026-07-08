@@ -1,8 +1,8 @@
 """Food / eatery discovery — the two-tier provider.
 
 Tier 1 — **OSM Overpass, KEYLESS/free (default)**: enumerate every mapped eatery near a point
-(name, category, cuisine, hours, website). This is the fix for banking restaurants from memory —
-"what exists" comes from data: enumerate from data rather than recalling specific venues from memory.
+(name, category, cuisine, hours, website). This is the fix for banking restaurants from memory:
+enumerate what exists from map data instead of recalling venues.
 Open-source data, no key, no quota: aligned with the privacy/self-hosted bias.
 
 Tier 2 — **SerpAPI google_maps local results, QUOTA (opt-in)**: ratings / review counts / price
@@ -140,9 +140,59 @@ class SerpApiLocalFoodProvider:
                     reviews=r.get("reviews"),
                     price=r.get("price") or "",
                     sources=["google"],
+                    # free riders on the same response (use-the-full-response rule):
+                    thumbnail=r.get("thumbnail") or "",
+                    data_id=r.get("data_id") or "",
                 )
             )
         return out
+
+    def place_photos(self, data_id: str, *, refresh: bool = False, limit: int = 12) -> list[str]:
+        """Full photo gallery for ONE place (google_maps_photos engine) — 1 quota search per place,
+        date-cached like everything else. The rich layer for FINALISTS, never the whole sweep:
+        the local-pack thumbnail is free; this is the tap-into-the-restaurant gallery."""
+        params: dict[str, Any] = {"engine": "google_maps_photos", "data_id": data_id, "hl": "en"}
+        raw, _ = self._cached_or_search(params, refresh=refresh)
+        out: list[str] = []
+        for ph in raw.get("photos") or []:
+            url = ph.get("image") or ph.get("thumbnail") or ""
+            if url:
+                out.append(url)
+            if len(out) >= limit:
+                break
+        return out
+
+    def targeted_place(
+        self, name: str, latitude: float, longitude: float, *, refresh: bool = False
+    ) -> Eatery | None:
+        """Targeted per-name lookup — 1 quota search for ONE named place. The
+        local-pack sweep favors Google's 'prominent' tier and famously misses institutions
+        (a legendary taqueria loses the pack to trendy sit-downs); this asks for the place BY NAME.
+        Returns the top match (place_results, else first local_result) or an honest None."""
+        params: dict[str, Any] = {
+            "engine": "google_maps",
+            "q": name,
+            "ll": f"@{round(latitude, 5)},{round(longitude, 5)},15z",
+            "type": "search",
+            "hl": "en",
+        }
+        raw, _ = self._cached_or_search(params, refresh=refresh)
+        r = raw.get("place_results") or next(iter(raw.get("local_results") or []), None)
+        if not isinstance(r, dict) or not (r.get("title") or "").strip():
+            return None
+        return Eatery(
+            name=r["title"].strip(),
+            category="restaurant",
+            cuisine=r.get("type") or "",
+            address=r.get("address") or "",
+            website=r.get("website") or "",
+            rating=r.get("rating"),
+            reviews=r.get("reviews"),
+            price=r.get("price") or "",
+            sources=["google"],
+            thumbnail=r.get("thumbnail") or "",
+            data_id=r.get("data_id") or "",
+        )
 
     def _cached_or_search(
         self, params: dict[str, Any], *, refresh: bool
@@ -179,6 +229,8 @@ def merge_eateries(osm: list[Eatery], rated: list[Eatery]) -> list[Eatery]:
             base.price = r.price or base.price
             base.cuisine = base.cuisine or r.cuisine
             base.address = base.address or r.address
+            base.thumbnail = r.thumbnail or base.thumbnail
+            base.data_id = r.data_id or base.data_id
             base.sources = [*base.sources, "google"]
             merged_keys.add(key)
         else:
@@ -186,6 +238,61 @@ def merge_eateries(osm: list[Eatery], rated: list[Eatery]) -> list[Eatery]:
     out = list(by_key.values())
     out.sort(key=lambda e: (-(e.rating or 0), -(e.reviews or 0), e.name.lower()))
     return out
+
+
+# The og:image regex is deliberately permissive about attribute order/quoting — restaurant sites
+# run every CMS under the sun. content="..." captured either side of property="og:image".
+_OG_IMAGE_RE = re.compile(
+    r'<meta[^>]+(?:property|name)=["\']og:image(?::secure_url)?["\'][^>]*content=["\']([^"\']+)["\']'
+    r'|<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\']og:image(?::secure_url)?["\']',
+    re.IGNORECASE,
+)
+
+
+def enrich_hero_images(
+    eateries: list[Eatery], *, limit: int = 25, timeout: float = 6.0,
+    client: httpx.Client | None = None,
+) -> int:
+    """KEYLESS imagery enrichment: fetch each eatery's OWN website and lift its og:image hero —
+    usually the place's best food/interior shot, no API, no quota. Read-only
+    public GETs with the tool UA; per-site failures are silent skips (a dead restaurant site is
+    normal, never a dead run). Returns how many heroes landed. `limit` bounds total fetches —
+    enrichment is for the report tier, not an unbounded crawl."""
+    from harness._http import USER_AGENT
+
+    own = client or httpx.Client(
+        timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+    )
+    hits = 0
+    fetched = 0
+    try:
+        for e in eateries:
+            if fetched >= limit:
+                break
+            if not e.website or e.hero_image:
+                continue
+            fetched += 1
+            try:
+                resp = own.get(e.website)
+                if resp.status_code >= 400:
+                    continue
+                m = _OG_IMAGE_RE.search(resp.text[:200_000])
+                if m:
+                    url = (m.group(1) or m.group(2) or "").strip()
+                    # protocol-relative + relative URLs resolved against the site
+                    if url.startswith("//"):
+                        url = "https:" + url
+                    elif url.startswith("/"):
+                        url = str(httpx.URL(str(resp.url)).join(url))
+                    if url.startswith("http"):
+                        e.hero_image = url
+                        hits += 1
+            except httpx.HTTPError:
+                continue  # dead/slow site — honest skip
+    finally:
+        if client is None:
+            own.close()
+    return hits
 
 
 def _osm_address(tags: dict[str, Any]) -> str:

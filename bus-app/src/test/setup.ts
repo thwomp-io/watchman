@@ -11,6 +11,25 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
+// This jsdom/node combination ships no localStorage (node's experimental one wants a CLI flag; jsdom's
+// is absent under vitest). The theme layer persists the operator's explicit choice there — back it with
+// a plain in-memory Map so the persistence tests exercise theme.ts's real read/write logic.
+if (globalThis.localStorage == null) {
+  const backing = new Map<string, string>();
+  const storageStub = {
+    getItem: (k: string) => backing.get(k) ?? null,
+    setItem: (k: string, v: string) => void backing.set(k, String(v)),
+    removeItem: (k: string) => void backing.delete(k),
+    clear: () => backing.clear(),
+    key: (i: number) => [...backing.keys()][i] ?? null,
+    get length() {
+      return backing.size;
+    },
+  };
+  Object.defineProperty(globalThis, "localStorage", { value: storageStub, configurable: true });
+  Object.defineProperty(window, "localStorage", { value: storageStub, configurable: true });
+}
+
 // --- the mocked Tauri IPC --------------------------------------------------------------------------
 // api.ts is the webview's ONLY door to the backend — every call routes through src/transport.ts, whose
 // Tauri implementation is `invoke(cmd, args)` from @tauri-apps/api/core (+ `listen` from /event). Mock

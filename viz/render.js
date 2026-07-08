@@ -1241,7 +1241,7 @@ function renderCompare(root, d) {
   const cx = M.left + labelPad + ringR;
   const cy = M.top + ringR;
   const width = cx + ringR + labelPad + M.right;
-  // legend wraps to multiple rows when labels overflow the canvas width (s0w); pre-measure the row
+  // legend wraps to multiple rows when labels overflow the canvas width; pre-measure the row
   // count here so the SVG height grows to contain it (height is fixed before the legend is drawn).
   const legendItemW = (c) => 12 + String(c.label).length * 6.8 + 24;
   const legendAvailW = width - M.left - M.right;
@@ -1723,7 +1723,7 @@ function renderCalendar(root, d) {
   const scoreOf = (m) => (m.score != null ? m.score : (m.items || []).length);
   const maxScore = d3.max([1, ...months.map(scoreOf)]);
   const heat = d3.scaleSequential(d3.interpolateBlues).domain([0, maxScore * 1.3]);
-  const kindColor = { holiday: "#34c759", sports: "#0c2c56", personal: "#af52de", "mega-event": "#ff9500" };
+  const kindColor = { holiday: "#34c759", sports: "#1f5bc4", personal: "#af52de", "mega-event": "#ff9500" };
 
   const svg = makeSvg(root, width, height);
   svg.append("text").attr("x", M.left).attr("y", 30).attr("font-size", 20).attr("font-weight", 700)

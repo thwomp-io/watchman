@@ -563,9 +563,10 @@ fn default_surfaces() -> Vec<Surface> {
         hn_surface("finance.networth", "Net worth", "finance", &["finance", "networth", "--json"]),
         hn_surface("career.openings", "Openings scan", "career", &["career", "openings", "--json"]),
         // {today}/{today+N} are substituted at spawn time (see commands::run_surface)
+        // No hardcoded city: `weather` resolves the city from the active weights'
+        // `conditions.home` (pack-aware) — mirrors the dash.rs default_conditions widget.
         hn_surface("travel.weather", "Home-base weather", "travel",
-                   &["travel", "weather", "--city", "Anytown, USA", "--from", "{today}",
-                     "--to", "{today+4}", "--json"]),
+                   &["travel", "weather", "--from", "{today}", "--to", "{today+4}", "--json"]),
         // The Inbox watch-floor band reads this; fast — reads the run-log, no network.
         hn_surface("system.watchmen", "Watchmen", "system", &["bus", "watchmen", "--json"]),
     ]
