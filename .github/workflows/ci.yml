@@ -242,7 +242,7 @@ jobs:
           for f in src-tauri/target/release/bundle/nsis/*-setup.exe.sig; do cp "$f" dist-bundles/; done
           [ -f latest.json ] && cp latest.json dist-bundles/
           ls -la dist-bundles/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: watchman-${{ matrix.platform }}
           path: bus-app/dist-bundles/*
