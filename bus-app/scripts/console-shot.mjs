@@ -8,6 +8,8 @@
 //   node scripts/console-shot.mjs <url> <out.png> [--viewport phone|tablet|desktop|WxH]
 //                                                 [--token-file ~/.config/harness/bus-token]
 //                                                 [--tab DASH|INBOX|VIZ|VAULT|SURFACES]
+//                                                 [--viz-item NAME]  (VIZ rail entry, case-insensitive)
+//                                                 [--dash-group Finance] [--dash-lane Global]
 //                                                 [--settle-ms 4000]
 //
 // Notes for future readers:
@@ -44,7 +46,7 @@ const SHOT_DIR = process.env.CONSOLE_SHOT_DIR;
 if (out && !out.includes("/") && SHOT_DIR) out = `${SHOT_DIR}/${out}`;
 if (!url || !out) {
   console.error("usage: console-shot.mjs <url> <out.png> [--viewport phone|desktop|WxH] " +
-    "[--token-file PATH] [--tab NAME] [--settle-ms N]");
+    "[--token-file PATH] [--tab NAME] [--viz-item NAME] [--settle-ms N]");
   process.exit(2);
 }
 const vpArg = arg("--viewport", "desktop");
@@ -55,6 +57,11 @@ const viewport = VIEWPORTS[vpArg] ??
   })();
 const tokenFile = arg("--token-file", `${homedir()}/.config/harness/bus-token`);
 const tab = arg("--tab", "");
+const dashGroup = arg("--dash-group", "");
+const dashLane = arg("--dash-lane", "");
+const vizItem = arg("--viz-item", "");
+const hoverSel = arg("--hover", ""); // CSS selector to hover before capture (tooltip verification)
+const clickSel = arg("--click", ""); // CSS selector to click before capture (modal/popup verification)
 const settleMs = Number(arg("--settle-ms", "4000"));
 
 const browser = await chromium.launch();
@@ -82,6 +89,28 @@ if (process.argv.includes("--standalone")) {
 }
 await page.waitForSelector(".widget, .inbox, .vault, .viz-rail", { timeout: 30_000 }).catch(() => {});
 if (tab) await page.click(`nav.zones button:has-text("${tab}")`).catch(() => {});
+// DASH is 2-level (group row → lane subtabs) — navigate both when asked, waiting for each
+// row to exist so a fresh config-discovered lane (no rebuild) is reachable the same session.
+if (dashGroup) {
+  await page.waitForTimeout(400);
+  await page.click(`button:has-text("${dashGroup}")`).catch(() => {});
+}
+if (dashLane) {
+  await page.waitForTimeout(400);
+  await page.click(`button:has-text("${dashLane}")`).catch(() => {});
+}
+// VIZ rail is grouped (top toggle → doc → item) — --viz-item selects a rail entry by
+// case-insensitive name, expanding collapsed top groups (chev "▸") first so fresh vault
+// discoveries are reachable in a cold headless session (2026-07-10 — the eye extended to the
+// VIZ rail; the DASH lanes got the same treatment earlier).
+if (vizItem) {
+  await page.waitForTimeout(600);
+  for (const t of await page.locator('.viz-top-toggle:has-text("▸")').all())
+    await t.click().catch(() => {});
+  await page.waitForTimeout(400);
+  await page.locator(".viz-rail button", { hasText: new RegExp(vizItem, "i") }).first()
+    .click().catch(() => {});
+}
 // bounded settle: let ACQUIRING widgets resolve (cold spawns are ~0.7s each after the perf pass)
 const deadline = Date.now() + 25_000;
 while (Date.now() < deadline) {
@@ -90,6 +119,16 @@ while (Date.now() < deadline) {
   await page.waitForTimeout(500);
 }
 await page.waitForTimeout(settleMs); // paint/chart-animation grace
+// --hover: park the cursor on a selector so hover-born UI (tooltips, relationship cards) is IN
+// the capture — the agent's eye can now verify what only exists under the pointer.
+if (hoverSel) {
+  await page.locator(hoverSel).first().hover({ force: true }).catch(() => {});
+  await page.waitForTimeout(500);
+}
+if (clickSel) {
+  await page.locator(clickSel).first().click({ force: true }).catch(() => {});
+  await page.waitForTimeout(700); // popup content fetch + paint
+}
 // fullPage captures the whole scrollable document — which mis-renders position:fixed chrome
 // (bars paint at scroll-top, not the viewport edge). --standalone implies viewport-true capture
 // (that's what the installed app's screen IS); --viewport-only forces it anywhere.

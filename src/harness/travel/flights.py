@@ -17,9 +17,10 @@ from pathlib import Path
 from harness.travel.media import dest_dir_parts
 from harness.travel.models import FlightItinerary, FlightSearch
 
-# First-class-upgrade calibration. The mechanism values legroom, but the preference is
-# **duration-dependent**: first really matters on LONG flights (~4h+, cross-country); on SHORT hops
-# it's a nice-to-have only for a modest upcharge. The bands below are tunable defaults, not laws.
+# First-class-upgrade calibration — a SAMPLE calibration for a first-class-on-long-hauls
+# preference profile (tune to taste; the design point is that the preference is
+# **duration-dependent**: first matters most on LONG flights, ~4h+; on SHORT hops it's a
+# nice-to-have only for a modest upcharge). The bands below are tunable defaults, not laws.
 _LONG_HAUL_MIN = 240  # minutes (~4h) — at/over this, first is a high preference (the broad band below)
 # LONG-haul band: first ≤ ~2× economy / within a few hundred $ = worth it; ≥3× or ≥$1500 = rational-pause.
 _UPGRADE_MAX_ABS = 1050.0

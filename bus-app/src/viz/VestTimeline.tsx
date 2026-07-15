@@ -41,6 +41,17 @@ export default function VestTimeline({ data }: { data: VestTimelineData }) {
   const parse = d3.utcParse("%Y-%m-%d");
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
 
+  // empty-data guard (the demo-seal rule, AFTER the hooks): a profile with no vest calendar must
+  // read CALM — without it, the windows-only render paints a full-canvas "clean window" that
+  // reads broken
+  if (!data.vests?.length || !data.domain) {
+    return (
+      <div className="viz-canvas">
+        <p className="viz-hint">NO VESTS ON THE CALENDAR — nothing scheduled to plan around</p>
+      </div>
+    );
+  }
+
   const dom: [Date, Date] = [parse(data.domain[0]) as Date, parse(data.domain[1]) as Date];
   const x = d3.scaleUtc().domain(dom).range([M.left, W - M.right]);
   const baseline = H - M.bottom;

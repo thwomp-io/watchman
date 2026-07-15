@@ -141,7 +141,7 @@ def _month_starts(start: date, end: date) -> list[date]:
 
 
 def resolve_research_dir(symbol: str, tracker_path: Path, held_symbols: set[str]) -> Path:
-    """Where a symbol's research lives (— the positions/candidates/themes taxonomy).
+    """Where a symbol's research lives: the positions/candidates/themes taxonomy.
 
     Location-agnostic: an EXISTING dir anywhere under finance/research/ wins (so lifecycle
     `git mv`s — candidate→position on buy, sector re-filing — stick; the travel destinations-reorg

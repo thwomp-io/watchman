@@ -1,0 +1,220 @@
+{
+ "lane": "backlog",
+ "title": "Backlog",
+ "group": "Ops",
+ "widgets": [
+  {
+   "id": "open",
+   "title": "Open \u00b7 export",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 1,
+   "value_path": "open",
+   "title_path": "exported_ago"
+  },
+  {
+   "id": "inprog",
+   "title": "In progress",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 1,
+   "value_path": "in_progress"
+  },
+  {
+   "id": "p1",
+   "title": "P1 open",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 1,
+   "value_path": "p1_count"
+  },
+  {
+   "id": "shipped",
+   "title": "Closed \u00b7 7d",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 1,
+   "value_path": "closed_7d"
+  },
+  {
+   "id": "tree",
+   "title": "Beads board \u2014 active + recently shipped",
+   "kind": "viz",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 4,
+   "value_path": "tree",
+   "rows": 3
+  },
+  {
+   "id": "presence",
+   "title": "In progress \u2014 the presence board",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 2,
+   "value_path": "presence",
+   "columns": [
+    "id",
+    "assignee",
+    "priority",
+    "title",
+    "ticket"
+   ]
+  },
+  {
+   "id": "p1s",
+   "title": "P1 \u2014 open",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 2,
+   "value_path": "p1_open",
+   "columns": [
+    "id",
+    "priority",
+    "type",
+    "title",
+    "labels",
+    "ticket"
+   ]
+  },
+  {
+   "id": "ready",
+   "title": "Ready \u2014 unblocked, undeferred",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 4,
+   "value_path": "ready",
+   "columns": [
+    "id",
+    "priority",
+    "type",
+    "title",
+    "labels",
+    "updated",
+    "ticket"
+   ]
+  },
+  {
+   "id": "shipped7",
+   "title": "Shipped this week",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "beads",
+     "board",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "local60s",
+   "span": 4,
+   "value_path": "shipped_7d",
+   "columns": [
+    "id",
+    "title",
+    "labels",
+    "updated",
+    "ticket"
+   ]
+  }
+ ]
+}

@@ -132,16 +132,33 @@ export interface Widget {
   value_path?: string | null;
   prefix?: string | null;
   suffix?: string | null;
+  // stat tiles: sign-format (+/pos-neg color). Defaults ON for "%" tiles (the day-change
+  // convention); set false for magnitude reads like %-complete where "+" is noise.
+  signed?: boolean;
   title_path?: string | null; // dot-path whose value renders accented in the title (e.g. weather city)
   symbols: string[];
   columns?: string[]; // table widgets: explicit column subset/order (else first-8 auto-derived)
   rows?: number; // grid-row span — a tall centerpiece panel (default 1)
+  // Dashboard Studio: explicit grid placement in grid units (x = col start,
+  // y = row start, w/h = spans). Absent = legacy span/rows dense-flow placement. Mirrors the rust
+  // Layout struct — a field here MUST exist in dash.rs serde too (the two-parsers contract).
+  layout?: WidgetLayout | null;
+}
+
+// The explicit-placement contract (Dashboard Studio). Grid units, not pixels.
+export interface WidgetLayout {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export interface Dashboard {
   lane: string;
   title: string;
   group?: string; // nav grouping — dashboards sharing a group render as subtabs under it
+  // Dashboard Studio: "default" (seeded, safe to migrate) | "user" (Studio-edited — never reseeded).
+  owner?: string;
   widgets: Widget[];
 }
 

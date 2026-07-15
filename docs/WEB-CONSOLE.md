@@ -44,6 +44,8 @@ The console is responsive down to phone widths and ships a web-app manifest: **A
 iOS/Android installs it standalone — no browser chrome, safe-area aware, with the zone tabs along the
 bottom where thumbs live. Day-to-day it reads like a native finance app pointed at your own data.
 
+<img src="assets/phone-core.png" alt="The console installed as a PWA — one column, zone tabs at the thumb line" width="360">
+
 ## Push notifications
 
 The console can push **alert/warn** bus events to your devices as native notifications — the wire's

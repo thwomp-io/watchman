@@ -3,14 +3,16 @@
 // [{label, value, group}]}). Click a tile → zoom into its group; breadcrumb backs out.
 // Instrument palette: color identifies GROUP; depth reads through value-scaled luminance.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import JsonView from "../JsonView";
 import { useCatColors, useMeasure } from "./common";
+import { resolveRef, useNav, type Ref } from "../nav";
 
 interface TreemapNode {
   label: string; value: number; group?: string;
   detail?: Record<string, unknown>;  // optional metadata layer — corpus truth
+  ref?: Ref;  // research-report link — same tooltip mechanic as Scatter's bench maps
 }
 interface TreemapData {
   title?: string;
@@ -24,11 +26,22 @@ const fmt = (v: number): string =>
 
 export default function Treemap({ data }: { data: TreemapData }) {
   const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
+  const nav = useNav();
   const [focus, setFocus] = useState<string | null>(null);
   const [detailNode, setDetailNode] = useState<TreemapNode | null>(null);
-  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; n: TreemapNode } | null>(null);
 
-  const { ref, width: W, height: H } = useMeasure(0.5);  // measures the viz-stage (crumbs excluded)
+  // hover-bridge (mirrors Scatter): a node with a `ref` gets an in-tooltip link, so the tip is
+  // set ONCE at tile-enter (not mouse-follow) and cleared on a short grace timer — cancelled when
+  // the cursor enters the tooltip itself — letting the pointer travel tile → tooltip → link.
+  const clearTimer = useRef<number | null>(null);
+  const cancelClear = () => { if (clearTimer.current) { clearTimeout(clearTimer.current); clearTimer.current = null; } };
+  const scheduleClear = () => { cancelClear(); clearTimer.current = window.setTimeout(() => setTip(null), 140); };
+  const openRef = (r: Ref) => void resolveRef(r).then(nav.navigate);
+
+  // 0.5→0.6 aspect: dense rosters (a full fund look-through runs many dozens of tiles) starve for height on wide screens;
+  // dashboards unaffected (a fixed tile height wins over the aspect fallback in useMeasure).
+  const { ref, width: W, height: H } = useMeasure(0.6);  // measures the viz-stage (crumbs excluded)
   const groups = data.groups ?? [];
   const groupLabel = (key: string) => groups.find((g) => g.key === key)?.label ?? key;
   const color = useMemo(() => {
@@ -50,7 +63,10 @@ export default function Treemap({ data }: { data: TreemapData }) {
     return root.leaves() as unknown as Array<
       d3.HierarchyRectangularNode<TreemapNode>
     >;
-  }, [data, focus]);
+    // W/H MUST be deps (bug fixed 2026-07-10): without them the layout locks at whatever the
+    // container measured at data-arrival — a warm session (instant data, measure lands second)
+    // rendered the map at the 900px default inside a 2200px stage and never re-laid-out.
+  }, [data, focus, W, H]);
 
   const focusTotal = focus
     ? d3.sum(data.nodes.filter((n) => (n.group ?? "·") === focus), (n) => n.value)
@@ -67,7 +83,7 @@ export default function Treemap({ data }: { data: TreemapData }) {
       </div>
       <div className="viz-stage" ref={ref}>
       <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg"
-           onMouseLeave={() => setTip(null)}>
+           onMouseLeave={scheduleClear}>
         {leaves.map((leaf, i) => {
           const n = leaf.data;
           const g = n.group ?? "·";
@@ -77,21 +93,24 @@ export default function Treemap({ data }: { data: TreemapData }) {
             <g key={i} transform={`translate(${leaf.x0},${leaf.y0})`}
                className="tm-tile"
                onClick={() => (focus ? setDetailNode(n) : setFocus(g))}
-               onMouseMove={(e) => {
+               onMouseEnter={(e) => {
                  const r = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-                 setTip({
-                   x: e.clientX - r.left, y: e.clientY - r.top,
-                   text: `${n.label} · ${fmt(n.value)} · ${((n.value / total) * 100).toFixed(1)}%`
-                          + (focus ? "" : ` · ${groupLabel(g)}`),
-                 });
-               }}>
+                 cancelClear();
+                 setTip({ x: e.clientX - r.left, y: e.clientY - r.top, n });
+               }}
+               onMouseLeave={scheduleClear}>
               <rect width={w} height={h} rx={2}
                     fill={c} fillOpacity={focus ? 0.28 : 0.2}
                     stroke={c} strokeOpacity={0.55} strokeWidth={1} />
-              {w > 64 && h > 30 && (
+              {/* label thresholds lowered + clip-pathed: mid-size tiles show a
+                  cleanly-clipped name instead of nothing — dense-roster legibility. */}
+              {w > 44 && h > 26 && (
                 <>
-                  <text x={7} y={16} className="tm-label">{n.label}</text>
-                  <text x={7} y={30} className="tm-value" fill={c}>{fmt(n.value)}</text>
+                  <clipPath id={`tmclip-${i}`}><rect width={Math.max(w - 6, 0)} height={h} /></clipPath>
+                  <g clipPath={`url(#tmclip-${i})`}>
+                    <text x={7} y={16} className="tm-label">{n.label}</text>
+                    {h > 40 && <text x={7} y={30} className="tm-value" fill={c}>{fmt(n.value)}</text>}
+                  </g>
                 </>
               )}
             </g>
@@ -99,7 +118,26 @@ export default function Treemap({ data }: { data: TreemapData }) {
         })}
       </svg>
       </div>
-      {tip && <div className="viz-tip" style={{ left: tip.x + 14, top: tip.y + 10 }}>{tip.text}</div>}
+      {tip && (
+        <div className={`viz-tip${tip.n.ref ? " has-link" : ""}`}
+             style={{ left: tip.x + 14, top: tip.y + 10 }}
+             onMouseEnter={cancelClear} onMouseLeave={scheduleClear}>
+          <div className="viz-tip-head">
+            <span className="viz-tip-dot" style={{ background: color(tip.n.group ?? "·") }} />
+            <strong>{tip.n.label}</strong>
+          </div>
+          <div className="viz-tip-rows">
+            <span className="k">value</span><span className="v">{fmt(tip.n.value)}</span>
+            <span className="k">weight</span><span className="v">{((tip.n.value / total) * 100).toFixed(1)}%</span>
+            {tip.n.group && (<><span className="k">group</span><span className="v">{groupLabel(tip.n.group)}</span></>)}
+          </div>
+          {tip.n.ref && (
+            <button className="viz-tip-link" onClick={() => openRef(tip.n.ref!)}>
+              open research report →
+            </button>
+          )}
+        </div>
+      )}
       {!focus && <p className="viz-hint">CLICK A TILE TO DRILL INTO ITS GROUP</p>}
       {focus && !detailNode && <p className="viz-hint">CLICK A TILE FOR ITS DETAIL RECORD</p>}
       {detailNode && (

@@ -45,6 +45,12 @@ pub struct Widget {
     pub prefix: Option<String>,
     #[serde(default)]
     pub suffix: Option<String>,
+    /// stat-tile sign formatting opt-out (types.ts `signed?: boolean`): %-suffixed
+    /// stats sign-format by default; `signed: false` = a magnitude read (e.g. UNWIND % COMPLETE).
+    /// Added 2026-07-13 after the desktop app DROPPED the key its typed parse didn't know while
+    /// the python-served console passed it through — the two-parsers divergence class.
+    #[serde(default)]
+    pub signed: Option<bool>,
     /// optional dot-path into the source JSON whose value is appended to the title, accented — e.g.
     /// the resolved home city on the weather widget, so the title reflects the loaded persona's home
     /// instead of a hardcoded place. The frontend renders `{title} · {value}` with the value amber.
@@ -62,6 +68,9 @@ pub struct Widget {
     /// is tall by its own CSS; this generalizes tallness to any widget.
     #[serde(default = "default_rows")]
     pub rows: u8,
+    /// Explicit grid placement (Dashboard Studio) — None = legacy span/rows flow placement.
+    #[serde(default)]
+    pub layout: Option<Layout>,
 }
 
 fn default_refresh() -> String {
@@ -74,6 +83,25 @@ fn default_rows() -> u8 {
     1
 }
 
+/// Explicit grid placement (Dashboard Studio) — grid units, not pixels: `x` =
+/// column start (0-based), `y` = row start, `w`/`h` = spans. OPTIONAL by construction: a widget
+/// without `layout` renders via the legacy span/rows dense-flow path, so every pre-Studio config
+/// keeps working untouched; the first unlock+save persists computed positions. Skipping
+/// `Option<Layout>` here would silently drop the key on the desktop while the python-served
+/// console passes it through — the two-parsers class (cf. `signed`); the
+/// kitchen-sink round-trip test pins all three surfaces.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct Layout {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+fn default_owner() -> String {
+    "default".into()
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Dashboard {
     pub lane: String,
@@ -83,6 +111,11 @@ pub struct Dashboard {
     /// user configs valid (they just land ungrouped until re-seeded).
     #[serde(default)]
     pub group: String,
+    /// Ownership metadata (Dashboard Studio): "default" = seeded from a compiled default (safe to
+    /// re-seed/migrate); "user" = user-authored or user-edited via the Studio — NEVER overwritten
+    /// by seeding or deploys (the fix). Old configs deserialize as "default".
+    #[serde(default = "default_owner")]
+    pub owner: String,
     pub widgets: Vec<Widget>,
 }
 
@@ -112,10 +145,12 @@ fn w(
         value_path: value_path.map(Into::into),
         prefix: prefix.map(Into::into),
         suffix: suffix.map(Into::into),
+        signed: None,
         title_path: None,
         symbols: Vec::new(),
         columns: Vec::new(),
         rows: 1,
+        layout: None,
     }
 }
 
@@ -129,6 +164,7 @@ fn default_finance() -> Dashboard {
         lane: "finance".into(),
         title: "Core".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
             w("networth", "Net worth", "stat",
               hn_cmd(&["finance", "networth", "--json"]), "market10m", 1,
@@ -195,6 +231,7 @@ fn default_travel() -> Dashboard {
         lane: "travel".into(),
         title: "Planning".into(),
         group: "Travel".into(),
+        owner: default_owner(),
         widgets: vec![
             w("active", "Active trips", "stat",
               hn_cmd(&["travel", "trips", "--json"]), "local60s", 1,
@@ -231,6 +268,7 @@ fn default_landscape() -> Dashboard {
         lane: "travel-landscape".into(),
         title: "Landscape".into(),
         group: "Travel".into(),
+        owner: default_owner(),
         widgets: vec![
             Widget { rows: 3,
                 ..w("matrix", "Destination characteristics — the whole corpus", "viz",
@@ -253,6 +291,7 @@ fn default_conditions() -> Dashboard {
         lane: "travel-conditions".into(),
         title: "Conditions".into(),
         group: "Travel".into(),
+        owner: default_owner(),
         widgets: vec![
             // No hardcoded city: `weather` defaults to the active weights' `conditions.home`
             // (pack-aware); `title_path` surfaces the resolved place in the title.
@@ -281,6 +320,7 @@ fn default_calendar() -> Dashboard {
         lane: "travel-calendar".into(),
         title: "Calendar".into(),
         group: "Travel".into(),
+        owner: default_owner(),
         widgets: vec![
             Widget { columns: cols(&["local_date", "name", "segment", "tier"]),
                 ..w("keydates", "Key dates & sports — next 180d", "table",
@@ -304,6 +344,7 @@ fn default_visits() -> Dashboard {
         lane: "travel-visits".into(),
         title: "Visits".into(),
         group: "Travel".into(),
+        owner: default_owner(),
         widgets: vec![
             Widget { columns: cols(&["when", "date", "status", "destination", "anchor", "who", "doc"]),
                 ..w("inbound", "Inbound visits — who's coming", "table",
@@ -313,16 +354,24 @@ fn default_visits() -> Dashboard {
     }
 }
 
-/// The concentration-unwind dashboard — a campaign-scoped sell-planning surface. Every widget
-/// shares ONE source (`hn finance unwind --json`), so the dashboard's in-flight dedupe collapses
-/// the whole tab to a single subprocess run; each widget just `value_path`s into the contract.
+/// The concentration-unwind dashboard — sell-down planning for any concentrated
+/// position with grant/vest mechanics (renders from whatever the corpus's `unwind:` lane
+/// configures; sample packs supply fictional personas). Every widget shares ONE source
+/// (`hn finance unwind --json`), so the dashboard's in-flight dedupe collapses the whole tab to a
+/// single subprocess run; each widget just `value_path`s into the contract.
 fn default_unwind() -> Dashboard {
     let src = || hn_cmd(&["finance", "unwind", "--json"]);
     Dashboard {
         lane: "unwind".into(),
         title: "Unwind".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
+            Widget {
+                signed: Some(false),  // % COMPLETE is a magnitude, not a delta — no "+"
+                ..w("unwind_pct", "Unwind complete", "stat", src(), "market10m", 1,
+                    Some("progress.pct_unwound"), None, Some("%"))
+            },
             w("price", "Price", "stat", src(), "market10m", 1, Some("price"), Some("$"), None),
             w("day", "Day", "stat", src(), "market10m", 1, Some("day_change_pct"), None, Some("%")),
             w("gl", "Unrealized G/L", "stat", src(), "market10m", 1,
@@ -353,6 +402,7 @@ fn default_market() -> Dashboard {
         lane: "market".into(),
         title: "Market".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
             w("breadth_ewc", "Breadth · RSP − SPY", "stat", src(), "market10m", 1,
               Some("breadth.equal_weight_minus_cap_pct"), None, Some("%")),
@@ -396,6 +446,7 @@ fn default_news() -> Dashboard {
         lane: "news".into(),
         title: "News".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
             // full-width (span 4) + tall (rows 3); the `news` kind renders the whole master-detail
             // internally off the wire JSON. local30m = a gentle auto-refresh (news isn't market-tick
@@ -421,6 +472,7 @@ fn default_tickets() -> Dashboard {
         lane: "tickets".into(),
         title: "Tickets".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
             // the browsable ticket panel — the centerpiece; doc-series self-fetches (bypasses the run pipeline)
             w("ticket", "Execution ticket", "doc_series",
@@ -429,8 +481,11 @@ fn default_tickets() -> Dashboard {
             Widget { columns: cols(&["symbol", "side", "qty", "limit", "price", "distance_pct"]),
                 ..w("orders", "Resting GTC orders", "table", pulse(), "market10m", 2,
                   Some("orders"), None, None) },
-            w("nw", "Net worth", "stat", positions(), "market10m", 1, Some("net_worth"), Some("$"), None),
-            w("live", "Live value", "stat", positions(), "market10m", 1, Some("live_value"), Some("$"), None),
+            // the trap-map — per-symbol GTC price ladders (live price + rungs +
+            // support shelves): the strategy read beside the raw table. Replaces the earlier
+            // nw/live stat tiles, which were a weak use of the space.
+            w("trapmap", "Trap map — GTC ladders", "viz",
+              hn_cmd(&["finance", "trap-map", "--json"]), "market10m", 2, None, None, None),
             // the book you're trading against
             Widget { columns: cols(&["symbol", "market_value", "day_change_pct", "unrealized_gl_pct"]),
                 ..w("positions", "Positions", "table", positions(), "market10m", 2,
@@ -451,6 +506,7 @@ fn default_compare() -> Dashboard {
         lane: "compare".into(),
         title: "Compare".into(),
         group: "Finance".into(),
+        owner: default_owner(),
         widgets: vec![
             // the browsable comparison narrative — the centerpiece; doc-series self-fetches
             w("comparison", "Comparison", "doc_series",
@@ -480,6 +536,7 @@ fn default_career() -> Dashboard {
         lane: "career".into(),
         title: "Board".into(),
         group: "Career".into(),
+        owner: default_owner(),
         widgets: vec![
             w("openings", "Matched openings", "stat", shortlist(), "manual", 1,
               Some("summary.total"), None, None),
@@ -510,8 +567,49 @@ fn default_career() -> Dashboard {
     }
 }
 
+/// The BACKLOG dashboard — the beads coordination bus made browsable: counts, the
+/// P1 band, the presence board (in_progress = which agent is on what), an honest ready queue, and
+/// shipped-this-week. Read-only over the tracker's `.beads/issues.jsonl` PASSIVE export — the
+/// export's age rides the Open tile's title (liveness≠freshness: the board must never perform
+/// more currency than its file has). State changes stay with `bd`; this is the operator's glance
+/// surface (the ask: browse bead details without asking an agent — full descriptions ride RAW).
+fn default_backlog() -> Dashboard {
+    let src = || hn_cmd(&["beads", "board", "--json"]);
+    Dashboard {
+        lane: "backlog".into(),
+        title: "Backlog".into(),
+        group: "Ops".into(),
+        owner: default_owner(),
+        widgets: vec![
+            Widget { title_path: Some("exported_ago".into()),
+                ..w("open", "Open · export", "stat", src(), "local60s", 1, Some("open"), None, None) },
+            w("inprog", "In progress", "stat", src(), "local60s", 1, Some("in_progress"), None, None),
+            w("p1", "P1 open", "stat", src(), "local60s", 1, Some("p1_count"), None, None),
+            w("shipped", "Closed · 7d", "stat", src(), "local60s", 1, Some("closed_7d"), None, None),
+            // the family tree — active/recent beads as an org chart (parent-child structure +
+            // a blocks-dep overlay); hover a block for metadata + the open-ticket link
+            Widget { rows: 3,
+                ..w("tree", "Beads board — active + recently shipped", "viz", src(), "local60s", 4,
+                  Some("tree"), None, None) },
+            Widget { columns: cols(&["id", "assignee", "priority", "title", "ticket"]),
+                ..w("presence", "In progress — the presence board", "table", src(), "local60s", 2,
+                  Some("presence"), None, None) },
+            Widget { columns: cols(&["id", "priority", "type", "title", "labels", "ticket"]),
+                ..w("p1s", "P1 — open", "table", src(), "local60s", 2,
+                  Some("p1_open"), None, None) },
+            Widget { columns: cols(&["id", "priority", "type", "title", "labels", "updated", "ticket"]),
+                ..w("ready", "Ready — unblocked, undeferred", "table", src(), "local60s", 4,
+                  Some("ready"), None, None) },
+            Widget { columns: cols(&["id", "title", "labels", "updated", "ticket"]),
+                ..w("shipped7", "Shipped this week", "table", src(), "local60s", 4,
+                  Some("shipped_7d"), None, None) },
+        ],
+    }
+}
+
 fn compiled_defaults() -> Vec<(&'static str, Dashboard)> {
     vec![
+        ("backlog", default_backlog()),
         ("finance", default_finance()),
         ("travel", default_travel()),
         ("travel-landscape", default_landscape()),
@@ -565,6 +663,94 @@ pub fn load_all() -> Vec<Dashboard> {
     out
 }
 
+/// Persist a Studio-edited dashboard (checkpoint C). Stamps `owner: "user"` — a
+/// Studio-saved dashboard is user-owned from that moment on and is never reseeded/migrated over.
+pub fn save_dashboard(d: &Dashboard) -> Result<(), String> {
+    save_dashboard_to(&dash_dir(), d)
+}
+
+/// Pure-core half of the save (testable without env mutation — the `harness_home_from` pattern).
+/// Atomic temp-then-rename per the config.rs precedent: an in-place truncate-and-write leaves a
+/// zeroed lane file if the process dies mid-save, which reads as a corrupt (skipped) tab on the
+/// next launch. The lane becomes the filename, so its charset is validated — no traversal.
+/// EVERY save first banks the file being replaced into `.backups/<lane>-<epoch>.json` (pruned to
+/// the newest 10 per lane) — the data-integrity layer: a bad edit, a migration you regret, or
+/// a future bug is always one file-copy from undone.
+/// The FIRST backup a lane ever gets is its pre-Studio legacy config, for free.
+pub fn save_dashboard_to(dir: &Path, d: &Dashboard) -> Result<(), String> {
+    let lane_ok = !d.lane.is_empty()
+        && d.lane.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if !lane_ok {
+        return Err(format!("invalid lane '{}' — lowercase letters, digits, hyphens only", d.lane));
+    }
+    let mut owned = d.clone();
+    owned.owner = "user".into();
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("{}.json", owned.lane));
+    backup_existing(dir, &owned.lane, &path);
+    let body = serde_json::to_string_pretty(&owned).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, body).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())
+}
+
+/// Snap a lane back to its compiled built-in default (Dashboard Studio "return to default").
+/// The current on-disk state is BANKED to .backups/ first — the reset itself is undoable, same
+/// as any save. Lanes without a compiled default (a future user-created tab) get an honest error;
+/// their known-good states live in .backups/. Returns the fresh default so the caller can swap
+/// state in place. The written file carries owner:"default" — after a reset the dashboard is a
+/// stock default again (future built-in migrations may touch it; a later Studio edit re-claims it).
+pub fn reset_dashboard(lane: &str) -> Result<Dashboard, String> {
+    reset_dashboard_to(&dash_dir(), lane)
+}
+
+pub fn reset_dashboard_to(dir: &Path, lane: &str) -> Result<Dashboard, String> {
+    let (_, d) = compiled_defaults()
+        .into_iter()
+        .find(|(_, d)| d.lane == lane)
+        .ok_or_else(|| format!("no built-in default for '{lane}' — its history is in .backups/"))?;
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("{lane}.json"));
+    backup_existing(dir, lane, &path);
+    let body = serde_json::to_string_pretty(&d).map_err(|e| e.to_string())?;
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, body).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
+    Ok(d)
+}
+
+/// Bank the current on-disk lane file before it's replaced; prune to the newest 10 per lane.
+/// Best-effort by design — a failed backup must never block the save itself (the save is atomic
+/// regardless); epoch-seconds filenames sort chronologically with zero dependencies.
+fn backup_existing(dir: &Path, lane: &str, path: &Path) {
+    if !path.exists() {
+        return;
+    }
+    let backups = dir.join(".backups");
+    let _ = fs::create_dir_all(&backups);
+    let epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|t| t.as_secs())
+        .unwrap_or(0);
+    let _ = fs::copy(path, backups.join(format!("{lane}-{epoch:011}.json")));
+    // prune: newest 10 per lane (lexical sort == chronological, thanks to the zero-pad)
+    if let Ok(entries) = fs::read_dir(&backups) {
+        let prefix = format!("{lane}-");
+        let mut mine: Vec<PathBuf> = entries
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with(&prefix) && n.ends_with(".json"))
+            })
+            .collect();
+        mine.sort();
+        while mine.len() > 10 {
+            let _ = fs::remove_file(mine.remove(0));
+        }
+    }
+}
+
 /// Load dashboards for the active scenario (pack-DESCRIBED dashboards v2). When a weight
 /// pack is active AND ships a non-empty `dashboards/` dir, those dashboards **fully replace** the
 /// console tab-set — the persona curates its own console (full-set override): a demo pack can drop
@@ -604,6 +790,119 @@ pub fn find_widget_for(active_pack: Option<&Path>, lane: &str, id: &str) -> Opti
 mod tests {
     use super::*;
 
+    /// THE CONFIG-SCHEMA CONTRACT TEST — kills the two-parsers
+    /// divergence class mechanically: typed serde DROPS unknown keys silently (the `signed` key
+    /// vanished on desktop for 3 days while the python-served console passed it through). This
+    /// kitchen-sink JSON carries EVERY schema field; the round-trip asserts none are dropped.
+    /// Adding a field to dashboards JSON? It goes in dash.rs + types.ts + this fixture, one commit.
+    /// (Python's side is a raw-json passthrough pinned by tests/test_console_api.py's twin.)
+    #[test]
+    fn kitchen_sink_widget_survives_the_typed_round_trip() {
+        let kitchen_sink = r#"{
+            "lane": "contract", "title": "Kitchen Sink", "group": "Test", "owner": "user",
+            "widgets": [{
+                "id": "everything", "title": "Every field", "kind": "stat",
+                "source": {"type": "command", "cmd": "uv", "args": ["run"], "cwd": "~"},
+                "refresh": "market10m", "span": 3, "value_path": "a.b", "prefix": "$",
+                "suffix": "%", "signed": false, "title_path": "c.d", "symbols": ["AAA"],
+                "columns": ["x"], "rows": 2, "layout": {"x": 1, "y": 2, "w": 3, "h": 4}
+            }]
+        }"#;
+        let d: Dashboard = serde_json::from_str(kitchen_sink).unwrap();
+        let back: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&d).unwrap()).unwrap();
+        assert_eq!(back["owner"], "user", "Dashboard.owner must round-trip");
+        let w = &back["widgets"][0];
+        assert_eq!(w["signed"], false, "signed must round-trip (the dropped-unknown-key regression)");
+        assert_eq!(w["layout"]["x"], 1, "layout.x must round-trip");
+        assert_eq!(w["layout"]["h"], 4, "layout.h must round-trip");
+        assert_eq!(w["rows"], 2);
+        assert_eq!(w["columns"][0], "x");
+        // legacy config (no layout/owner) still parses, with honest defaults
+        let legacy: Dashboard = serde_json::from_str(
+            r#"{"lane":"old","title":"Old","widgets":[]}"#).unwrap();
+        assert_eq!(legacy.owner, "default");
+    }
+
+    /// Studio save: stamps owner:"user", writes atomically, validates the lane
+    /// (it becomes the filename — traversal must be impossible). Hermetic temp dir.
+    #[test]
+    fn save_dashboard_stamps_user_owner_and_rejects_bad_lanes() {
+        let dir = std::env::temp_dir().join(format!("harness-studio-save-{}", std::process::id()));
+        let d = Dashboard {
+            lane: "my-board".into(),
+            title: "Mine".into(),
+            group: "Finance".into(),
+            owner: default_owner(), // saving flips it to "user"
+            widgets: vec![],
+        };
+        save_dashboard_to(&dir, &d).unwrap();
+        let saved: Dashboard =
+            serde_json::from_str(&fs::read_to_string(dir.join("my-board.json")).unwrap()).unwrap();
+        assert_eq!(saved.owner, "user", "a Studio save stamps user ownership");
+        assert!(!dir.join("my-board.json.tmp").exists(), "temp file renamed away (atomic)");
+
+        for bad in ["../evil", "Evil", "a b", ""] {
+            let mut e = d.clone();
+            e.lane = bad.into();
+            assert!(save_dashboard_to(&dir, &e).is_err(), "lane '{bad}' must be rejected");
+        }
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Reset: snaps to the compiled default, banks the replaced state first, honest error for
+    /// lanes with no built-in.
+    #[test]
+    fn reset_dashboard_restores_the_compiled_default_and_banks_the_old_state() {
+        let dir = std::env::temp_dir().join(format!("harness-studio-reset-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        // a user-customized finance.json on disk
+        let mut custom = default_finance();
+        custom.owner = "user".into();
+        custom.widgets.truncate(2);
+        fs::write(dir.join("x"), "").err(); // ensure parent creation is exercised via save
+        save_dashboard_to(&dir, &custom).unwrap();
+
+        let fresh = reset_dashboard_to(&dir, "finance").unwrap();
+        assert_eq!(fresh.owner, "default");
+        assert!(fresh.widgets.len() > 2, "the full compiled default came back");
+        let on_disk: Dashboard =
+            serde_json::from_str(&fs::read_to_string(dir.join("finance.json")).unwrap()).unwrap();
+        assert_eq!(on_disk.owner, "default");
+        assert_eq!(on_disk.widgets.len(), fresh.widgets.len());
+        // the customized state was banked before the reset overwrote it
+        let banked = fs::read_dir(dir.join(".backups")).unwrap().count();
+        assert!(banked >= 1, "reset banks the replaced state");
+        // honest error for a lane with no compiled default
+        assert!(reset_dashboard_to(&dir, "no-such-lane").is_err());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Every save banks the replaced file into .backups/ (the data-integrity ask from the
+    /// breadth-drag incident) — the first backup a lane gets is its pre-Studio legacy config.
+    #[test]
+    fn save_dashboard_banks_a_backup_of_the_replaced_file() {
+        let dir = std::env::temp_dir().join(format!("harness-studio-bak-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let d = Dashboard {
+            lane: "board".into(),
+            title: "B".into(),
+            group: String::new(),
+            owner: default_owner(),
+            widgets: vec![],
+        };
+        save_dashboard_to(&dir, &d).unwrap(); // first save: nothing to bank
+        let backups = dir.join(".backups");
+        assert!(!backups.exists() || fs::read_dir(&backups).unwrap().count() == 0);
+        save_dashboard_to(&dir, &d).unwrap(); // second save: banks the first
+        let count = fs::read_dir(&backups).unwrap().count();
+        assert_eq!(count, 1, "the replaced file is banked");
+        let bak = fs::read_dir(&backups).unwrap().next().unwrap().unwrap().path();
+        let banked: Dashboard = serde_json::from_str(&fs::read_to_string(bak).unwrap()).unwrap();
+        assert_eq!(banked.lane, "board");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     /// The v2 invariant: a pack shipping a non-empty `dashboards/` dir FULLY overrides the console
     /// tab-set (the persona curates its own console) — `load_all_for` returns exactly the pack's
     /// dashboards, never the compiled defaults, and `find_widget_for` resolves the pack's own widgets.
@@ -617,6 +916,7 @@ mod tests {
             lane: "finance".into(),
             title: "Pack Core".into(),
             group: "Finance".into(),
+            owner: default_owner(),
             widgets: vec![w(
                 "nw", "Net worth", "stat",
                 hn_cmd(&["finance", "networth", "--json"]), "market10m", 1,
@@ -637,7 +937,7 @@ mod tests {
         let _ = fs::remove_dir_all(&base);
     }
 
-    /// Swap a compiled default's hardcoded real picks for a pack's FICTIONAL symbols: the
+    /// Swap the compiled defaults' chart/compare symbols for a pack's own FICTIONAL set: the
     /// position-chart's `symbols` list + the `compare` widget's ticker args (`… compare <SYMS> --json`).
     /// Everything else in the defaults is generic (`value_path` plucks) and ships unchanged.
     fn retarget(d: &mut Dashboard, chart: &[&str], compare: &[&str]) {
@@ -670,7 +970,7 @@ mod tests {
     #[ignore = "maintainer tool: regenerates sample-pack dashboards from compiled defaults"]
     fn emit_pack_dashboards() {
         // Per-pack fictional symbol sets — aligned with each pack's portfolio.yaml holdings/watchlist;
-        // values-screen-clean (no excluded sectors), illustrating a values-tilted sample portfolio.
+        // broadly-diversified household names, illustrative only.
         let packs: [(&str, &[&str], &[&str]); 4] = [
             ("demo-investor",
              &["AAPL", "MSFT", "COST", "VTI", "VXUS", "BND", "SCHD"],

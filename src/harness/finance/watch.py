@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -149,6 +150,73 @@ class PulseFlag(BaseModel):
     kind: str  # day_move | trap_proximity | print_soon
     symbol: str
     message: str
+
+
+def vest_reconciliation_flags(
+    vest_calendar: list[Any],
+    lots: list[Any],
+    *,
+    symbol: str,
+    today: date | None = None,
+    grace_days: int = 2,
+    window_days: int = 45,
+    match_days: int = 5,
+) -> list[PulseFlag]:
+    """The vest-reconciliation guard — born from a real failure mode: a vest can
+    be delivered at the broker without the portfolio lots ever being synced, and nothing
+    reconciled the vest CALENDAR against the ledgered LOTS (the broker has no API; the corpus is
+    manual-sync; the vest_approaching flag fires BEFORE the event and nothing checked after) —
+    a passed vest can sit unnoticed for weeks. Two pure config-vs-config checks, zero API,
+    zero model:
+
+    - **vest_unreconciled**: a calendar vest older than `grace_days` (posting lag) with NO lot
+      acquired within `match_days` after it → nag (daily, via the pulse dedup) until the lot is
+      ledgered or the vest ages past `window_days`.
+    - **unscheduled_lot**: the inverse failure shape (a delivered lot the calendar never knew
+      about) — a recent lot with NO calendar vest just before it → the calendar needs the row.
+
+    A vest is confirmed by the DELIVERED LOT on the broker screen, never by same-day absence on
+    an activity view. `vest_calendar` needs `.date`/`.units`; `lots` needs `.acquired`/`.qty`."""
+    today = today or date.today()
+
+    def _d(s: str) -> date | None:
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            return None
+
+    lot_dates = [(d, lot) for lot in lots if (d := _d(lot.acquired)) is not None]
+    flags: list[PulseFlag] = []
+
+    for v in vest_calendar:
+        vd = _d(v.date)
+        if vd is None:
+            continue
+        age = (today - vd).days
+        if age <= grace_days or age > window_days:
+            continue
+        matched = any(0 <= (ld - vd).days <= match_days for ld, _ in lot_dates)
+        if not matched:
+            flags.append(PulseFlag(
+                kind="vest_unreconciled", symbol=symbol,
+                message=f"{symbol} vest {v.date} ({v.units}u) has NO ledgered lot {age}d later — "
+                        "verify on the broker's vesting/stock-plan screen and sync the "
+                        "portfolio lots (a vest is confirmed by the DELIVERED LOT, not the calendar)",
+            ))
+
+    vest_dates = [vd for v in vest_calendar if (vd := _d(v.date)) is not None]
+    for ld, lot in lot_dates:
+        age = (today - ld).days
+        if age < 0 or age > window_days:
+            continue
+        matched = any(0 <= (ld - vd).days <= match_days for vd in vest_dates)
+        if not matched:
+            flags.append(PulseFlag(
+                kind="unscheduled_lot", symbol=symbol,
+                message=f"{symbol} lot acquired {lot.acquired} ({lot.qty:g} sh) matches NO calendar "
+                        "vest — reconcile the vest calendar (the unreconciled-vest guard's inverse)",
+            ))
+    return flags
 
 
 class PulseReport(BaseModel):

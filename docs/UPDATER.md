@@ -67,6 +67,7 @@ breaks; there's just no self-update channel yet.
   never phones anywhere from a dev build.
 - A release's SemVer tag is the source of truth for what version a release *is*; the updater
   simply follows whatever `latest.json` the release CI attached.
-- macOS: the updater requires a signed app; local builds use the self-signed `-`
-  identity. CI does not build macOS bundles (unsigned CI artifacts would be Gatekeeper-quarantined),
-  so macOS self-update stays local-build territory until that changes.
+- macOS: the updater requires a signed app; local builds rely on a locally-provisioned self-signed
+  identity (Tauri falls back to ad-hoc signing when none is configured). CI does not build macOS
+  bundles (unsigned CI artifacts would be Gatekeeper-quarantined), so macOS self-update stays
+  local-build territory until that changes.

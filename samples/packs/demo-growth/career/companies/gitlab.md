@@ -18,8 +18,8 @@ generated: 2026-06-19
 
 | Title | Location | Salary | Link |
 |---|---|---|---|
-| Senior Site Reliability Engineer | Remote, Americas · remote | $172,000 – $228,000 | [post](https://example.com/gitlab/jobs/1001) |
-| Staff Infrastructure Engineer, Compute | Remote, Americas · remote | $205,000 – $271,000 | [post](https://example.com/gitlab/jobs/1002) |
+| Senior Site Reliability Engineer | Remote, Americas | $172,000 – $228,000 | [post](https://example.com/gitlab/jobs/1001) |
+| Staff Infrastructure Engineer, Compute | Remote, Americas | $205,000 – $271,000 | [post](https://example.com/gitlab/jobs/1002) |
 
 ## Fit
 

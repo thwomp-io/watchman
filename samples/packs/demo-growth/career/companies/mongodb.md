@@ -7,7 +7,7 @@ generated: 2026-06-19
 
 # MongoDB — role-hunt profile
 
-> Auto-generated (`hn career company-profiles`). Tier **Tier 2** · ATS `ashby` · _last scan 2026-06-19: 1 matched openings._
+> Auto-generated (`hn career company-profiles`). Tier **Tier 2** · ATS `ashby` · _last scan 2026-06-19: 1 matched opening._
 
 ## At a glance
 - **Tier**: Tier 2
@@ -18,7 +18,7 @@ generated: 2026-06-19
 
 | Title | Location | Salary | Link |
 |---|---|---|---|
-| Senior Kubernetes Platform Engineer | Remote, US · remote | $165,000 – $215,000 | [post](https://example.com/mongodb/jobs/4001) |
+| Senior Kubernetes Platform Engineer | Remote, US | $165,000 – $215,000 | [post](https://example.com/mongodb/jobs/4001) |
 
 ## Fit
 

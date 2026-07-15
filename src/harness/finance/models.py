@@ -73,6 +73,44 @@ class SupportLevel(BaseModel):
     distance_pct: float  # signed % from last close (negative = below price)
 
 
+class TrapRung(BaseModel):
+    """One resting GTC order on a symbol's ladder (the trap-map). A read of the
+    portfolio.yaml `open_orders:` ledger joined to the live tape — the harness never places or
+    cancels anything (read-only, as ever)."""
+
+    side: str  # buy | sell
+    qty: float
+    limit: float
+    value: float  # qty × limit — what the rung commits if it fills
+    distance_pct: float | None = None  # % move to fill (pulse's formula); None = unquotable
+    expires: str = ""
+    note: str = ""
+
+
+class SymbolLadder(BaseModel):
+    """One symbol's vertical price ladder: live price + resting rungs + support shelves.
+    `lo`/`hi` bound the price axis so every rung, shelf, and the live price render in-frame."""
+
+    symbol: str
+    price: float | None = None  # None = honestly unquotable — rungs still render
+    prev_close: float | None = None
+    day_change_pct: float | None = None
+    rungs: list[TrapRung] = Field(default_factory=list)
+    supports: list[SupportLevel] = Field(default_factory=list)
+    lo: float
+    hi: float
+
+
+class TrapMap(BaseModel):
+    """The whole GTC slate as ladders — the deterministic source for the ladder viz (the
+    strategy surface: which knives the resting rungs are positioned to catch)."""
+
+    as_of: str
+    symbols: list[SymbolLadder] = Field(default_factory=list)
+    committed: float = 0.0  # Σ buy-rung value — powder reserved by the resting slate
+    notes: list[str] = Field(default_factory=list)
+
+
 class Position(BaseModel):
     """A held position: corpus figures (shares/cost) joined to a live quote where quotable."""
 
@@ -142,6 +180,7 @@ class ProxyComponent(BaseModel):
     price: float | None = None
     prev_close: float | None = None
     move_pct: float | None = None
+    weight: float | None = None  # the name's % of the FUND (N-PORT), when the basket is weighted
 
 
 class ProxyEstimate(BaseModel):
@@ -149,10 +188,13 @@ class ProxyEstimate(BaseModel):
 
     fund: str
     components: list[ProxyComponent] = Field(default_factory=list)
-    estimate_pct: float | None = None  # equal-weight mean of available components
+    estimate_pct: float | None = None  # weighted mean when the basket carries weights, else equal-weight
     available_count: int = 0
     missing: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    weighted: bool = False  # True = cap-weighted basket; False = legacy equal-weight
+    coverage_pct: float | None = None  # sum of basket weights = % of the FUND the basket represents
+    live_coverage_pct: float | None = None  # weights of the names that actually quoted this run
 
 
 class ScreenResult(BaseModel):

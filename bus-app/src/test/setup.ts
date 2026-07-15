@@ -45,10 +45,12 @@ if (globalThis.localStorage == null) {
 
 const store = vi.hoisted(() => ({
   handlers: new Map<string, (args: Record<string, unknown>) => unknown>(),
+  calls: [] as Array<[string, Record<string, unknown>]>,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: async (cmd: string, args?: Record<string, unknown>) => {
+    store.calls.push([cmd, args ?? {}]);
     const handler = store.handlers.get(cmd);
     if (!handler) throw new Error(`mockTauri: no handler staged for command "${cmd}"`);
     return handler(args ?? {});
@@ -62,5 +64,10 @@ vi.mock("@tauri-apps/api/event", () => ({
   set: (cmd: string, handler: (args: Record<string, unknown>) => unknown) =>
     store.handlers.set(cmd, handler),
   setValue: (cmd: string, value: unknown) => store.handlers.set(cmd, () => value),
-  reset: () => store.handlers.clear(),
+  // every invoke this test made, in order — lets a test assert on WRITE commands (the Studio save)
+  calls: () => [...store.calls],
+  reset: () => {
+    store.handlers.clear();
+    store.calls.length = 0;
+  },
 };

@@ -1,5 +1,5 @@
-// Build identity. `false` in the dev source; the OSS publish transform flips it to `true` for the
-// PUBLISHED tree (a single-line, file-scoped edit — see scripts/oss_publish.py VERSION_PINS).
+// Build identity: `true` in published/release builds. Set to `false` in a development
+// checkout to keep dev-only affordances (e.g. the "Real data" pack-switcher option).
 //
 // What it gates: prod-only product behavior that shouldn't be in the dev daily-driver. First use — the
 // pack switcher hides the "Real data" (no-pack → read your real corpus) option in the published app:

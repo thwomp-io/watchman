@@ -50,6 +50,13 @@ export const listVaultDir = (path: string): Promise<DirDoc[]> => invoke("list_va
 export const readImage = (path: string): Promise<string> => invoke("read_image", { path });
 
 export const listDashboards = (): Promise<Dashboard[]> => invoke("list_dashboards");
+// Dashboard Studio save. Native-only until cuuq.3 opens the door's write
+// carve-out — on the served console this invoke lands in WRITE_GATED and 403s (by design).
+export const saveDashboard = (dashboard: Dashboard): Promise<void> =>
+  invoke("save_dashboard", { dashboard });
+// Snap a lane back to its compiled built-in (banks the replaced state to .backups/ first).
+export const resetDashboard = (lane: string): Promise<Dashboard> =>
+  invoke("reset_dashboard", { lane });
 export const runWidget = (lane: string, id: string, symbol?: string | null): Promise<string> =>
   invoke("run_widget", { lane, id, symbol: symbol ?? null });
 

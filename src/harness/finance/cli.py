@@ -2,7 +2,7 @@
 
 `app` is a domain-noun command group (`finance <verb>`) — standalone at its own root today, a
 zero-refactor `add_typer()` mount under a future unified harness CLI (the noun-group sub-commands
-pattern). See the operator skill.
+pattern).
 """
 
 from __future__ import annotations
@@ -327,6 +327,65 @@ def correlate(
         console.print("[dim]  • " + " · ".join(rep.notes) + "[/dim]")
 
 
+@app.command(name="trap-map")
+def trap_map(
+    days: int = typer.Option(90, "--days", help="Price-history lookback for the support shelves"),
+    feed: str = typer.Option("iex", "--feed"),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit the ladder contract — the dashboard/viz source"
+    ),
+) -> None:
+    """The trap-map (the GTC slate as price ladders): per symbol, the live price + every resting
+    rung (distance-to-fill, committed value) + bars-derived support shelves.
+
+    The strategy surface for the staged-entry discipline — which knives the resting rungs are
+    positioned to catch. Read-only observation of the portfolio.yaml `open_orders:` ledger; the
+    harness never places or cancels an order.
+    """
+    try:
+        tm = _svc(feed).trap_map(days=days)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    if as_json:
+        console.print_json(tm.model_dump_json())
+        return
+
+    if not tm.symbols:
+        console.print("[dim]no resting orders — the slate is empty[/dim]")
+        return
+    console.print(
+        f"\n[bold]TRAP MAP[/bold] — {len(tm.symbols)} laddered symbol(s), "
+        f"[bold]{_money_short(tm.committed)}[/bold] committed by resting buys · as of {tm.as_of}\n"
+    )
+    for lad in tm.symbols:
+        head = f"[bold]{lad.symbol}[/bold]"
+        if lad.price is not None:
+            head += f" @ ${lad.price:,.2f}  {_signed(lad.day_change_pct)}"
+        else:
+            head += "  [dim](unquotable — rungs shown without distance)[/dim]"
+        console.print(head)
+        t = Table(show_header=True)
+        for col in ("Rung", "Qty", "Limit", "Value", "To fill", "Expires", "Note"):
+            t.add_column(col)
+        for r in lad.rungs:
+            dist = f"{r.distance_pct:+.1f}%" if r.distance_pct is not None else "—"
+            t.add_row(
+                r.side.upper(), f"{r.qty:g}", f"${r.limit:,.2f}", _money_short(r.value),
+                dist, r.expires or "—", r.note or "",
+            )
+        console.print(t)
+        if lad.supports:
+            shelves = " · ".join(
+                f"${s.level:,.2f} (×{s.touches})" for s in lad.supports[:4]
+            )
+            console.print(f"  [dim]support shelves: {shelves}[/dim]")
+        console.print()
+    for n in tm.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+
+
 @app.command(name="unwind")
 def unwind(
     symbol: str | None = typer.Option(
@@ -338,6 +397,10 @@ def unwind(
     as_json: bool = typer.Option(
         False, "--json", help="Emit the full unwind contract — the dashboard source (one source, "
         "two renderers: static SVG + the live visx widget cluster)"
+    ),
+    section: str = typer.Option(
+        "", "--section", help="Emit ONE top-level contract section (e.g. `vest_timeline` — the "
+        "live-viz source for the sell-planning calendar; implies --json)"
     ),
 ) -> None:
     """Concentration-unwind sell-planning contract: per-lot LIVE gain/loss + wash-sale
@@ -352,6 +415,12 @@ def unwind(
         _fail(str(e))
         raise typer.Exit(code=1) from e
 
+    if section:
+        payload = report.model_dump(mode="json")
+        if section not in payload:
+            raise typer.BadParameter(f"unknown section '{section}' — one of: {', '.join(payload)}")
+        console.print_json(data=payload[section])
+        return
     if as_json:
         console.print_json(report.model_dump_json())
         return
@@ -363,6 +432,23 @@ def unwind(
         f"mkt {_money_short(p.market_value)}  unreal {_signed(p.unrealized_gl, money=True)} "
         f"({_signed(p.unrealized_gl_pct)})\n"
     )
+    if report.progress:
+        pr = report.progress
+        liquid_bit = ""
+        if pr.pct_of_liquid is not None:
+            liquid_bit = f"  ·  {pr.pct_of_liquid:.1f}% of liquid pool"
+            if pr.pct_of_liquid_at_start is not None and pr.target_pct_liquid is not None:
+                liquid_bit += (
+                    f" (start ~{pr.pct_of_liquid_at_start:.0f}% → "
+                    f"target ~{pr.target_pct_liquid:.0f}%)"
+                )
+        console.print(
+            f"  [bold cyan]UNWIND {pr.pct_unwound:.1f}% COMPLETE[/bold cyan] — "
+            f"{pr.shares_sold:,.0f} of {pr.shares_ever:,.0f} ever-held sh sold "
+            f"({pr.shares_current:,.0f} remain){liquid_bit}\n"
+            f"  [dim]denominator grows at each vest — a post-vest dip = more pie appeared, "
+            f"not lost progress[/dim]\n"
+        )
 
     lt = Table(title="Tax lots — live gain/loss at the current price (the atom)")
     for col in ("Acquired", "Qty", "Unit cost", "Mkt value", "Unreal G/L", "%", "Class", "Harvest"):
@@ -767,24 +853,125 @@ def fund_proxy(
         console.print_json(est.model_dump_json())
         return
     table = Table(title=f"{est.fund} proxy basket")
-    for col in ("Symbol", "Price", "Prev close", "Move %", "Status"):
+    cols = ["Symbol", "Fund wt %", "Price", "Prev close", "Move %", "Status"] if est.weighted else [
+        "Symbol", "Price", "Prev close", "Move %", "Status"
+    ]
+    for col in cols:
         table.add_column(col)
     for c in est.components:
-        table.add_row(
+        row = [
             c.symbol,
             f"${c.price:,.2f}" if c.price is not None else "—",
             f"${c.prev_close:,.2f}" if c.prev_close is not None else "—",
             _signed(c.move_pct),
             "ok" if c.available else "unavailable",
-        )
+        ]
+        if est.weighted:
+            row.insert(1, f"{c.weight:.2f}" if c.weight is not None else "—")
+        table.add_row(*row)
     console.print(table)
     headline = _signed(est.estimate_pct) if est.estimate_pct is not None else "n/a"
-    console.print(
-        f"\n[bold]Rough EOD estimate[/bold]: {headline}  "
-        f"[dim](equal-weight mean of {est.available_count} available names)[/dim]"
-    )
+    if est.weighted:
+        console.print(
+            f"\n[bold]Rough EOD estimate[/bold]: {headline}  "
+            f"[dim](cap-weighted over {est.available_count} live names; basket = "
+            f"{est.coverage_pct}% of the fund, {est.live_coverage_pct}% live)[/dim]"
+        )
+    else:
+        console.print(
+            f"\n[bold]Rough EOD estimate[/bold]: {headline}  "
+            f"[dim](equal-weight mean of {est.available_count} available names)[/dim]"
+        )
     for n in est.notes:
         console.print(f"[dim]  • {n}[/dim]")
+
+
+@app.command(name="fund-holdings")
+def fund_holdings(
+    # No defaults on query/cik by design: a fund's name/CIK is per-user data, not tool
+    # config — both are required.
+    query: str = typer.Option(
+        ..., "--query", help='The fund\'s exact series name for EDGAR full-text search ("Acme Growth Fund")'
+    ),
+    cik: str = typer.Option(
+        ..., "--cik", help="The FILER trust's CIK (not the fund's — it's on the fund's EDGAR page)"
+    ),
+    top: int = typer.Option(15, "--top", help="Rows to print in the table"),
+    write_yaml: str = typer.Option(
+        "", "--write-yaml", help="Regenerate this reference yaml (merges existing sector/us/note enrichment)"
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """FULL mutual-fund holdings roster via SEC Form N-PORT (keyless discovery; the archive fetch
+    needs HARNESS_SEC_CONTACT in .env — SEC fair-access UA). The fund page's top-10 is marketing;
+    the filing is law (~1 quarter stale by design). With --write-yaml, regenerates the corpus
+    reference file preserving enrichment and prints the roster DIFF vs the prior filing — the
+    manager's rotation, itemized. The quarterly fund-refresh ritual's engine."""
+    from datetime import date as _date
+
+    from harness.finance import nport
+
+    try:
+        accession, filed = nport.latest_filing_ref(query, cik)
+        filing = nport.fetch_filing(cik, accession, filed)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    diff = None
+    stats = None
+    if write_yaml:
+        from pathlib import Path
+
+        path = Path(write_yaml).expanduser()
+        existing = path.read_text() if path.exists() else ""
+        if existing:
+            old_rows = [
+                (r.get("name", ""), float(r.get("pct", 0) or 0)) for r in nport.read_reference_rows(existing)
+            ]
+            diff = nport.diff_rosters(old_rows, [(h.name, h.pct) for h in filing.holdings])
+        new_text, stats = nport.merge_reference_yaml(existing, filing, fetched=_date.today().isoformat())
+        path.write_text(new_text)
+
+    if as_json:
+        payload = filing.model_dump()
+        if diff is not None:
+            payload["diff"] = diff.model_dump()
+        if stats is not None:
+            payload["merge_stats"] = stats
+        console.print_json(data=payload)
+        return
+
+    title = (
+        f"{filing.series} — N-PORT {filing.period} "
+        f"(filed {filing.filed}, {len(filing.holdings)} positions)"
+    )
+    table = Table(title=title)
+    for col in ("#", "Name", "% fund", "Value", "Country"):
+        table.add_column(col)
+    for i, h in enumerate(filing.holdings[:top], 1):
+        table.add_row(str(i), h.name[:44], f"{h.pct:.2f}", f"${h.val_usd/1e6:,.1f}M", h.country or "—")
+    console.print(table)
+    if len(filing.holdings) > top:
+        console.print(f"[dim]  … +{len(filing.holdings) - top} more (full roster in --json / the yaml)[/dim]")
+    for n in filing.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+    if diff is not None:
+        console.print("\n[bold]Roster diff vs the prior reference file[/bold] (the manager's hand):")
+        for line in diff.entries[:8]:
+            console.print(f"  [green]+ {line}[/green]")
+        for line in diff.exits[:8]:
+            console.print(f"  [red]- {line}[/red]")
+        for line in diff.shifts[:8]:
+            console.print(f"  [yellow]~ {line}[/yellow]")
+        if not (diff.entries or diff.exits or diff.shifts):
+            console.print("  [dim](no entries/exits/shifts ≥0.25pp — a quiet quarter)[/dim]")
+    if stats is not None:
+        console.print(
+            f"[dim]  yaml regenerated: {stats['kept']} enriched rows kept · {stats['new']} NEW rows "
+            f"(sector: unknown — enrich + research) · {stats['gone']} prior names dropped. "
+            "Re-run the treemap derive + re-render next.[/dim]"
+        )
 
 
 @app.command()
@@ -1376,3 +1563,74 @@ def _fail(msg: str) -> None:
 
 if __name__ == "__main__":
     app()
+
+
+@app.command(name="global")
+def global_markets(
+    section: list[str] = typer.Option(
+        None, "--section", "-s",
+        help="Rails to show (futures/asia/europe/oil/metals/fx); default all",
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Follow-the-sun global read — index futures, Asia/Europe, oil, metals, FX (keyless Yahoo).
+
+    The overnight surface the US tape can't show: is the futures market panicking? did Asia
+    confirm? where's Brent? One cookie+crumb batch call; each rail degrades per-card, never
+    bricks on one symbol. Deterministic gather — interpretation stays with the agent takes."""
+    from dataclasses import asdict
+    from datetime import datetime
+
+    from harness.finance.providers.global_provider import (
+        GLOBAL_RAILS,
+        fetch_global_rails,
+        rail_scalars,
+    )
+
+    secs = list(section) if section else None
+    bad = [s for s in (secs or []) if s not in GLOBAL_RAILS]
+    if bad:
+        _fail(f"unknown section(s): {', '.join(bad)} (valid: {', '.join(GLOBAL_RAILS)})")
+        raise typer.Exit(code=1)
+    try:
+        rails = fetch_global_rails(secs)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    if as_json:
+        payload = {
+            sec: [asdict(q) for q in cards] for sec, cards in rails.items()
+        }
+        console.print_json(json.dumps({
+            "as_of": datetime.now(_dt.UTC).isoformat(),
+            "scalars": rail_scalars(rails),
+            "rails": payload,
+        }))
+        return
+
+    for sec, cards in rails.items():
+        t = Table(title=sec.upper())
+        t.add_column("")
+        t.add_column("Price", justify="right")
+        t.add_column("Day %", justify="right")
+        t.add_column("Day", justify="right")
+        t.add_column("State", justify="right")
+        for q in cards:
+            pct = q.change_pct
+            color = "green" if (pct or 0) > 0 else "red" if (pct or 0) < 0 else "dim"
+            when = (
+                datetime.fromtimestamp(q.market_time, tz=_dt.UTC).strftime("%H:%MZ")
+                if q.market_time else "—"
+            )
+            t.add_row(
+                q.name,
+                f"{q.price:,.2f}" if q.price is not None else "—",
+                f"[{color}]{pct:+.2f}%[/{color}]" if pct is not None else "—",
+                f"{q.change:+,.2f}" if q.change is not None else "—",
+                f"[dim]{q.market_state} {when}[/dim]",
+            )
+        console.print(t)
+        missing = len(GLOBAL_RAILS[sec]) - len(cards)
+        if missing:
+            console.print(f"[dim]  ({missing} symbol(s) unavailable on the feed — omitted)[/dim]")

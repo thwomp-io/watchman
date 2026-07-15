@@ -32,7 +32,8 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 # The role-shape buckets that count as deep-IC / infra vs leadership,
-# for the shortlist summary tiles. Maps the deterministic shape_bucket labels onto the goal frame.
+# for the shortlist summary tiles. Example buckets shaped for the bundled infra-engineer
+# sample persona — maps the deterministic shape_bucket labels onto the summary grouping.
 _IC_INFRA_SHAPES = ("SRE / Reliability", "Platform / Infra", "Security")
 
 
@@ -53,6 +54,12 @@ def opening_matches(
     domain_ok = any(k.lower() in hay for k in title_any) if title_any else True
     seniority_ok = any(k.lower() in t for k in seniority_any) if seniority_any else True
     return domain_ok and seniority_ok
+
+
+def _loc(o: Any) -> str:
+    """Location + remote tag — without doubling when the location already says remote."""
+    loc = str(o.location)
+    return loc + (" · remote" if o.remote and "remote" not in loc.lower() else "")
 
 
 class CareerService:
@@ -229,7 +236,7 @@ class CareerService:
                     "tier": tier,
                     "shape": shape,
                     "title": o.title,
-                    "location": o.location + (" · remote" if o.remote else ""),
+                    "location": _loc(o),
                     "salary": o.salary or "—",
                     "updated": o.updated or "—",
                     "url": o.url,
@@ -297,7 +304,7 @@ class CareerService:
             lines.append("| Title | Location | Salary (as posted) | Updated | Link |")
             lines.append("|---|---|---|---|---|")
             for o in s.matched:
-                loc = o.location + (" · remote" if o.remote else "")
+                loc = _loc(o)
                 lines.append(
                     f"| {o.title} | {loc} | {o.salary or '—'} | {o.updated or '—'} | [post]({o.url}) |"
                 )
@@ -386,7 +393,7 @@ class CareerService:
                 "as_of": as_of or "—", "openings": len(s.matched), "total_open": s.total_open,
                 "shapes": shapes,
                 "roles": [
-                    {"title": o.title, "location": o.location + (" · remote" if o.remote else ""),
+                    {"title": o.title, "location": _loc(o),
                      "salary": o.salary or "—", "url": o.url}
                     for o in s.matched
                 ],
@@ -413,7 +420,8 @@ class CareerService:
             f"> Auto-generated (`hn career company-profiles`). Tier **{d['tier'] or '—'}** · "
             f"ATS `{d['ats'] or '—'}`"
             + (f" · [careers]({d['portal']})" if d["portal"] else "")
-            + f"  ·  _last scan {d['as_of']}: {d['openings']} matched openings._",
+            + f"  ·  _last scan {d['as_of']}: {d['openings']} matched"
+            + f" opening{'s' if d['openings'] != 1 else ''}._",
             "",
             "## At a glance",
             f"- **Tier**: {d['tier'] or '—'}",

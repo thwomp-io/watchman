@@ -109,7 +109,8 @@ values_screen:
   positive_tilts: [renewables, broad_index]
 
 # Resting good-til-canceled orders (the GTC ledger). Tickets reference this; `pulse` computes
-# distance-to-limit. Example: a single resting dip-catch below support.
+# distance-to-limit, and the trap-map viz draws each symbol's ladder (price + rungs + supports).
+# A laddered example: two rungs under VTI, one each under VXUS and SCHD.
 open_orders:
   - symbol: VTI
     side: buy
@@ -118,6 +119,27 @@ open_orders:
     placed: 2026-06-19
     expires: 2026-12-19
     note: example resting dip-catch below a round-number support level
+  - symbol: VTI
+    side: buy
+    qty: 30
+    limit: 265.00
+    placed: 2026-06-19
+    expires: 2026-12-19
+    note: the deeper rung — a correction-sized dip adds more
+  - symbol: VXUS
+    side: buy
+    qty: 80
+    limit: 60.50
+    placed: 2026-06-26
+    expires: 2026-12-26
+    note: international sleeve top-up toward the 20% target weight
+  - symbol: SCHD
+    side: buy
+    qty: 100
+    limit: 25.75
+    placed: 2026-07-01
+    expires: 2027-01-01
+    note: income-tilt starter position if the market hands it over
 
 # Pulse flag thresholds — deterministic detection; the agent only narrates/escalates.
 pulse:

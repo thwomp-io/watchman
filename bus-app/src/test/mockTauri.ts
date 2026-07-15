@@ -5,7 +5,9 @@ interface MockTauri {
   set(cmd: string, handler: (args: Record<string, unknown>) => unknown): void;
   /** Stage a fixed response for a command. */
   setValue(cmd: string, value: unknown): void;
-  /** Clear all staged handlers (call in beforeEach). */
+  /** Every invoke made so far, in order: [cmd, args]. For asserting on write commands. */
+  calls(): Array<[string, Record<string, unknown>]>;
+  /** Clear all staged handlers + the call log (call in beforeEach). */
   reset(): void;
 }
 
@@ -93,11 +95,21 @@ export function realFixture(): Dashboard[] {
 }
 
 // A weight pack that DESCRIBES a curated console (v2) — one dashboard per group, dropping the
-// maintainer-specific Finance subtabs. Loading it should replace the whole tab-set (full-set override).
+// full fixture's extra Finance subtabs. Loading it should replace the whole tab-set (full-set override).
 export function packFixture(): Dashboard[] {
   return [
     dashboard("finance", "Finance", "Core"),
     dashboard("career", "Career", "Board"),
     dashboard("travel", "Travel", "Command-center"),
   ];
+}
+
+// Dashboard Studio: a layout-bearing dashboard — every widget carries explicit
+// {x,y,w,h}, which is the studio-managed trigger (any layout-less widget keeps the legacy grid).
+export function studioFixture(): Dashboard[] {
+  const a = statWidget("s-a", "Studio A");
+  const b = statWidget("s-b", "Studio B");
+  a.layout = { x: 0, y: 0, w: 2, h: 1 };
+  b.layout = { x: 2, y: 0, w: 2, h: 3 };
+  return [{ lane: "studio", group: "Finance", title: "Studio", owner: "user", widgets: [a, b] }];
 }

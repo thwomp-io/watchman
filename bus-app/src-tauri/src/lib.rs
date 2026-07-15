@@ -65,6 +65,8 @@ pub fn run() {
             commands::run_surface,
             commands::list_viz,
             commands::list_dashboards,
+            commands::save_dashboard,
+            commands::reset_dashboard,
             commands::run_widget,
             commands::list_packs,
             commands::get_active_pack,

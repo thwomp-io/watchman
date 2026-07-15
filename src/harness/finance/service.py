@@ -42,6 +42,7 @@ from harness.finance.models import (
     Quote,
     ScreenResult,
     SymbolNews,
+    TrapMap,
     WireDigest,
 )
 from harness.finance.providers import get_fundamentals_provider, get_market_data_provider
@@ -361,7 +362,7 @@ class FinanceService:
         NOT hardcoded tickers: the concentrated single-stock = the lotted holding (`seed.concentrated`),
         the single-theme fund = the proxied mutual fund (`seed.proxy.fund`). Everything else falls to
         diversified-brokerage / retirement / cash by asset type. So the risk-isolation that made the
-        hand-authored treemap legible is reproduced WITHOUT baking in company names (OSS-clean)."""
+        hand-authored treemap legible stays fully config-derived — never hardcoded tickers."""
         seed = self.reader.read_portfolio()
         snap = self.positions()
         concentrated = seed.concentrated.symbol if seed.concentrated else None
@@ -459,11 +460,13 @@ class FinanceService:
     # ---- mutual-fund EOD-direction proxy (estimate a non-intraday fund from a live proxy basket) ----
     def fund_proxy(self) -> ProxyEstimate:
         basket = self.reader.read_portfolio().proxy
+        weighted = bool(basket.weights)
         quotes = self.quote(basket.symbols)
         components: list[ProxyComponent] = []
-        moves: list[float] = []
+        avail: list[tuple[float, float]] = []  # (move_pct, weight) — weight=1.0 in equal-weight mode
         missing: list[str] = []
         for q in quotes:
+            w = basket.weights.get(q.symbol) if weighted else None
             if q.available and q.day_change_pct is not None:
                 components.append(
                     ProxyComponent(
@@ -472,31 +475,46 @@ class FinanceService:
                         price=q.price,
                         prev_close=q.prev_close,
                         move_pct=q.day_change_pct,
+                        weight=w,
                     )
                 )
-                moves.append(q.day_change_pct)
+                avail.append((q.day_change_pct, w if (weighted and w is not None) else 1.0))
             else:
-                components.append(ProxyComponent(symbol=q.symbol, available=False))
+                components.append(ProxyComponent(symbol=q.symbol, available=False, weight=w))
                 missing.append(q.symbol)
 
-        estimate = sum(moves) / len(moves) if moves else None
+        weight_sum = sum(w for _, w in avail)
+        estimate = sum(m * w for m, w in avail) / weight_sum if avail and weight_sum else None
+        coverage = round(sum(basket.weights.values()), 2) if weighted else None
+        live_coverage = round(sum(w for _, w in avail), 2) if weighted else None
         notes = [basket.note] if basket.note else []
         if missing:
             notes.append(
                 f"Unavailable on the feed (OTC/ADR not covered): {', '.join(missing)}. "
                 "Estimate uses the available names only."
             )
-        notes.append(
-            "Equal-weight directional proxy ONLY — a cap-weighted fund won't match an equal-weight "
-            "basket, so treat this as a rough sign-and-magnitude read, not a NAV prediction."
-        )
+        if weighted:
+            notes.append(
+                f"CAP-WEIGHTED proxy (N-PORT weights): the basket represents "
+                f"{coverage}% of the fund ({live_coverage}% quoted live this run). The unmapped "
+                "tail is a disclosed blind spot — quiet-day sign flips remain possible when the "
+                "tail moves against the basket; NAV truth is the EOD sync, never the proxy."
+            )
+        else:
+            notes.append(
+                "Equal-weight directional proxy ONLY — a cap-weighted fund won't match an equal-weight "
+                "basket, so treat this as a rough sign-and-magnitude read, not a NAV prediction."
+            )
         return ProxyEstimate(
             fund=basket.fund,
             components=components,
             estimate_pct=estimate,
-            available_count=len(moves),
+            available_count=len(avail),
             missing=missing,
             notes=notes,
+            weighted=weighted,
+            coverage_pct=coverage,
+            live_coverage_pct=live_coverage,
         )
 
     # ---- keyless news scan (per-ticker wire + filings rail) ----
@@ -932,6 +950,32 @@ class FinanceService:
         bars = self.history(sym, start=start)
         levels = support_levels(bars) if bars else []
 
+        # %-complete: only when the seed carries the structured sold-ledger.
+        # Liquid pool = every non-retirement position's market value (the allocation_pie basis) —
+        # one extra positions() pass, acceptable at the dashboard's market10m cadence.
+        progress = None
+        if seed.unwind_sold:
+            from harness.finance.unwind import build_progress
+
+            shares_current = sum(lt.qty for lt in holding.lots)
+            liquid_total = None
+            try:
+                snap = self.positions()
+                liquid_total = sum(
+                    p.market_value or 0.0
+                    for p in snap.positions
+                    if p.asset_type != "retirement" and p.market_value is not None
+                )
+            except ProviderError:
+                pass  # progress still computes; pct_of_liquid stays None
+            progress = build_progress(
+                shares_current=shares_current,
+                sold=seed.unwind_sold,
+                market_value=shares_current * price,
+                liquid_total=liquid_total,
+                meta=seed.unwind_meta,
+            )
+
         report: UnwindReport = build_unwind(
             symbol=sym,
             price=price,
@@ -943,8 +987,88 @@ class FinanceService:
             support_levels=levels,
             bars=bars,
             today=_date.today(),
+            progress=progress,
         )
         return report
+
+    def trap_map(self, *, days: int = 90) -> TrapMap:
+        """The trap-map — every symbol with resting GTC orders as a vertical price
+        ladder: live price + rungs (with distance-to-fill, pulse's formula) + bars-derived support
+        shelves. Pure composition of existing primitives (open_orders ledger · quote · history ·
+        support_levels); read-only. One bars call per laddered symbol — fine at the dashboard's
+        market10m/manual cadence. An unquotable symbol renders honestly (rungs, no price); a bars
+        failure degrades to a note, never a dead map."""
+        from datetime import date as _date
+        from datetime import datetime, timedelta
+
+        from harness.finance.corpus.reader import OpenOrder
+        from harness.finance.levels import support_levels
+        from harness.finance.models import SymbolLadder, TrapRung
+
+        seed = self.reader.read_portfolio()
+        as_of = datetime.now().isoformat(timespec="seconds")
+        if not seed.open_orders:
+            return TrapMap(as_of=as_of, notes=["no resting orders — the slate is empty"])
+
+        by_sym: dict[str, list[OpenOrder]] = {}
+        for o in seed.open_orders:
+            by_sym.setdefault(o.symbol, []).append(o)
+
+        try:
+            quotes = {q.symbol: q for q in self.quote(sorted(by_sym))}
+        except ProviderError:
+            quotes = {}
+
+        start = (_date.today() - timedelta(days=days)).isoformat()
+        notes: list[str] = []
+        ladders: list[SymbolLadder] = []
+        committed = 0.0
+        for sym in sorted(by_sym):
+            q = quotes.get(sym)
+            price = q.price if q else None
+            prev = q.prev_close if q and q.prev_close else None
+            day_pct = (
+                round((price - prev) / prev * 100.0, 2) if price and prev else None
+            )
+            try:
+                bars = self.history(sym, start=start)
+            except ProviderError:
+                bars = []
+                notes.append(f"{sym}: no bars — support shelves omitted")
+            levels = support_levels(bars) if bars else []
+
+            rungs: list[TrapRung] = []
+            for o in by_sym[sym]:
+                dist: float | None = None
+                if price:
+                    raw = (price - o.limit) / price * 100.0
+                    dist = round(raw if o.side == "buy" else -raw, 2)
+                value = round(o.qty * o.limit, 2)
+                if o.side == "buy":
+                    committed += value
+                rungs.append(TrapRung(
+                    side=o.side, qty=o.qty, limit=o.limit, value=value,
+                    distance_pct=dist, expires=o.expires, note=o.note,
+                ))
+
+            anchors = [r.limit for r in rungs] + [lv.level for lv in levels]
+            if price:
+                anchors.append(price)
+            if prev:
+                anchors.append(prev)
+            lo, hi = min(anchors), max(anchors)
+            pad = max((hi - lo) * 0.06, hi * 0.01)  # breathe past the extremes
+            ladders.append(SymbolLadder(
+                symbol=sym, price=price, prev_close=prev, day_change_pct=day_pct,
+                rungs=sorted(rungs, key=lambda r: -r.limit), supports=levels,
+                lo=round(lo - pad, 2), hi=round(hi + pad, 2),
+            ))
+            if price is None:
+                notes.append(f"{sym}: unquotable on this feed — ladder renders without a live price")
+
+        return TrapMap(
+            as_of=as_of, symbols=ladders, committed=round(committed, 2), notes=notes,
+        )
 
     def pulse(self, *, mark_seen: bool = True) -> PulseReport:
         """The scheduled-agent pulse: the watch digest + open-order trap distances +
@@ -1121,6 +1245,20 @@ class FinanceService:
                         message=f"{conc_sym} vest {when} ({v.date}): {v.units} sh{est} — concentration "
                                 f"rises, wash-poison resets ±30d, supplemental under-withholding gap",
                     ))
+
+        # vest RECONCILIATION: the unreconciled-vest guard — the inverse-in-time
+        # of vest_approaching. A calendar vest that PASSED with no ledgered lot (grace for posting
+        # lag) nags daily until synced; an unscheduled lot flags the calendar. Pure config-vs-config
+        # (watch.vest_reconciliation_flags); the broker's delivered lot is the only confirmation.
+        if conc_sym and conc is not None:
+            from harness.finance.watch import vest_reconciliation_flags
+
+            flags.extend(vest_reconciliation_flags(
+                seed.vest_calendar, conc.lots,
+                symbol=conc_sym,
+                grace_days=int(th.get("vest_reconcile_grace_days", 2)),
+                window_days=int(th.get("vest_reconcile_window_days", 45)),
+            ))
 
         # tax_deadline: a dated tax action within `tax_days` (withholding election,
         # 1040-ES, etc.) — real-money + easy-to-forget. Same proximity mechanism as macro_soon.

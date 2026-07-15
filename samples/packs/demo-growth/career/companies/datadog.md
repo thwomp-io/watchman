@@ -19,7 +19,7 @@ generated: 2026-06-19
 | Title | Location | Salary | Link |
 |---|---|---|---|
 | Senior Software Engineer, Reliability | New York, NY | $180,000 – $240,000 | [post](https://example.com/datadog/jobs/3001) |
-| Staff Site Reliability Engineer, Observability | Remote, US · remote | $210,000 – $275,000 | [post](https://example.com/datadog/jobs/3002) |
+| Staff Site Reliability Engineer, Observability | Remote, US | $210,000 – $275,000 | [post](https://example.com/datadog/jobs/3002) |
 
 ## Fit
 

@@ -59,7 +59,7 @@ from harness.settings import BaseToolkitSettings
 # ————— roots + shared config reads ————————————————————————————————————————————————————————————
 
 # Lanes the spawn allowlist accepts — the read-only engine surface the dashboards/surfaces use.
-ALLOWED_LANES = {"finance", "career", "travel", "bus"}
+ALLOWED_LANES = {"finance", "career", "travel", "bus", "beads"}
 # Mirrors commands.rs VAULT_SKIP/VAULT_MAX_DEPTH/IMG_EXT — keep in sync (three-surface contract).
 VAULT_SKIP = {"node_modules", "__pycache__", "target", "dist", "screenshots", "tmp"}
 VAULT_MAX_DEPTH = 8
@@ -416,7 +416,7 @@ def _h_list_vault_docs(_: dict[str, Any]) -> list[dict[str, Any]]:
         except OSError:
             return
         for p in entries:
-            # never follow symlinks (the `memory` symlink escapes the vault; a listed-but-
+            # never follow symlinks (a symlink can point outside the vault; a listed-but-
             # unreadable entry is worse than absent — the commands.rs rule)
             if p.is_symlink():
                 continue
@@ -498,7 +498,7 @@ VIZ_SKIP = {".git", ".obsidian", ".beads", "node_modules", "tmp", "screenshots"}
 VIZ_MAX_DEPTH = 7
 VIZ_SUPPORTED = {
     "sankey", "treemap", "pies", "line", "matrix", "compare", "schedule", "food-bank",
-    "scatter", "rank-bar",
+    "scatter", "rank-bar", "vest-timeline", "ladder", "bead-tree",
 }
 
 
@@ -507,6 +507,13 @@ def _sniff(v: Any) -> str:
     documented sniff-order discipline; a reorder here re-introduces the radial→line mis-sniff)."""
     if not isinstance(v, dict):
         return "unknown"
+    if "windows" in v and "vests" in v:
+        return "vest-timeline"
+    symbols = v.get("symbols")
+    if isinstance(symbols, list) and symbols and isinstance(symbols[0], dict) and "rungs" in symbols[0]:
+        return "ladder"
+    if isinstance(v.get("beads"), list) and isinstance(v.get("edges"), list):
+        return "bead-tree"
     nodes = v.get("nodes")
     if nodes is not None and "links" in v:
         return "sankey"
@@ -641,7 +648,9 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "list_viz": _h_list_viz,
     "read_viz": _h_read_viz,
 }
-WRITE_GATED = {"set_active_pack", "run_producer"}  # 403 — desktop-console features, not door writes
+# 403 — desktop-console features + the Studio save/reset: native-only for now; an authed
+# write carve-out for served-console dashboard edits is tracked.
+WRITE_GATED = {"set_active_pack", "run_producer", "save_dashboard", "reset_dashboard"}
 NOT_YET: set[str] = set()  # empty today; kept for the next unmirrored command
 
 

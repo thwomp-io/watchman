@@ -721,7 +721,10 @@ function renderTreemap(root, d) {
   const groupLabel = new Map((d.groups || []).map((g) => [g.key, g.label]));
   const color = d3.scaleOrdinal().domain(groupKeys).range(T.categorical);
   const M = { top: 64, right: 16, bottom: 28, left: 16 };
-  const width = 900, plotH = 460;
+  // Canvas is data-overridable: dense books (a full fund look-through runs many
+  // dozens of tiles) starve at 900×460 — optional `width`/`plotH` in the data JSON size the
+  // canvas; defaults unchanged.
+  const width = d.width || 900, plotH = d.plotH || 460;
   const legRows = Math.ceil(groupKeys.length / 4);
   const height = M.top + plotH + 20 + legRows * 18 + M.bottom;
   const plotW = width - M.left - M.right;

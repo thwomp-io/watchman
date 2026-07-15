@@ -2,8 +2,8 @@
 // The agent's eye, in MOTION: record a scripted tour of the served console as video, for
 // producing demo media (GIFs) without a human at the screen. Sibling of console-shot.mjs —
 // same token-injection and settle mechanics, plus Playwright's recordVideo and a small
-// step language. Born from the audit finding that the original hero GIFs were hand-recorded
-// against real state; this makes demo capture reproducible against a SEALED demo instance.
+// step language. Demo media must be reproducible against a SEALED demo instance, never
+// hand-recorded against live state — this script makes that the default path.
 //
 // Usage:
 //   node scripts/console-tour.mjs <url> <out.webm> [--viewport WxH] [--token-file PATH]
@@ -69,12 +69,23 @@ async function settle(maxMs = 20_000) {
 }
 
 for (const step of steps) {
-  const [op, val] = step.split(":");
+  const i = step.indexOf(":");
+  const op = i > -1 ? step.slice(0, i) : step;
+  const val = i > -1 ? step.slice(i + 1) : "";
   if (op === "wait") await page.waitForTimeout(Number(val) || 1000);
   else if (op === "settle") await settle();
   else if (op === "zone") await page.click(`nav.zones button:has-text("${val}")`).catch(() => {});
   else if (op === "group") await page.click(`.strip button:has-text("${val}")`).catch(() => {});
   else if (op === "sub") await page.click(`.substrip button:has-text("${val}")`).catch(() => {});
+  // the interaction trio (mirrors console-shot's --viz-item/--hover/--click) — hover-born UI
+  // (tooltips, relationship cards) and modals join the recordable vocabulary
+  else if (op === "viz") {
+    for (const t of await page.locator('.viz-top-toggle:has-text("▸")').all()) await t.click().catch(() => {});
+    await page.waitForTimeout(300);
+    await page.locator(".viz-rail button", { hasText: new RegExp(val, "i") }).first().click().catch(() => {});
+  } else if (op === "hover") await page.locator(val).first().hover({ force: true }).catch(() => {});
+  else if (op === "click") await page.locator(val).first().click({ force: true }).catch(() => {});
+  else if (op === "esc") await page.keyboard.press("Escape").catch(() => {});
   else console.error(`unknown step: ${step}`);
 }
 

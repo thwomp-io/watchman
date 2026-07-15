@@ -25,6 +25,19 @@ const MAX_DEPTH: usize = 7;
 /// static engine takes type as a CLI arg; signatures are distinctive enough to sniff).
 fn sniff(v: &serde_json::Value) -> &'static str {
     let has = |k: &str| v.get(k).is_some();
+    // the live-contract shapes (vest calendar / trap-map ladder / bead family tree) — most
+    // specific first, ahead of sankey (bead-tree's beads+edges deliberately avoid nodes/links)
+    if has("windows") && has("vests") {
+        return "vest-timeline";
+    }
+    if let Some(symbols) = v.get("symbols").and_then(|s| s.as_array()) {
+        if symbols.first().is_some_and(|s| s.get("rungs").is_some()) {
+            return "ladder";
+        }
+    }
+    if v.get("beads").is_some_and(|b| b.is_array()) && v.get("edges").is_some_and(|e| e.is_array()) {
+        return "bead-tree";
+    }
     if has("nodes") && has("links") {
         return "sankey";
     }
@@ -101,7 +114,8 @@ fn walk(dir: &Path, depth: usize, vault: &Path, out: &mut Vec<VizEntry>) {
                 title: value.get("title").and_then(|t| t.as_str()).unwrap_or("").to_string(),
                 supported: matches!(viz_type,
                     "sankey" | "treemap" | "pies" | "line" | "matrix" | "compare" | "schedule"
-                        | "food-bank" | "scatter" | "rank-bar"),
+                        | "food-bank" | "scatter" | "rank-bar" | "vest-timeline" | "ladder"
+                        | "bead-tree"),
             });
         }
     }

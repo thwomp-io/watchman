@@ -1316,7 +1316,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .widget.span-5 { grid-column: span 5; }
 .widget.span-6 { grid-column: span 6; }
 /* Core (finance lane) runs a 6-column grid so the at-a-glance stat row fits 6 big-number tiles
-   (net worth · fund proxy · SPY · RSP · breadth · Mag7) across the top. Half-width widgets are
+   (a six-tile stat row) across the top. Half-width widgets are
    span-3, full-width span-6 in finance.json. Other dashboards stay on the default 4-col grid. */
 .dash-grid.lane-finance { grid-template-columns: repeat(6, 1fr); }
 /* expand-in-place: a viz widget's title is clickable → DASH renders just that widget full-bleed
@@ -1337,6 +1337,29 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .widget.rows-3 { grid-row: span 3; }
 .dash-grid .widget.rows-2 .viz-canvas:not(.donut-bank),
 .dash-grid .widget.rows-3 .viz-canvas:not(.donut-bank) { height: 100%; }
+
+/* Dashboard Studio: the react-grid-layout path for layout-bearing dashboards.
+   RGL absolutely-positions its cells, so the legacy span-N/rows-N grid classes are inert inside a
+   cell — the widget just fills its cell box. Legacy dashboards never get .studio-grid. */
+.studio-grid { flex: 1; overflow-y: auto; }
+.studio-cell { display: flex; }
+.studio-cell .widget { width: 100%; height: 100%; min-height: 0; }
+.studio-cell .widget .viz-canvas:not(.donut-bank) { height: 100%; }
+/* the unlock toggle (checkpoint C): quiet when locked; amber + live when editing. Locked is the
+   default state always — the operator ruling that gated the whole Studio write path. */
+.unlock-toggle { padding: 4px 11px; font: 600 10px var(--mono); letter-spacing: 0.1em;
+                 color: var(--ink-dim); }
+.unlock-toggle:hover { color: var(--amber); }
+.unlock-toggle.editing { color: var(--amber); border: 1px solid var(--amber); border-radius: 3px; }
+/* return-to-default: quiet until armed; armed = red + urgent, disarms after 4s un-clicked */
+.reset-default { padding: 4px 11px; font: 600 10px var(--mono); letter-spacing: 0.1em;
+                 color: var(--ink-dim); }
+.reset-default:hover { color: var(--sig-alert); }
+.reset-default.armed { color: var(--sig-alert); border: 1px solid var(--sig-alert); border-radius: 3px; }
+/* edit-mode affordances: grabbable cells + a dashed footprint while dragging (RGL's placeholder) */
+.studio-grid.editing .studio-cell { cursor: grab; }
+.studio-grid.editing .studio-cell:active { cursor: grabbing; }
+.studio-grid .react-grid-placeholder { background: var(--amber); opacity: 0.15; border-radius: 4px; }
 
 /* DASH lane subtabs: the second nav level under a group (Finance ▸ Core/Unwind/Market) */
 .substrip { display: flex; align-items: center; gap: 8px; padding: 6px 16px 8px;
@@ -1649,3 +1672,129 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   /* the content column clears both fixed bars */
   html.pwa .console { height: 100dvh; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
 }
+
+/* the trap-map ladder bank — one vertical price ladder per laddered symbol */
+.ladder-bank { display: flex; flex-direction: column; gap: 6px; height: 100%; overflow: auto; }
+.ladder-committed { font: 600 10px var(--mono); letter-spacing: 0.08em; color: var(--ink-dim); }
+.ladder-row { display: flex; gap: 14px; flex: 1; overflow-x: auto; }
+.ladder-col { display: flex; flex-direction: column; min-width: 190px; flex: 1 1 190px; }
+.ladder-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 2px 4px;
+               min-width: 0; gap: 6px; }
+.ladder-sym { font: 700 12px var(--mono); color: var(--ink-strong); letter-spacing: 0.06em; }
+.ladder-day { font: 600 10px var(--mono); white-space: nowrap; overflow: hidden;
+              text-overflow: ellipsis; min-width: 0; }
+.ladder-day.pos { color: var(--sig-ok, #7fbf7f); } .ladder-day.neg { color: var(--sig-alert); }
+.ladder-day.dim { color: var(--ink-faint); }
+.ladder-svg { width: 100%; height: auto; }
+.ladder-rail { stroke: var(--etch); stroke-width: 1; }
+.ladder-shelf { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.55; }
+.ladder-shelf-label { font: 500 8.5px var(--mono); fill: var(--ink-faint); }
+/* v2 bold pass: rungs are value-scaled BARS (fills, not strokes); in-bar labels ride dark for
+   contrast on the green in both themes; hot (≤2% to fill) = brighter fill + the SVG glow filter */
+.ladder-rung { stroke: none; }
+.ladder-rung.buy { fill: var(--sig-ok, #7fbf7f); }
+.ladder-rung.sell { fill: var(--sig-alert); }
+.ladder-rung.hot { fill: var(--amber); }
+.ladder-rung-inlabel { font: 700 10px var(--mono); fill: #101314; }
+.ladder-rung-label { font: 700 10px var(--mono); }
+.ladder-rung-label.buy { fill: var(--sig-ok, #7fbf7f); }
+.ladder-rung-label.sell { fill: var(--sig-alert); }
+.ladder-dist { font: 600 9.5px var(--mono); fill: var(--ink-dim); }
+.ladder-dist.hot { fill: var(--amber); font-weight: 800; }
+.ladder-price { fill: var(--amber); }
+.ladder-price-pill { fill: var(--amber); }
+.ladder-price-text { font: 800 10.5px var(--mono); fill: #101314; }
+
+/* ————— bead family tree (bead-tree viz — the backlog org chart) ————————————————————— */
+.beadtree-canvas { display: flex; flex-direction: column; min-height: 0; }
+.beadtree-scroll { position: relative; flex: 1; overflow: auto; min-height: 0; }
+.beadtree-svg { display: block; }
+.beadtree-edge { fill: none; stroke: var(--ink-faint); stroke-width: 1.4; }
+.beadtree-edge-blocks {
+  fill: none; stroke: var(--sig-alert); stroke-width: 1.2;
+  stroke-dasharray: 4 4; opacity: 0.75;
+}
+.beadtree-box {
+  fill: var(--graphite-2); stroke: var(--ink-faint); stroke-width: 1;
+  transition: stroke 120ms ease;
+}
+.beadtree-node.hot .beadtree-box { stroke: var(--ink); }
+.beadtree-rail { fill: var(--ink-faint); }
+/* status is the fill signal: in-flight amber, shipped green, deferred dim, open neutral-blue */
+.beadtree-node.st-open .beadtree-rail { fill: #5b7fa6; }
+.beadtree-node.st-in_progress .beadtree-rail { fill: var(--amber); }
+.beadtree-node.st-in_progress .beadtree-box { stroke: rgba(var(--sig-warn-rgb), 0.55); }
+.beadtree-node.st-closed .beadtree-rail { fill: var(--sig-ok, #7fbf7f); }
+.beadtree-node.st-closed .beadtree-id { fill: var(--ink-dim); }
+.beadtree-node.st-deferred .beadtree-rail { fill: var(--ink-faint); }
+.beadtree-node.st-deferred .beadtree-id,
+.beadtree-node.st-deferred .beadtree-title { fill: var(--ink-faint); }
+.beadtree-node.p1 .beadtree-box { stroke: rgba(var(--sig-alert-rgb), 0.7); stroke-width: 1.4; }
+.beadtree-id { font: 700 10px var(--mono); fill: var(--ink); }
+.beadtree-title { font: 400 9.5px var(--mono); fill: var(--ink-dim); }
+.beadtree-tip { position: absolute; max-width: 280px; }
+.beadtree-tip-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: #5b7fa6;
+}
+.beadtree-tip-dot.st-in_progress { background: var(--amber); }
+.beadtree-tip-dot.st-closed { background: var(--sig-ok, #7fbf7f); }
+.beadtree-tip-dot.st-deferred { background: var(--ink-faint); }
+
+/* blocks-edge hover (the relationship card): a fat invisible twin is the hit target */
+.beadtree-edge-hit {
+  fill: none; stroke: transparent; stroke-width: 14; cursor: pointer;
+  pointer-events: stroke;
+}
+.beadtree-edge-blocks.hot { opacity: 1; stroke-width: 2; stroke-dasharray: 5 3; }
+.beadtree-rel-tip { max-width: 390px; }
+.beadtree-rel { display: flex; gap: 10px; align-items: stretch; margin: 6px 0 2px; }
+.beadtree-rel-card {
+  flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--ink-faint);
+  border-radius: 5px; background: var(--graphite-1);
+}
+.beadtree-rel-role {
+  font: 700 8.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-dim); margin-bottom: 3px;
+}
+.beadtree-rel-card:first-child .beadtree-rel-role { color: var(--sig-alert); }
+.beadtree-rel-meta { font: 400 9.5px var(--mono); color: var(--ink-dim); margin-top: 3px; }
+.beadtree-rel-kind { color: var(--sig-alert); letter-spacing: 0.06em; }
+
+/* bound the rel-card's height so the flip-above placement math holds for long titles */
+.beadtree-rel-card .viz-tip-detail {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.beadtree-rel-state { font: 400 9px var(--mono); color: var(--ink-dim); margin-left: 8px; }
+
+/* ————— DocPopup — the in-console quick-look primitive (portal + fixed overlay) ——————— */
+.doc-popup-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.doc-popup {
+  width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 96px);
+  display: flex; flex-direction: column;
+  background: var(--graphite-1); border: 1px solid var(--ink-faint); border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+}
+.doc-popup-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid var(--ink-faint);
+}
+.doc-popup-name { font: 700 12px var(--mono); color: var(--ink-strong); }
+.doc-popup-path {
+  flex: 1; font: 400 9.5px var(--mono); color: var(--ink-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-popup-vault {
+  font: 700 10px var(--mono); color: var(--amber); text-decoration: none; white-space: nowrap;
+}
+.doc-popup-vault:hover { text-decoration: underline; }
+.doc-popup-back, .doc-popup-close {
+  background: none; border: 1px solid var(--ink-faint); border-radius: 4px;
+  color: var(--ink-dim); font: 700 10px var(--mono); padding: 3px 8px; cursor: pointer;
+}
+.doc-popup-back:hover, .doc-popup-close:hover { color: var(--ink-max); border-color: var(--ink-dim); }
+.doc-popup-body { flex: 1; overflow: auto; padding: 14px 18px; min-height: 120px; }

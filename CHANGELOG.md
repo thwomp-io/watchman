@@ -3,6 +3,51 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-07-14
+
+This release integrates the [beads](https://github.com/gastownhall/beads)
+issue tracker as a first-class console surface — a Backlog tab, an interactive dependency graph,
+and per-issue ticket pages — plus user-customizable dashboards, a live GTC-order trap map, and a
+console-wide quick-look popup. See [docs/BEADS.md](docs/BEADS.md) for the beads walkthrough.
+
+### Added
+- **Beads integration** (`watchman beads board`): a read-only board over a beads project's
+  `.beads/issues.jsonl` export — open/in-progress/shipped counts, the presence board (which agent
+  is on what), an honest ready queue (blocking dependencies + defer dates respected), and the
+  export's age surfaced so the board never performs more freshness than its file has. Drives the
+  new **Ops ▸ Backlog** tab; every sample persona ships a fictional backlog so it demos
+  out-of-the-box.
+- **The Beads board viz** — the backlog as an interactive dependency graph: epics with their
+  children laid out as an org chart that wraps to the window, standalone work on a shelf beneath,
+  blocking dependencies overlaid as dashed edges. Blocks are status-colored with a P1 accent;
+  hovering shows a metadata card, hovering a dashed edge explains the relationship
+  (blocker/blocked, side by side), and clicking a tile quick-looks the full ticket.
+- **Ticket pages** (`watchman beads tickets`): every issue renders to a markdown ticket in the
+  vault — status chips, details table, description, linked issues as wikilinks (tickets
+  cross-navigate), the comment thread, and the close reason as the resolution. Board rows link
+  straight into them.
+- **Dashboard Studio** — unlock any dashboard and rearrange it: drag/resize widgets on an explicit
+  grid, with collision-safe shuffling (widgets never overwrite each other), automatic config
+  backups, and a two-click return-to-default. Locked is always the default state.
+- **Trap map** (`watchman finance trap-map`): every resting GTC buy order drawn as a rung on its
+  symbol's price ladder — live price, distance-to-fill, committed dollars, and support shelves
+  from recent price history. On the Finance dashboards and the VIZ gallery.
+- **Vest timeline on the VIZ gallery** — the sell-planning calendar (vest events, wash-sale
+  windows, clean harvest windows) joins the big panel as a live entry.
+- **Every visual is browsable on the VIZ tab** — live command-backed entries (trap map, vest
+  timeline, beads board, concentration) sit alongside vault-discovered diagrams, each with a
+  refresh control.
+- **DocPopup quick-look** — a console-wide primitive: any vault doc opens in a modal overlay
+  without leaving the current zone, wikilinks navigate within the popup, and "open in VAULT"
+  hands off to the full browser with back-button support.
+- **`--section` contract pluck** on `beads board` and `finance unwind` — emit one top-level
+  section of a JSON contract (the mechanism behind the live viz entries; useful standalone).
+
+### Changed
+- Sample personas refreshed to exercise the full console: each ships a fictional beads backlog
+  (with a date anchor so the demo stays current forever), a Backlog dashboard, and richer resting
+  GTC ladders for the trap map.
+
 ## [0.7.1] - 2026-07-08
 
 ### Fixed
@@ -30,7 +75,7 @@ dates and analyst-consensus tracking.
   the server itself (no reverse proxy), giving the secure context web push requires while the
   plain port stays available for LAN satellites. Ops recipe in `docs/WEB-CONSOLE.md`.
 - **Confirmed earnings dates** — days-to-print now prefers announcement-confirmed dates
-  (`= 2026-07-22 (confirmed)`) over filing-cadence estimates (`≈ …`), and print-soon flags key off
+  (`= YYYY-MM-DD (confirmed)`) over filing-cadence estimates (`≈ …`), and print-soon flags key off
   the better date. Cadence estimates can miss by weeks; the label tells you which one you're
   reading.
 - **The ratings wire** — each held stock's analyst consensus (mean price target + buy/hold/sell
@@ -224,6 +269,8 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.8.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.8.0
+[0.7.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.1
 [0.7.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.0
 [0.6.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.6.0
 [0.5.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.5.0

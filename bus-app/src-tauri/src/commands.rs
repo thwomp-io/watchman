@@ -244,6 +244,32 @@ pub fn list_dashboards() -> Result<Vec<dash::Dashboard>, String> {
     Ok(dash::load_all_for(pack.as_deref()))
 }
 
+/// Dashboard Studio: persist a user-edited dashboard layout. Guarded two ways:
+/// (1) while a BUNDLED demo pack is active, dashboards are pack-described TRANSIENTS — persisting
+/// one would write the demo layout into ~/.config and poison the real console forever (the
+/// config-override-forever trap), so the save is rejected (the frontend also hides the unlock
+/// toggle under a demo pack; this is the belt to that suspender). (2) dash-side lane validation
+/// (the lane becomes the filename). Ownership stamping happens in dash::save_dashboard.
+#[tauri::command]
+pub fn save_dashboard(dashboard: dash::Dashboard) -> Result<(), String> {
+    let cfg = config::load();
+    if config::active_bundled_pack(&cfg).is_some() {
+        return Err("a demo pack is active — its dashboards are transient and cannot be saved".into());
+    }
+    dash::save_dashboard(&dashboard)
+}
+
+/// Dashboard Studio "return to default": snap a lane back to its compiled built-in. Same demo-pack
+/// guard as save (pack dashboards are transients); the replaced state is banked to .backups/ first.
+#[tauri::command]
+pub fn reset_dashboard(lane: String) -> Result<dash::Dashboard, String> {
+    let cfg = config::load();
+    if config::active_bundled_pack(&cfg).is_some() {
+        return Err("a demo pack is active — its dashboards are transient and cannot be reset".into());
+    }
+    dash::reset_dashboard(&lane)
+}
+
 /// A bundled sample weight pack — the scenario-switcher's choices.
 #[derive(Serialize)]
 pub struct PackInfo {

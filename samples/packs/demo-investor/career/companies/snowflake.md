@@ -7,7 +7,7 @@ generated: 2026-06-19
 
 # Snowflake — role-hunt profile
 
-> Auto-generated (`hn career company-profiles`). Tier **Tier 1** · ATS `greenhouse` · _last scan 2026-06-19: 1 matched openings._
+> Auto-generated (`hn career company-profiles`). Tier **Tier 1** · ATS `greenhouse` · _last scan 2026-06-19: 1 matched opening._
 
 ## At a glance
 - **Tier**: Tier 1

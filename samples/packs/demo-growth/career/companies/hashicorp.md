@@ -18,8 +18,8 @@ generated: 2026-06-19
 
 | Title | Location | Salary | Link |
 |---|---|---|---|
-| Senior Platform Engineer | Remote, US · remote | $168,000 – $216,000 | [post](https://example.com/hashicorp/jobs/2001) |
-| Principal Security Engineer, Cloud | Remote, US · remote | — | [post](https://example.com/hashicorp/jobs/2002) |
+| Senior Platform Engineer | Remote, US | $168,000 – $216,000 | [post](https://example.com/hashicorp/jobs/2001) |
+| Principal Security Engineer, Cloud | Remote, US | — | [post](https://example.com/hashicorp/jobs/2002) |
 
 ## Fit
 

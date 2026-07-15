@@ -34,7 +34,7 @@ fall back to your real corpus — so personas are always complete.)
 | Persona | What it is (across all three lanes) |
 |---|---|
 | `demo-investor` *(default)* | An established ~$1M household — a diversified index-anchored portfolio + a few single-stock convictions (finance) · a light/passive senior-role watch (career) · a premium trip pipeline from a Minneapolis home base (travel). |
-| `demo-growth` | An early-career infrastructure engineer — an aggressive ~$185k growth-tilted book (finance) · an active platform/SRE job search across public infra companies (career) · a budget trip pipeline from a Denver home base (travel). |
+| `demo-growth` | An early-career infrastructure engineer — an aggressive ~$250k growth-tilted book (finance) · an active platform/SRE job search across public infra companies (career) · a budget trip pipeline from a Denver home base (travel). |
 | `college-grad` | A new graduate just starting out — a small first-brokerage book (finance) · an entry-level new-grad search (career) · a couch-surfing budget trip pipeline from an Austin home base (travel). |
 | `early-retiree` | A conservative FIRE household — a large dividend/index-tilted book drawing down (finance) · a passive/optional watch (career) · a leisurely trip pipeline from a Scottsdale home base (travel). |
 

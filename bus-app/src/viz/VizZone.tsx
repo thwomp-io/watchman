@@ -17,6 +17,9 @@ import Sankey from "./Sankey";
 import Scatter from "./Scatter";
 import Schedule from "./Schedule";
 import Treemap from "./Treemap";
+import VestTimeline from "./VestTimeline";
+import Ladder from "./Ladder";
+import BeadTree from "./BeadTree";
 
 const PHASE_BY_TYPE: Record<string, string> = {
   unknown: "TBD",  // remaining: radial/map/calendar — interactive on demand
@@ -179,6 +182,9 @@ export default function VizZone({ target }: { target?: string }) {
         {data != null && selected?.viz_type === "scatter" && <Scatter data={data as never} />}
         {data != null && selected?.viz_type === "schedule" && <Schedule data={data as never} />}
         {data != null && selected?.viz_type === "food-bank" && <FoodBank data={data as never} />}
+        {data != null && selected?.viz_type === "vest-timeline" && <VestTimeline data={data as never} />}
+        {data != null && selected?.viz_type === "ladder" && <Ladder data={data as never} />}
+        {data != null && selected?.viz_type === "bead-tree" && <BeadTree data={data as never} />}
         {!selected && <p className="empty">SELECT A DIAGRAM FROM THE RAIL</p>}
         </ErrorBoundary>
       </section>

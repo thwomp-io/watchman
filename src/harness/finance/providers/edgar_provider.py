@@ -3,7 +3,7 @@
 Reported GAAP/XBRL financials for a holding via the `companyconcept` API. **Keyless**: SEC requires
 only a descriptive User-Agent, which the shared `harness/<version>` UA already satisfies (see _http) —
 so this is a read-only public-data GET with **no key and no new library** (the API-over-library opsec
-posture; cf. the operator skill).
+posture — no key, no new library).
 
 Resolution split: this provider is **CIK → data** only. Ticker → CIK is a separate static lookup
 (`CikResolver` over the bundled company_tickers.json), because SEC serves the forward phonebook solely

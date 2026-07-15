@@ -11,7 +11,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import { useNav } from "./nav";
 import type { VaultDoc } from "./types";
 
-function splitFrontmatter(raw: string): { fm: string; body: string } {
+export function splitFrontmatter(raw: string): { fm: string; body: string } {
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?/);
   return m ? { fm: m[1], body: raw.slice(m[0].length) } : { fm: "", body: raw };
 }

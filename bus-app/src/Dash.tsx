@@ -7,7 +7,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, runWidget } from "./api";
+import { GridLayout, noCompactor, useContainerWidth } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import { listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard, runWidget, saveDashboard } from "./api";
 import ErrorBoundary from "./ErrorBoundary";
 import JsonView from "./JsonView";
 import type { BusEvent, Dashboard, DirDoc, NewsItem, SurfaceState, Widget, WireDigest } from "./types";
@@ -22,7 +24,10 @@ import Schedule from "./viz/Schedule";
 import FoodBank from "./viz/FoodBank";
 import Treemap from "./viz/Treemap";
 import VestTimeline from "./viz/VestTimeline";
+import Ladder from "./viz/Ladder";
+import BeadTree from "./viz/BeadTree";
 import { useNav } from "./nav";
+import { isTauri } from "./transport";
 import { preprocessLinks, VaultImage } from "./VaultZone";
 
 const MARKET_MS = 10 * 60_000;
@@ -91,6 +96,10 @@ function pluck(data: unknown, path?: string | null): unknown {
 
 function sniffViz(v: Record<string, unknown>): string {
   if (v.windows && v.vests) return "vest-timeline";  // the vest-timeline sell-planning calendar
+  // trap-map ladders: top-level symbols[] whose entries carry rungs (disjoint from every other shape)
+  if (Array.isArray(v.symbols) && (v.symbols[0] as { rungs?: unknown } | undefined)?.rungs) return "ladder";
+  // bead family tree: `beads` + `edges` (deliberately NOT nodes/links, so sankey can't claim it)
+  if (Array.isArray(v.beads) && Array.isArray(v.edges)) return "bead-tree";
   if (v.nodes && v.links) return "sankey";
   if (Array.isArray(v.nodes)) return "treemap";
   if (v.pies) return "pies";
@@ -108,17 +117,20 @@ function sniffViz(v: Record<string, unknown>): string {
 const VIZ_COMP: Record<string, React.ComponentType<{ data: never }>> = {
   treemap: Treemap, sankey: Sankey, pies: Donuts, line: LineChart, matrix: Matrix,
   compare: Radar, schedule: Schedule, "food-bank": FoodBank, "vest-timeline": VestTimeline,
-  "rank-bar": BarChart,
+  "rank-bar": BarChart, ladder: Ladder, "bead-tree": BeadTree,
 };
 
 function StatBody({ data, widget }: { data: unknown; widget: Widget }) {
   const v = pluck(data, widget.value_path);
   const num = typeof v === "number" ? v : Number(v);
   const text = Number.isFinite(num) ? fmtNum(num) : String(v ?? "—");
-  const sign = Number.isFinite(num) && widget.suffix === "%" ? (num > 0 ? "pos" : num < 0 ? "neg" : "") : "";
+  // Sign-formatting (the +/− day-change convention) defaults ON for "%" tiles, opt-out via
+  // `signed: false` — magnitude reads (e.g. unwind %-complete) aren't deltas; "+" there is noise.
+  const signed = widget.signed !== false && widget.suffix === "%";
+  const sign = Number.isFinite(num) && signed ? (num > 0 ? "pos" : num < 0 ? "neg" : "") : "";
   return (
     <div className={`stat-big ${sign}`}>
-      {Number.isFinite(num) && num > 0 && widget.suffix === "%" ? "+" : ""}
+      {Number.isFinite(num) && num > 0 && signed ? "+" : ""}
       {widget.prefix ?? ""}{text}{widget.suffix ?? ""}
     </div>
   );
@@ -556,6 +568,12 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
   const [group, setGroup] = useState<string>("");
   const [lane, setLane] = useState<string>("");
   const [allTick, setAllTick] = useState(0);
+  // Dashboard Studio: edit mode. LOCKED IS ALWAYS THE DEFAULT (operator ruling —
+  // browsing must never accidentally drag); any tab or pack change re-locks. The toggle renders
+  // only on the real corpus (reloadKey "") — pack dashboards are transients the save command
+  // rejects anyway (the demo-seal belt in commands.rs).
+  const [unlocked, setUnlocked] = useState(false);
+  useEffect(() => setUnlocked(false), [lane, reloadKey]);
 
   // Mirror the current selection in a ref so `load()` can reconcile it without being recreated on
   // every group/lane change (which would re-run the mount effect).
@@ -626,6 +644,66 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
     [nav.current, current],
   );
 
+  // Studio commit: fold an RGL layout change back into the dashboard, update state, persist.
+  // Auto-save on every drag/resize commit — unlock is the deliberate act, so edits inside it are
+  // intentional; the rust side writes temp-then-rename and stamps owner:"user".
+  const commitLayout = useCallback((d: Dashboard, rawCells: StudioCell[], activeId: string | null) => {
+    // the no-widget-loss invariant: resolve every overlap BEFORE the merge (see resolveOverlaps)
+    const cells = resolveOverlaps(d, rawCells, studioCols(d.lane), activeId);
+    const byId = new Map(cells.map((c) => [c.i, c]));
+    const next: Dashboard = {
+      ...d,
+      owner: "user",
+      widgets: d.widgets.map((w) => {
+        const c = byId.get(w.id);
+        return c ? { ...w, layout: { x: c.x, y: c.y, w: c.w, h: c.h } } : w;
+      }),
+    };
+    // no-op guard: RGL fires onLayoutChange on mount too — only persist a real move
+    const changed = next.widgets.some((w, i) =>
+      JSON.stringify(w.layout) !== JSON.stringify(d.widgets[i].layout));
+    if (!changed) return;
+    setDashboards((ds) => ds.map((x) => (x.lane === next.lane ? next : x)));
+    saveDashboard(next).catch((e) => console.error("studio save failed:", e));
+  }, []);
+
+  // "Return to default" (two-click confirm — native webviews don't reliably ship window.confirm,
+  // and a console-styled arm-then-fire beats a modal anyway). Snaps the lane back to its compiled
+  // built-in; the rust side banks the replaced state to .backups/ first, so even this is undoable.
+  // Re-locks on completion: you're back at the known-good state, in the known-safe mode.
+  const [armReset, setArmReset] = useState(false);
+  useEffect(() => setArmReset(false), [lane, unlocked]);
+  useEffect(() => {
+    if (!armReset) return;
+    const t = setTimeout(() => setArmReset(false), 4000); // disarm if not confirmed
+    return () => clearTimeout(t);
+  }, [armReset]);
+  const onReset = useCallback(() => {
+    if (!current) return;
+    if (!armReset) { setArmReset(true); return; }
+    setArmReset(false);
+    resetDashboard(current.lane)
+      .then((fresh) => {
+        setDashboards((ds) => ds.map((x) => (x.lane === fresh.lane ? fresh : x)));
+        setUnlocked(false);
+        setAllTick((n) => n + 1); // repaint widgets against the restored layout
+      })
+      .catch((e) => console.error("studio reset failed:", e));
+  }, [current, armReset]);
+
+  // Unlock click. A legacy dashboard converts first (synthesized layouts, saved immediately —
+  // from that moment it's studio-managed + user-owned); a studio dashboard just unlocks.
+  const toggleUnlock = useCallback(() => {
+    if (!current) return;
+    if (unlocked) { setUnlocked(false); return; }
+    if (!isStudioManaged(current)) {
+      const migrated = migrateLegacyLayouts(current, studioCols(current.lane));
+      setDashboards((ds) => ds.map((x) => (x.lane === migrated.lane ? migrated : x)));
+      saveDashboard(migrated).catch((e) => console.error("studio migrate-save failed:", e));
+    }
+    setUnlocked(true);
+  }, [current, unlocked]);
+
   // On a pack swap (reloadKey changes) re-fetch the LAYOUT (the pack may describe its own dashboards)
   // AND refetch every widget — WITHOUT remounting Dash, so the active group/subtab is preserved when it
   // survives the swap (sit on Finance, swap personas). The widget-refetch tick is bumped INSIDE load,
@@ -652,6 +730,22 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         <span className="surface-when">
           {inMarketWindow(new Date()) ? "MARKET OPEN — AUTO 10M" : "MARKET CLOSED — MANUAL"}
         </span>
+        {/* Studio unlock: native-only until the served door grows a write carve-out
+            (save_dashboard sits in WRITE_GATED → a PWA unlock would 403 on save). */}
+        {current && !reloadKey && isTauri() && unlocked && (
+          <button className={`reset-default${armReset ? " armed" : ""}`} onClick={onReset}
+                  title={armReset ? "Click again to confirm — current layout is banked to .backups/ first"
+                                  : "Snap this dashboard back to its built-in default"}>
+            {armReset ? "↺ CONFIRM RESET?" : "↺ DEFAULT"}
+          </button>
+        )}
+        {current && !reloadKey && isTauri() && (
+          <button className={`unlock-toggle${unlocked ? " editing" : ""}`} onClick={toggleUnlock}
+                  title={unlocked ? "Lock the layout (edits are already saved)"
+                                  : "Unlock: drag + resize widgets; edits save as you go"}>
+            {unlocked ? "🔓 EDITING" : "🔒 LOCKED"}
+          </button>
+        )}
         <button className="primary" onClick={() => setAllTick((n) => n + 1)}>⟳ REFRESH ALL</button>
       </div>
       {groupDashboards.length > 1 && (
@@ -671,15 +765,171 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         </div>
       )}
       {current && !expandedWidget && (
-        <div className={`dash-grid lane-${current.lane}`} key={current.lane}>
-          {current.widgets.map((w) =>
-            w.kind === "doc_series"
-              ? <DocSeriesCard key={w.id} widget={w} forceTick={allTick} />
-              : <WidgetCard key={w.id} lane={current.lane} widget={w} forceTick={allTick} />,
-          )}
-        </div>
+        isStudioManaged(current)
+          ? <StudioGrid dashboard={current} forceTick={allTick} editable={unlocked}
+                        onCommit={(cells, activeId) => commitLayout(current, cells, activeId)} />
+          : <div className={`dash-grid lane-${current.lane}`} key={current.lane}>
+              {current.widgets.map((w) =>
+                w.kind === "doc_series"
+                  ? <DocSeriesCard key={w.id} widget={w} forceTick={allTick} />
+                  : <WidgetCard key={w.id} lane={current.lane} widget={w} forceTick={allTick} />,
+              )}
+            </div>
       )}
       {!current && <p className="empty">NO DASHBOARDS CONFIGURED</p>}
+    </div>
+  );
+}
+
+// ————— Dashboard Studio (checkpoint B) ————————————————————————————————————————
+// The react-grid-layout render path. A dashboard enters it ONLY when every widget carries an
+// explicit `layout` — legacy span/rows configs keep the dense-flow CSS grid above, byte-for-byte
+// untouched (zero regression by construction; the migration happens at first unlock, checkpoint C).
+// Grid units: rowHeight 110 + 10px margins ≈ h:1 = a stat tile, h:3 ≈ the legacy 340px card.
+// noCompactor = explicit placement is honored verbatim, deliberate gaps included — that's the
+// Studio's spatial-control contract (dense-flow auto-packing is the legacy path's job).
+
+function isStudioManaged(d: Dashboard): boolean {
+  return d.widgets.length > 0 && d.widgets.every((w) => !!w.layout);
+}
+
+// mirrors App.css's lane rule: .dash-grid.lane-finance runs 6 cols, everything else 4
+export function studioCols(lane: string): number {
+  return lane === "finance" ? 6 : 4;
+}
+
+// The RGL cell coordinate shape (what onLayoutChange yields per item).
+export interface StudioCell { i: string; x: number; y: number; w: number; h: number }
+
+// Grid-occupancy bookkeeping shared by the migration + the overlap resolver.
+function makeOccupancy(cols: number) {
+  const occupied: boolean[][] = [];
+  const fits = (x: number, y: number, w: number, h: number) => {
+    if (x < 0 || x + w > cols) return false;
+    for (let r = y; r < y + h; r++) {
+      for (let c = x; c < x + w; c++) if (occupied[r]?.[c]) return false;
+    }
+    return true;
+  };
+  const claim = (x: number, y: number, w: number, h: number) => {
+    for (let r = y; r < y + h; r++) {
+      occupied[r] = occupied[r] ?? Array(cols).fill(false);
+      for (let c = x; c < x + w; c++) occupied[r][c] = true;
+    }
+  };
+  return { fits, claim };
+}
+
+// THE NO-WIDGET-LOSS INVARIANT (found via a field bug): widgets are interchangeable
+// blocks — a drop may NEVER hide or lose another widget. RGL under noCompactor resolves only the
+// FIRST collision (it pushes the occupant one row) and never re-resolves the pushed widget's own
+// landing — in the incident the pushed stat tile landed UNDER a 3×3 panel and vanished from view.
+// This pass runs on every commit: widgets that didn't move keep their cells; every MOVED cell
+// (the user's drag AND RGL's pushes) that overlaps anything is first-fit relocated to the nearest
+// free slot, scanning from the top — which lands a displaced tile in the dragged tile's vacated
+// cell (swap semantics) in the common case. Count in == count out, by construction.
+export function resolveOverlaps(
+  prev: Dashboard,
+  cells: StudioCell[],
+  cols: number,
+  activeId?: string | null,
+): StudioCell[] {
+  const prevById = new Map(prev.widgets.map((w) => [w.id, w.layout]));
+  const movedFromPrev = (c: StudioCell) => {
+    const p = prevById.get(c.i);
+    return !p || p.x !== c.x || p.y !== c.y || p.w !== c.w || p.h !== c.h;
+  };
+  const { fits, claim } = makeOccupancy(cols);
+  const out = new Map<string, StudioCell>();
+  for (const s of cells.filter((c) => !movedFromPrev(c))) {
+    claim(s.x, s.y, s.w, s.h);
+    out.set(s.i, s);
+  }
+  // The USER-dragged item (activeId, captured at drag/resize start) claims its dropped cell FIRST
+  // among the movers — coordinates alone can't distinguish the deliberate drag from an RGL push,
+  // and relocating the wrong one silently undoes the user's drag instead of the push.
+  const movers = cells.filter(movedFromPrev)
+    .sort((a, b) => Number(b.i === activeId) - Number(a.i === activeId));
+  for (const m of movers) {
+    let { x, y } = m;
+    const w = Math.max(1, Math.min(m.w, cols));
+    const h = Math.max(1, m.h);
+    if (!fits(x, y, w, h)) {
+      placed: for (y = 0; ; y++) {
+        for (x = 0; x <= cols - w; x++) if (fits(x, y, w, h)) break placed;
+      }
+    }
+    claim(x, y, w, h);
+    out.set(m.i, { ...m, x, y, w, h });
+  }
+  return cells.map((c) => out.get(c.i)!);
+}
+
+// Legacy→Studio migration (checkpoint C): synthesize explicit layouts from the span/rows flow
+// model via first-fit row-dense placement — mirroring the `grid-auto-flow: row dense` packing the
+// legacy CSS grid uses. Heights are a HEURISTIC (legacy rows are content-sized, which a fixed-unit
+// grid cannot express): stat = 1 unit (~110px) · doc_series = 6 (its CSS is tall) · everything
+// else = 3 units per legacy row-span (≈ the 340px card). The result is a STARTING POINT the user
+// drags into shape, not a pixel-faithful copy — say so in any UX copy near this.
+export function migrateLegacyLayouts(d: Dashboard, cols: number): Dashboard {
+  const { fits, claim } = makeOccupancy(cols);
+  const widgets = d.widgets.map((wg) => {
+    if (wg.layout) { claim(wg.layout.x, wg.layout.y, wg.layout.w, wg.layout.h); return wg; }
+    const w = Math.max(1, Math.min(wg.span || 2, cols));
+    const h = wg.kind === "stat" ? 1 : wg.kind === "doc_series" ? 6 : 3 * (wg.rows ?? 1);
+    let px = 0, py = 0;
+    placed: for (py = 0; ; py++) {
+      for (px = 0; px <= cols - w; px++) if (fits(px, py, w, h)) break placed;
+    }
+    claim(px, py, w, h);
+    return { ...wg, layout: { x: px, y: py, w, h } };
+  });
+  return { ...d, widgets, owner: "user" };
+}
+
+function StudioGrid({ dashboard, forceTick, editable, onCommit }: {
+  dashboard: Dashboard;
+  forceTick: number;
+  editable: boolean;
+  onCommit: (cells: StudioCell[], activeId: string | null) => void;
+}) {
+  const { width, containerRef, mounted } = useContainerWidth();
+  // the item the user is actually manipulating — captured at drag/resize start, consumed by the
+  // overlap resolver so the deliberate move wins over RGL's collision pushes.
+  const activeRef = useRef<string | null>(null);
+  const cells = dashboard.widgets.map((w) => ({
+    i: w.id,
+    x: w.layout!.x, y: w.layout!.y, w: w.layout!.w, h: w.layout!.h,
+    static: !editable,
+  }));
+  return (
+    <div className={`studio-grid${editable ? " editing" : ""}`} key={dashboard.lane} ref={containerRef}>
+      {mounted && (
+        <GridLayout
+          width={width}
+          layout={cells}
+          gridConfig={{ cols: studioCols(dashboard.lane), rowHeight: 110,
+                        margin: [10, 10], containerPadding: [16, 10] }}
+          dragConfig={{ enabled: editable }}
+          resizeConfig={{ enabled: editable }}
+          compactor={noCompactor}
+          onDragStart={(_l, item) => { activeRef.current = item?.i ?? null; }}
+          onResizeStart={(_l, item) => { activeRef.current = item?.i ?? null; }}
+          onLayoutChange={(layout) => {
+            // fires on mount too — commitLayout's no-op guard drops non-moves; only editable
+            // sessions ever reach the save path.
+            if (editable) onCommit(layout as unknown as StudioCell[], activeRef.current);
+          }}
+        >
+          {dashboard.widgets.map((w) => (
+            <div key={w.id} className="studio-cell">
+              {w.kind === "doc_series"
+                ? <DocSeriesCard widget={w} forceTick={forceTick} />
+                : <WidgetCard lane={dashboard.lane} widget={w} forceTick={forceTick} />}
+            </div>
+          ))}
+        </GridLayout>
+      )}
     </div>
   );
 }

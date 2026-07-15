@@ -7,7 +7,7 @@ which stays in the lane that owns that corpus layout).
 
 Deliberately *functions*, not a forced base class: the markdown readers (travel today) genuinely
 share these; the finance reader is YAML-only and has no markdown to share — so a common base would be
-premature abstraction (cf. the operator skill "extract at consolidation time, not prematurely").
+premature abstraction — extract at consolidation time, not prematurely.
 """
 
 from __future__ import annotations

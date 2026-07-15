@@ -7,7 +7,7 @@ generated: 2026-06-19
 
 # Stripe — role-hunt profile
 
-> Auto-generated (`hn career company-profiles`). Tier **Tier 1** · ATS `greenhouse` · _last scan 2026-06-19: 1 matched openings._
+> Auto-generated (`hn career company-profiles`). Tier **Tier 1** · ATS `greenhouse` · _last scan 2026-06-19: 1 matched opening._
 
 ## At a glance
 - **Tier**: Tier 1
@@ -18,7 +18,7 @@ generated: 2026-06-19
 
 | Title | Location | Salary | Link |
 |---|---|---|---|
-| Principal Engineer, Infrastructure | Remote / Minneapolis · remote | $280,000 – $360,000 | [post](https://example.com/stripe/jobs/9001) |
+| Principal Engineer, Infrastructure | Remote / Minneapolis | $280,000 – $360,000 | [post](https://example.com/stripe/jobs/9001) |
 
 ## Fit
 

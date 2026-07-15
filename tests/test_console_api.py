@@ -1,6 +1,6 @@
-"""Web-console RPC door tests — directory-traversal containment, auth/gating semantics, and
-(the plan's explicit requirement: the directory-traversal protections are load-bearing), plus the
-door's auth/gating semantics and the wire-shape parity the frontend depends on.
+"""Web-console RPC door tests — directory-traversal containment (the protections are
+load-bearing), the door's auth/gating semantics, and the wire-shape parity the frontend
+depends on.
 
 Same conventions as test_bus_server.py: the REAL app object through Starlette's TestClient, all
 state on tmp_path via the standard env knobs (TRACKER_PATH / HARNESS_BUS_DB / HARNESS_CONFIG_DIR)
@@ -197,6 +197,43 @@ def test_dashboards_listed_from_config_dir(client: TestClient, tmp_path: Path) -
     _write_dashboard(tmp_path / "config")
     (dash,) = invoke(client, "list_dashboards", headers=AUTH).json()
     assert dash["lane"] == "finance" and len(dash["widgets"]) == 3
+
+
+def test_dashboards_passthrough_preserves_unknown_and_studio_keys(
+    client: TestClient, tmp_path: Path
+) -> None:
+    # THE CONFIG-SCHEMA CONTRACT TEST, python half: this door is a
+    # raw-json passthrough, so Studio keys (layout/owner) — and any future key — must survive
+    # verbatim. The rust half (dash.rs kitchen_sink test) pins the typed-serde side; a field that
+    # passes here but vanishes there is the two-parsers divergence class (the `signed` regression).
+    dash_dir = tmp_path / "config" / "dashboards"
+    dash_dir.mkdir(parents=True, exist_ok=True)
+    kitchen_sink = {
+        "lane": "contract",
+        "title": "Kitchen Sink",
+        "owner": "user",
+        "widgets": [
+            {
+                "id": "everything",
+                "title": "Every field",
+                "kind": "stat",
+                "source": {"type": "command", "cmd": "uv", "args": ["run"], "cwd": "~"},
+                "refresh": "market10m",
+                "span": 3,
+                "signed": False,
+                "rows": 2,
+                "layout": {"x": 1, "y": 2, "w": 3, "h": 4},
+                "some_future_key": "must-survive",
+            }
+        ],
+    }
+    (dash_dir / "contract.json").write_text(json.dumps(kitchen_sink))
+    (dash,) = invoke(client, "list_dashboards", headers=AUTH).json()
+    assert dash["owner"] == "user"
+    widget = dash["widgets"][0]
+    assert widget["layout"] == {"x": 1, "y": 2, "w": 3, "h": 4}
+    assert widget["signed"] is False
+    assert widget["some_future_key"] == "must-survive"
 
 
 def test_run_widget_file_source_rides_the_guard(client: TestClient, tmp_path: Path) -> None:

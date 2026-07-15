@@ -43,6 +43,12 @@ app.add_typer(career_app, name="career")
 app.add_typer(bus_app, name="bus")
 app.add_typer(packs_app, name="packs")
 
+# the beads lane: a read-only board over the tracker's .beads/issues.jsonl export —
+# imported lazily-in-place like the others; zero bd/Dolt dependency.
+from harness.beads.cli import app as beads_app  # noqa: E402
+
+app.add_typer(beads_app, name="beads")
+
 # `hn init <dir>` — scaffold a new corpus (top-level, not lane-scoped).
 app.command(name="init")(init_cmd)
 

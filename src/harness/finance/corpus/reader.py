@@ -68,6 +68,9 @@ class ProxyBasket:
     fund: str
     symbols: list[str]
     note: str = ""
+    # symbol -> % of the FUND (N-PORT weight). Populated by the `basket:` config form;
+    # empty for the legacy `symbols:` form, which stays equal-weight.
+    weights: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -113,6 +116,17 @@ class VestEvent:
 
     date: str  # YYYY-MM-DD
     units: int = 0
+
+
+@dataclass
+class SoldLot:
+    """One executed unwind sale (the structured sold-ledger) — maintained at each
+    fill, replacing the comment-only history. Drives the unwind-progress %-complete
+    (sold / ever-held); the denominator grows as vests add shares — the honest read."""
+
+    date: str  # YYYY-MM-DD
+    qty: float
+    px: float | None = None  # execution price (provenance; not used in the % math)
 
 
 @dataclass
@@ -168,6 +182,9 @@ class PortfolioSeed:
     macro_events: list[MacroEvent] = field(default_factory=list)
     # dated tax actions: withholding election, 1040-ES, etc. — pulse tax_deadline
     tax_events: list[MacroEvent] = field(default_factory=list)
+    # the unwind sold-ledger + plan anchors — inputs to the %-complete widget
+    unwind_sold: list[SoldLot] = field(default_factory=list)
+    unwind_meta: dict[str, float] = field(default_factory=dict)  # plan_start_pct_liquid / target_pct_liquid
 
     @property
     def concentrated(self) -> Holding | None:
@@ -215,10 +232,24 @@ class CorpusReader:
         # a mutual fund that doesn't price intraday → estimate its EOD direction from a basket of
         # live proxies (config key `fund_proxy:`; absent → no proxy, the verb reports nothing to do).
         proxy_raw = data.get("fund_proxy", {}) or {}
+        # two config forms: `basket:` [{symbol, weight}] = cap-weighted, weights are
+        # the names' N-PORT %-of-fund; legacy `symbols:` [..] = equal-weight. basket wins if both.
+        basket_rows = proxy_raw.get("basket", []) or []
+        if basket_rows:
+            proxy_symbols = [str(r.get("symbol", "")) for r in basket_rows if r.get("symbol")]
+            proxy_weights = {
+                str(r["symbol"]): float(r["weight"])
+                for r in basket_rows
+                if r.get("symbol") and r.get("weight") is not None
+            }
+        else:
+            proxy_symbols = [str(s) for s in proxy_raw.get("symbols", [])]
+            proxy_weights = {}
         proxy = ProxyBasket(
             fund=str(proxy_raw.get("fund", "")),
-            symbols=[str(s) for s in proxy_raw.get("symbols", [])],
+            symbols=proxy_symbols,
             note=str(proxy_raw.get("note", "")).strip(),
+            weights=proxy_weights,
         )
 
         screen_raw = data.get("values_screen", {}) or {}
@@ -288,6 +319,23 @@ class CorpusReader:
             for m in data.get("tax_events") or []
         ]
 
+        # the unwind sold-ledger + plan anchors; absent block → progress stays None.
+        # `unwind:` is the canonical key; no legacy alias is honored.
+        unwind_raw = data.get("unwind") or {}
+        unwind_sold = [
+            SoldLot(
+                date=str(s["date"]),
+                qty=float(s["qty"]),
+                px=float(s["px"]) if s.get("px") is not None else None,
+            )
+            for s in unwind_raw.get("sold") or []
+        ]
+        unwind_meta = {
+            str(k): float(v)
+            for k, v in unwind_raw.items()
+            if k in ("plan_start_pct_liquid", "target_pct_liquid") and v is not None
+        }
+
         return PortfolioSeed(
             holdings=holdings,
             proxy=proxy,
@@ -302,4 +350,6 @@ class CorpusReader:
             index_watch=index_watch,
             macro_events=macro_events,
             tax_events=tax_events,
+            unwind_sold=unwind_sold,
+            unwind_meta=unwind_meta,
         )

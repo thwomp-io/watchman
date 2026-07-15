@@ -5,7 +5,7 @@ name: demo-growth
 title: "Demo Growth — a fictional early-career persona"
 description: >-
   A complete fictional PERSONA (every lane), the contrast to `demo-investor`: an early-career
-  infrastructure engineer — an aggressive ~$185k growth-tilted portfolio (finance), an active platform/SRE
+  infrastructure engineer — an aggressive ~$250k growth-tilted portfolio (finance), an active platform/SRE
   job search across public infra companies (career), and a budget trip pipeline from a Denver home base
   (travel). Load it, then swap to `demo-investor`, to watch the WHOLE console re-render against a different
   life. Not real data; not advice; the toolkit is read-only.

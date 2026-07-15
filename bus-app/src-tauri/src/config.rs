@@ -112,12 +112,12 @@ pub fn expand_home(path: &str) -> PathBuf {
 
 /// Resolve a command working-directory against [`harness_home`] (NOT the real `$HOME`).
 ///
-/// A widget/surface/producer `cwd` like `.` points at the harness REPO (the uv
-/// project `uv run hn` needs). It must follow `HARNESS_HOME` so a sandboxed prod-app instance spawns
+/// A widget/surface/producer `cwd` like `~/watchman` (a `~/`-relative repo checkout — the uv
+/// project `uv run hn` needs) must follow `HARNESS_HOME` so a sandboxed prod-app instance spawns
 /// `hn` in the *sandboxed* tree (reading fictional pack data) instead of the dev daily-driver's real
 /// repo + corpus. Behavior-preserving in dev (there `harness_home() == $HOME`, so this equals the old
 /// `expand_home`); sandbox-correct in prod. The leak this closes: a published app on a machine that
-/// HAS the real corpus would otherwise `cd . && uv run hn …` and read it live.
+/// HAS a real checkout would otherwise spawn `uv run hn …` inside it and read the real corpus live.
 /// Absolute / non-`~/` cwds pass through unchanged.
 ///
 /// A resolved dir that doesn't exist falls back to [`harness_home`]: an installed console has no
@@ -573,16 +573,25 @@ fn default_surfaces() -> Vec<Surface> {
 }
 
 fn default_live_viz() -> Vec<LiveViz> {
-    vec![LiveViz {
-        id: "finance.concentration.live".into(),
-        label: "Concentration (LIVE)".into(),
-        lane: "finance".into(),
-        viz_type: "treemap".into(),
+    let live = |id: &str, label: &str, lane: &str, viz_type: &str, args: &[&str]| LiveViz {
+        id: id.into(),
+        label: label.into(),
+        lane: lane.into(),
+        viz_type: viz_type.into(),
         cmd: "uv".into(),
-        args: vec!["run".into(), "hn".into(), "finance".into(), "concentration".into(),
-                   "--json".into()],
+        args: ["run", "hn"].iter().chain(args).map(|a| (*a).into()).collect(),
         cwd: ".".into(),
-    }]
+    };
+    vec![
+        live("finance.concentration.live", "Concentration (LIVE)", "finance", "treemap",
+             &["finance", "concentration", "--json"]),
+        live("finance.trapmap.live", "Trap map — GTC ladders (LIVE)", "finance", "ladder",
+             &["finance", "trap-map", "--json"]),
+        live("finance.vests.live", "Vest timeline (LIVE)", "finance", "vest-timeline",
+             &["finance", "unwind", "--json", "--section", "vest_timeline"]),
+        live("beads.tree.live", "Beads board (LIVE)", "beads", "bead-tree",
+             &["beads", "board", "--json", "--section", "tree"]),
+    ]
 }
 
 fn default_config() -> AppConfig {

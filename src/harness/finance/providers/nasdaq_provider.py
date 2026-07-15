@@ -31,7 +31,7 @@ Landmines (read before extending — the module-docstring convention):
   provider's handshake worked earlier but the calendar module was throttled to uselessness).
 - **Volume discipline is the CALLER's job**: serial fetches + a day-scale TTL cache (see
   `watch.EarningsDateCache` / `watch.ConsensusState`). Many pulse runs per market day across a multi-name book
-  must NOT mean 9×20 hits on an unofficial API — the cache bounds it to ~one sweep/day.
+  must NOT mean holdings × runs hits on an unofficial API — the cache bounds it to ~one sweep/day.
 """
 
 from __future__ import annotations

@@ -7,6 +7,11 @@
 > The bus fixes all three: durable unread state survives sleep; the app posts notifications under
 > its own authorized identity; the inbox IS the human surface. **Zero model in the loop.**
 
+What events become — the inbox triages by severity into ACT / WATCH / the catalyst wire, with a
+payload inspector per signal:
+
+![The inbox — triage bands over bus events](assets/inbox-triage.png)
+
 ## Storage
 
 One SQLite database, WAL mode: **`~/.local/state/harness/bus.db`** — override with the

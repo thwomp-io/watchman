@@ -138,7 +138,8 @@ def openings(
                     md.rstrip()
                     + "\n\n---\n\n## Role-shape matrix\n\n"
                     + f"![[{rel}|900]]\n"
-                    + "*Who's hiring at the altitude, in what shape — counts = matched openings. "
+                    + "*Who's hiring at the watchlist's seniority band, in what shape — "
+                    + "counts = matched openings. "
                     "(The live/interactive version is the CAREER dashboard's Hiring Map.)*\n"
                 )
             except VizError as e:

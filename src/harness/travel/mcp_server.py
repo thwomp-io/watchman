@@ -32,7 +32,8 @@ def search_flights(
     destination: str, depart: str, return_date: str | None = None, origins: str | None = None
 ) -> list[dict[str, Any]]:
     """Search flights to an IATA destination across one or more origin airports. `origins` defaults to
-    the configured home airport + hub. Dates are YYYY-MM-DD. Budget carriers are excluded per prefs."""
+    the configured home airport + hub. Dates are YYYY-MM-DD. Carriers the corpus preferences
+    name as avoided are excluded."""
     svc = _svc()
     origin_list = (
         [o.strip().upper() for o in origins.split(",")]

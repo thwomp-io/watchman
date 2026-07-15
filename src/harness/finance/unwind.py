@@ -18,7 +18,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from harness.finance.corpus.reader import Lot, VestEvent
+from harness.finance.corpus.reader import Lot, SoldLot, VestEvent
 from harness.finance.models import Bar, SupportLevel
 from harness.finance.watch import WashSaleStatus
 
@@ -70,6 +70,54 @@ class TlhSummary(BaseModel):
     clean_window_end: str | None = None
 
 
+class UnwindProgress(BaseModel):
+    """The %-complete read — how much of the position has been unwound.
+
+    pct_unwound = shares_sold / shares_ever_held × 100, ever-held = current + sold-to-date.
+    THE DENOMINATOR GROWS at each vest (new lots raise `current`) — deliberately: a vest means
+    more pie appeared, so the % dips honestly instead of overstating progress through a peak vest
+    year. The pct_of_liquid companion (vs plan-start/target anchors) is the risk-remaining read."""
+
+    pct_unwound: float
+    shares_sold: float
+    shares_current: float
+    shares_ever: float
+    pct_of_liquid: float | None = None  # live weight in the liquid (non-retirement) pool
+    pct_of_liquid_at_start: float | None = None  # config anchor: plan-start weight
+    target_pct_liquid: float | None = None  # config anchor: end-state weight
+
+
+def build_progress(
+    *,
+    shares_current: float,
+    sold: list[SoldLot],
+    market_value: float | None = None,
+    liquid_total: float | None = None,
+    meta: dict[str, float] | None = None,
+) -> UnwindProgress | None:
+    """Pure %-complete math off the sold-ledger. No ledger → None (packs without `unwind:`)."""
+    if not sold:
+        return None
+    shares_sold = round(sum(s.qty for s in sold), 4)
+    shares_ever = round(shares_current + shares_sold, 4)
+    pct = round(shares_sold / shares_ever * 100.0, 1) if shares_ever else 0.0
+    pct_liquid = (
+        round(market_value / liquid_total * 100.0, 1)
+        if market_value is not None and liquid_total
+        else None
+    )
+    meta = meta or {}
+    return UnwindProgress(
+        pct_unwound=pct,
+        shares_sold=shares_sold,
+        shares_current=round(shares_current, 4),
+        shares_ever=shares_ever,
+        pct_of_liquid=pct_liquid,
+        pct_of_liquid_at_start=meta.get("plan_start_pct_liquid"),
+        target_pct_liquid=meta.get("target_pct_liquid"),
+    )
+
+
 class UnwindReport(BaseModel):
     """The full concentration-unwind contract — one source, two renderers (static SVG + live visx widget)."""
 
@@ -92,6 +140,8 @@ class UnwindReport(BaseModel):
     lot_split: dict[str, Any] = Field(default_factory=dict)  # Treemap (lots sized by $, gain/loss)
     tlh_split: dict[str, Any] = Field(default_factory=dict)  # Donut `pies` (sellable vs wash-gated)
     vest_timeline: dict[str, Any] = Field(default_factory=dict)  # VestTimeline (markers + wash bands)
+    # %-complete: None when the seed has no `unwind:` sold-ledger (sample packs)
+    progress: UnwindProgress | None = None
 
 
 def classify_lots(lots: list[Lot], price: float, *, poisoned: bool, today: date) -> list[LotView]:
@@ -294,6 +344,7 @@ def build_unwind(
     support_levels: list[SupportLevel],
     bars: list[Bar],
     today: date,
+    progress: UnwindProgress | None = None,
 ) -> UnwindReport:
     """Assemble the full contract from injected inputs (pure — no I/O; the CLI fetches price/bars)."""
     lot_views = classify_lots(lots, price, poisoned=wash_sale.today_poisoned, today=today)
@@ -339,4 +390,5 @@ def build_unwind(
         lot_split=_lot_split(symbol, lot_views, price),
         tlh_split=_tlh_split(tlh, price),
         vest_timeline=_vest_timeline(symbol, vest_calendar, price, today),
+        progress=progress,
     )

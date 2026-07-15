@@ -110,7 +110,9 @@ class CorpusReader:
     def read_preferences(self) -> PreferencesDigest:
         text = (self._root / "preferences.md").read_text()
         avoid: list[str] = []
-        for name in ("Southwest", "Frontier", "Spirit"):  # common budget carriers, matched as prose mentions
+        # budget-carrier names mentioned in the user's preferences prose are picked up as an
+        # avoid-list; the sample corpus's premium-leaning persona names a few common ones
+        for name in ("Southwest", "Frontier", "Spirit"):
             if name in text:
                 avoid.append(name)
         return PreferencesDigest(

@@ -45,16 +45,25 @@ widgets refresh. (Recorded headlessly against a sealed demo instance — fiction
 _The career board: shortlist, pipeline, and the company × role-shape hiring map — same persona,
 same seal._
 
+![Cycling the theme fleet](docs/assets/themes-cycle.gif)
+
+_Eleven built-in themes — three utilitarian daily drivers and a creative fleet, one toggle in
+the footer._
+
+**A clip for every lane — the full tour lives in [`docs/EXAMPLES.md`](docs/EXAMPLES.md).**
+
 ## What's in the box
 
-- **`hn` CLI** — one root binary, three mountable lanes:
+- **`hn` CLI** — one root binary, four mountable lanes:
   - `hn finance` — read-only market data: quotes · positions · net worth · **market** (regime/breadth) ·
     fundamentals (SEC EDGAR) · multiples · **correlate** (diversification/beta vs. a factor) · news · wire
-    (broad-market headlines) · research · watch · screen. **No trading; observation only.**
+    (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) · screen. **No trading; observation only.**
   - `hn career` — a read-only role-hunt lane: keyless openings scans (Greenhouse/Ashby) with posted comp,
     company profiles, and D3 visuals.
   - `hn travel` — live-travel research hands: flight ranking · hotels · events · traffic · ferries · weather
     /air/quake senses · destination viz.
+  - `hn beads` — a read-only board over a [beads](https://github.com/gastownhall/beads) issue tracker's
+    export: counts, presence, an honest ready queue, per-issue ticket pages.
 - **Watchman console** — a small resident desktop app (Tauri): domain **dashboards** that self-refresh from
   the CLI's `--json` verbs, a **notification bus** for standing agents, and an interactive **viz** layer.
   No model is ever in the render loop.
@@ -62,6 +71,21 @@ same seal._
   your network or private mesh — including your phone, installable as a PWA. One server, one token; see
   [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
 - **A D3 viz engine** — one Python↔Node renderer shared across lanes (the diagram above is rendered by it).
+
+## Your backlog, on the console
+
+If your project tracks work with [beads](https://github.com/gastownhall/beads) — a git-native issue
+tracker built for humans and AI agents sharing a backlog — Watchman renders it as a first-class
+surface: an **Ops ▸ Backlog** tab (counts, the presence board, an honest ready queue, shipped this
+week), an interactive **dependency graph** (epics and children as an org chart, blocking
+dependencies as dashed edges you can hover, tiles that quick-look the full ticket), and generated
+**ticket pages** that cross-link like an issue tracker's linked-issues panel. Read-only by
+construction — `bd` stays the source of truth. Every sample persona ships a fictional backlog, so
+the tab demos out of the box.
+
+![Hover cards, the relationship card, and the ticket quick-look](docs/assets/beads-interact.gif)
+
+**Full walkthrough + screenshots: [`docs/BEADS.md`](docs/BEADS.md).**
 
 ## Quickstart — runs out of the box on bundled sample packs
 
@@ -178,11 +202,15 @@ docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman
   ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
 
-Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.7.1`) plus a moving `:latest` — pin the
+Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.8.0`) plus a moving `:latest` — pin the
 version tag for anything durable. Volumes, the token, and running the standing agents from the image:
 [`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## A pack is a persona
+
+![The same console under three personas](docs/assets/pack-cycle.gif)
+
+_The Finance Core view re-rendering under three bundled personas — same widgets, different life._
 
 ```
 samples/packs/<persona>/
@@ -221,10 +249,10 @@ pulse: # standing-watch thresholds
 
 ```yaml
 companies:
-  - {name: GitLab, ats: greenhouse, token: gitlab, tier: "Tier 1"}
+  - {name: ExampleCo, ats: greenhouse, token: exampleco, tier: "Tier 1"}
 filters:
-  title_any: [infrastructure, platform, reliability, sre]
-  seniority_any: [staff, principal, director, "head of"]
+  title_any: [backend, platform, devops]
+  seniority_any: [mid, senior]
   title_none: [sales, intern]
 ```
 
@@ -267,6 +295,10 @@ you](skills/corpus-operator/SKILL.md) from conversation — but they stay plain 
   variant mounts, remote satellites.
 - [`docs/DOCKER.md`](docs/DOCKER.md) — the container image: engine commands, the served console, volumes,
   version pinning.
+- [`docs/EXAMPLES.md`](docs/EXAMPLES.md) — **the tour**: a clip for every lane, recorded against
+  the bundled sample personas.
+- [`docs/BEADS.md`](docs/BEADS.md) — the beads issue-tracker integration: the Backlog tab, the
+  dependency graph, and ticket pages.
 - [`docs/BUS.md`](docs/BUS.md) — the notification-bus producer contract (publish events from any language).
 - [`SECURITY.md`](SECURITY.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md)
 

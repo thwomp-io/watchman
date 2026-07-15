@@ -54,8 +54,10 @@ def test_blank_pack_env_is_treated_as_none() -> None:
     assert BaseToolkitSettings(weights_pack="").weights_pack is None
 
 
-def test_finance_portfolio_path_falls_back_to_packaged_default() -> None:
-    assert FinanceSettings(weights_pack=None).portfolio_path == PORTFOLIO_PATH
+def test_finance_portfolio_path_falls_back_to_packaged_default(tmp_path: Path) -> None:
+    # tracker_path pinned to an empty tmp dir: a scaffolded corpus at the real tracker_path must
+    # not shadow the packaged-fallback branch under test.
+    assert FinanceSettings(weights_pack=None, tracker_path=tmp_path).portfolio_path == PORTFOLIO_PATH
 
 
 def test_finance_portfolio_path_uses_the_loaded_pack(tmp_path: Path) -> None:

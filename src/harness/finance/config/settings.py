@@ -17,7 +17,7 @@ PORTFOLIO_PATH = Path(__file__).parent / "portfolio.yaml"
 # SEC's canonical ticker→CIK map (company_tickers.json), bundled as reference data. SEC serves it
 # only from www.sec.gov, which WAF-blocks non-browser clients — so it's fetched once via browser and
 # committed here (refresh = re-download + replace). The data.sec.gov XBRL APIs we hit at runtime are
-# open with our normal UA; only this static phonebook needs bundling. See edgar_provider / FEATURES.
+# open with our normal UA; only this static phonebook needs bundling. See edgar_provider.
 COMPANY_TICKERS_PATH = Path(__file__).parent / "company_tickers.json"
 
 __all__ = ["COMPANY_TICKERS_PATH", "PORTFOLIO_PATH", "Settings", "get_settings"]

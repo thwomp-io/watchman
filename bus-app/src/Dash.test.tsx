@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import Dash from "./Dash";
+import Dash, { migrateLegacyLayouts, resolveOverlaps } from "./Dash";
+import type { Dashboard, Widget } from "./types";
 import {
   docSeriesWidget, mockTauri, oneWidgetDash, packFixture, realFixture,
-  stageEmptyWidgetSources, symbolWidget,
+  stageEmptyWidgetSources, statWidget, studioFixture, symbolWidget,
 } from "./test/mockTauri";
 
 describe("Dash — pack-described dashboards", () => {
@@ -34,7 +35,7 @@ describe("Dash — pack-described dashboards", () => {
     mockTauri.setValue("list_dashboards", realFixture());
     const { rerender } = render(<Dash reloadKey="real" />);
 
-    // The real console's extra Finance subtabs are present.
+    // The full fixture's extra Finance subtabs are present.
     expect(await screen.findByRole("button", { name: "Unwind" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Market" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tickets" })).toBeInTheDocument();
@@ -43,7 +44,7 @@ describe("Dash — pack-described dashboards", () => {
     mockTauri.setValue("list_dashboards", packFixture());
     rerender(<Dash reloadKey="demo-growth" />);
 
-    // Layout refetched: the real console's extra Finance subtabs are gone...
+    // Layout refetched: the full fixture's extra Finance subtabs are gone...
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Unwind" })).not.toBeInTheDocument(),
     );
@@ -122,5 +123,184 @@ describe("Dash — pack-described dashboards", () => {
     // No crash; the curated console renders (the vanished lane fell back to the group's first dashboard).
     expect(await screen.findByRole("button", { name: "Finance" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tickets" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Dash — Dashboard Studio render-path split", () => {
+  beforeEach(() => {
+    mockTauri.reset();
+    stageEmptyWidgetSources();
+  });
+
+  it("a layout-bearing dashboard renders through the studio grid", async () => {
+    mockTauri.setValue("list_dashboards", studioFixture());
+    const { container } = render(<Dash reloadKey="studio" />);
+    await screen.findByText("Studio A");
+    expect(container.querySelector(".studio-grid")).not.toBeNull();
+    expect(container.querySelector(".dash-grid")).toBeNull();
+    // both widgets render inside RGL cells
+    expect(container.querySelectorAll(".studio-cell").length).toBe(2);
+  });
+
+  it("a legacy (layout-less) dashboard keeps the dense-flow grid, untouched", async () => {
+    mockTauri.setValue("list_dashboards", realFixture());
+    const { container } = render(<Dash reloadKey="real" />);
+    await screen.findByText("Core stat");
+    expect(container.querySelector(".dash-grid")).not.toBeNull();
+    expect(container.querySelector(".studio-grid")).toBeNull();
+  });
+});
+
+describe("Dashboard Studio — unlock, migration, save (checkpoint C)", () => {
+  beforeEach(() => {
+    mockTauri.reset();
+    stageEmptyWidgetSources();
+  });
+
+  it("migrateLegacyLayouts synthesizes first-fit row-dense placements", () => {
+    const d: Dashboard = {
+      lane: "x", title: "X", widgets: [
+        { ...statWidget("a", "A"), span: 2 },              // stat -> 2x1 at 0,0
+        { ...statWidget("b", "B"), span: 2 },              // stat -> 2x1 at 2,0
+        { ...statWidget("c", "C"), kind: "table", span: 4, rows: 1 }, // -> 4x3 at 0,1
+        { ...statWidget("d", "D"), span: 2 },              // stat -> 2x1... first fit = 0,4
+      ],
+    };
+    const m = migrateLegacyLayouts(d, 4);
+    expect(m.owner).toBe("user");
+    expect(m.widgets[0].layout).toEqual({ x: 0, y: 0, w: 2, h: 1 });
+    expect(m.widgets[1].layout).toEqual({ x: 2, y: 0, w: 2, h: 1 });
+    expect(m.widgets[2].layout).toEqual({ x: 0, y: 1, w: 4, h: 3 });
+    expect(m.widgets[3].layout).toEqual({ x: 0, y: 4, w: 2, h: 1 });
+  });
+
+  it("unlocking a legacy dashboard migrates it and persists via save_dashboard", async () => {
+    mockTauri.setValue("list_dashboards", realFixture());
+    mockTauri.setValue("save_dashboard", null);
+    render(<Dash reloadKey="" />);
+    await screen.findByText("Core stat");
+
+    fireEvent.click(screen.getByRole("button", { name: /LOCKED/ }));
+    // the migration saved immediately: the dashboard went studio-managed + user-owned
+    await waitFor(() => {
+      const call = mockTauri.calls().find(([cmd]) => cmd === "save_dashboard");
+      expect(call).toBeTruthy();
+      const saved = (call![1] as { dashboard: Dashboard }).dashboard;
+      expect(saved.owner).toBe("user");
+      expect(saved.widgets.every((w: Widget) => !!w.layout)).toBe(true);
+    });
+    // and the toggle reads EDITING
+    expect(screen.getByRole("button", { name: /EDITING/ })).toBeInTheDocument();
+  });
+
+  it("the unlock toggle is hidden while a pack is active (transient dashboards)", async () => {
+    mockTauri.setValue("list_dashboards", packFixture());
+    render(<Dash reloadKey="demo-growth" />);
+    await screen.findByRole("button", { name: "Finance" });
+    expect(screen.queryByRole("button", { name: /LOCKED|EDITING/ })).toBeNull();
+  });
+});
+
+describe("Dashboard Studio — the no-widget-loss invariant (drag-collision regression)", () => {
+  // The originating field bug, reconstructed: on a 6-col dashboard the user dragged a 1x1
+  // tile onto an occupied cell; RGL pushed the occupant down a row — directly UNDER a 3x3
+  // panel — and it vanished from view. The resolver must relocate the PUSHED widget (never the
+  // user's drag) to the drag's vacated cell. Swap semantics.
+  const lay = (x: number, y: number, w = 1, h = 1) => ({ x, y, w, h });
+  function coreLike(): Dashboard {
+    const w = (id: string, l: { x: number; y: number; w: number; h: number }): Widget =>
+      ({ ...statWidget(id, id), layout: l });
+    return {
+      lane: "finance", title: "Core", owner: "user",
+      widgets: [
+        w("networth", lay(0, 0)), w("proxy", lay(1, 0)), w("spy", lay(2, 0)),
+        w("rsp", lay(3, 0)), w("breadth", lay(4, 0)), w("mag7", lay(5, 0)),
+        w("trend", lay(3, 1, 3, 3)),
+      ],
+    };
+  }
+
+  it("relocates the RGL-pushed victim to the vacated cell — never hides, never drops", () => {
+    const prev = coreLike();
+    // what RGL hands the commit after the incident's drag:
+    const cells = [
+      { i: "networth", ...lay(0, 0) }, { i: "proxy", ...lay(1, 0) }, { i: "spy", ...lay(2, 0) },
+      { i: "rsp", ...lay(3, 1) },      // RGL's push — lands under trend
+      { i: "breadth", ...lay(3, 0) },  // the user's drag
+      { i: "mag7", ...lay(5, 0) },
+      { i: "trend", ...lay(3, 1, 3, 3) },
+    ];
+    const out = resolveOverlaps(prev, cells, 6, "breadth");
+    const at = (id: string) => out.find((c) => c.i === id)!;
+    expect(out.length).toBe(cells.length);                    // count preserved
+    expect(at("breadth")).toMatchObject(lay(3, 0));           // the drag wins its cell
+    expect(at("rsp")).toMatchObject(lay(4, 0));               // the victim swaps into the vacated slot
+    expect(at("trend")).toMatchObject(lay(3, 1, 3, 3));       // stayers never move
+    // and nothing overlaps anything
+    const seen = new Set<string>();
+    for (const c of out) {
+      for (let r = c.y; r < c.y + c.h; r++) for (let cc = c.x; cc < c.x + c.w; cc++) {
+        const k = `${cc},${r}`;
+        expect(seen.has(k), `overlap at ${k}`).toBe(false);
+        seen.add(k);
+      }
+    }
+  });
+
+  it("without an activeId every mover still lands on a free cell (count preserved)", () => {
+    const prev = coreLike();
+    const cells = [
+      { i: "networth", ...lay(0, 0) }, { i: "proxy", ...lay(1, 0) }, { i: "spy", ...lay(2, 0) },
+      { i: "rsp", ...lay(3, 1) }, { i: "breadth", ...lay(3, 0) }, { i: "mag7", ...lay(5, 0) },
+      { i: "trend", ...lay(3, 1, 3, 3) },
+    ];
+    const out = resolveOverlaps(prev, cells, 6, null);
+    expect(out.length).toBe(cells.length);
+    const seen = new Set<string>();
+    for (const c of out) {
+      for (let r = c.y; r < c.y + c.h; r++) for (let cc = c.x; cc < c.x + c.w; cc++) {
+        const k = `${cc},${r}`;
+        expect(seen.has(k)).toBe(false);
+        seen.add(k);
+      }
+    }
+  });
+});
+
+describe("Dashboard Studio — return to default (two-click confirm)", () => {
+  beforeEach(() => {
+    mockTauri.reset();
+    stageEmptyWidgetSources();
+  });
+
+  it("arm-then-confirm resets, replaces state, and re-locks", async () => {
+    mockTauri.setValue("list_dashboards", realFixture());
+    mockTauri.setValue("save_dashboard", null);
+    const fresh = { lane: "finance", group: "Finance", title: "Core", owner: "default",
+                    widgets: [statWidget("restored", "Restored stat")] };
+    mockTauri.setValue("reset_dashboard", fresh);
+    render(<Dash reloadKey="" />);
+    await screen.findByText("Core stat");
+
+    fireEvent.click(screen.getByRole("button", { name: /LOCKED/ })); // unlock (migrates)
+    const reset = await screen.findByRole("button", { name: "↺ DEFAULT" });
+    fireEvent.click(reset); // arm
+    expect(screen.getByRole("button", { name: /CONFIRM RESET/ })).toBeInTheDocument();
+    expect(mockTauri.calls().some(([c]) => c === "reset_dashboard")).toBe(false); // armed ≠ fired
+    fireEvent.click(screen.getByRole("button", { name: /CONFIRM RESET/ })); // confirm
+    await waitFor(() => {
+      expect(mockTauri.calls().some(([c]) => c === "reset_dashboard")).toBe(true);
+      expect(screen.getByText("Restored stat")).toBeInTheDocument(); // state swapped in place
+    });
+    // re-locked: the toggle reads LOCKED again and the reset button is gone
+    expect(screen.getByRole("button", { name: /LOCKED/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /DEFAULT|CONFIRM/ })).toBeNull();
+  });
+
+  it("the reset button only exists in edit mode", async () => {
+    mockTauri.setValue("list_dashboards", realFixture());
+    render(<Dash reloadKey="" />);
+    await screen.findByText("Core stat");
+    expect(screen.queryByRole("button", { name: /DEFAULT/ })).toBeNull();
   });
 });
