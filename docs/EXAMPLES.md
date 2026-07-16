@@ -101,9 +101,35 @@ redwatch, fjord, abyss, dusk, outrun, solar, mono) — one toggle in the footer:
 
 ## On your phone
 
-The served console installs as a PWA — the same dashboards, one column:
+**Mobile-first below 600px** — rebuilt for a one-column glance surface, not a shrunken desktop:
 
-<img src="assets/phone-core.png" alt="The console on a phone" width="360">
+- Dashboards render in **reading order** (Studio layouts yield on a phone)
+- Tables **swipe** at natural column widths — never truncate
+- Charts and viz keep an **honest height** — no collapsing to slivers
+- Chrome compresses to essentials
+
+**To unlock it**: serve the console ([`WEB-CONSOLE.md`](WEB-CONSOLE.md)) → browse from your phone →
+**install as a PWA**. Native satellites connect via **⚙ Settings → Connection**.
+
+<p>
+<img src="assets/phone-core.png" alt="Finance Core on a phone" width="330">
+&nbsp;&nbsp;
+<img src="assets/phone-tickets.png" alt="An execution ticket on a phone" width="330">
+</p>
+
+_Left: the Finance Core board. Right: a (fictional) execution ticket — swipeable tables._
+
+
+### ⚙ Settings — one home for the console's configuration
+
+![Touring the Settings modal](assets/settings-tour.gif)
+
+The Obsidian-shaped settings modal: grouped tabs for the console (General · Connection · Weight
+packs · Producers & surfaces) and a **Personal** group rendering the active `harness.yaml` user
+overlay — this persona's fictional one, here. Connection writes are native-console-only; the
+served browser renders the panel read-only.
+
+<img src="assets/settings-personal.png" alt="Personal settings from the user overlay" width="720">
 
 ---
 

@@ -1,42 +1,46 @@
-# Demo Investor — a FICTIONAL travel-lane weights file (sample weight pack).
+# Packaged travel weights — a NEUTRAL TEMPLATE, not real data (since 2026-07-16).
 #
-# Generic premium-leaning weights for an established household with a Minneapolis home base. Every field not
-# set here falls back to the built-in WeightConfig defaults. Replace with your own home + preferences.
-
-synced_from: preferences.md
+# Resolution precedence (Settings.weights_path):
+#   1. the active weight pack's travel/weights.yaml (demo scenarios ship their own);
+#   2. a TRACKER-RESIDENT <tracker>/travel/config/weights.yaml — THE real corpus home
+#      (corpus-resident + TRACKER_PATH-sealed; `hn init` scaffolds it);
+#   3. this packaged template (fresh installs with no corpus yet).
+#
+# Real preferences (home airport, screens, destination maps) belong in the tracker-resident
+# file, NEVER here: this file ships inside bundled-engine app installs, where personal data
+# becomes a frozen time-capsule (the ghost-lot incident class). Every field omitted here
+# falls back to the built-in model defaults, so this template changes no behavior.
+#
+# SYNC DISCIPLINE (for the tracker-resident copy): keep it in manual sync with the human
+# source-of-truth prose doc (<corpus>/travel/preferences.md). The prose carries rationale +
+# calibration; the yaml carries only the numbers/enums the scorer needs.
+#
+# HARD-FILTER DISCIPLINE: only two true hard filters exist — lodging.min_star_rating and
+# (flight.airline_avoid_iata + screen hard-no). Everything else is a WEIGHT.
 
 flight:
-  home_airport: ""
-  comparison_airport: MSP
-  home_airport_note: ""
+  home_airport: ""           # your home IATA code — flights from here get the home bonus
   home_airport_bonus: 0.0
-  home_airport_served_iata: []
-  hour_soft_cap: 6.0
+  hour_soft_cap: 6.0         # flights longer than this start accruing a penalty
   over_cap_penalty_per_hour: 6.0
-  airline_avoid_iata: []
 
-# Keyless weather/air conditions watch runs against `home`.
+# The keyless weather/air-conditions watch runs against `home`.
 conditions:
-  home: "Minneapolis, MN"
+  home: ""                   # "City, ST" — your home base for the conditions watchman
   horizon_days: 3
 
-# Lodging tilt: this persona reaches for best-in-class where it's available.
+# Lodging tilt.
 lodging:
   prefer_best_available_in_area: true
-  top_tier_available_bonus: 10.0
 
+# Which live events are trip-centerpiece-worthy (vs. perk-tier). Set to your interests.
 events:
-  centerpiece_subgenres: ["NBA", "NFL"]
-  # Followed teams whose static schedules the reference almanac surfaces (config-drives the schedule
-  # parser). Example: a fictional NFL fandom for the demo persona.
-  followed_teams:
-    - {name: Pioneers, section_match: pioneers, home_venue: "Minneapolis, MN"}
+  centerpiece_subgenres: []  # e.g. ["NBA", "NFL"] — leagues/genres you'd plan a trip around
+  followed_teams: []         # teams whose schedules the reference almanac surfaces
+  #   - {name: "Team Name", home_venue: "Venue, City", home_only: false}
 
-destination_airports:
-  kona: KOA
-  barcelona: BCN
-  denver: DEN
-destination_cities:
-  kona: "Kailua-Kona, HI"
-  barcelona: "Barcelona, ES"
-  denver: "Denver, CO"
+# Destination knowledge maps (slug -> IATA / "City, ST" / screen notes) live in the
+# tracker-resident copy — they are corpus data, not engine defaults.
+destination_airports: {}
+destination_cities: {}
+destination_screens: {}

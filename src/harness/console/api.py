@@ -325,9 +325,43 @@ def _h_app_version(_: dict[str, Any]) -> str:
 
 
 def _h_get_config(_: dict[str, Any]) -> dict[str, Any]:
+    # Contract-mirrors the Rust get_config (the Settings panel's read model). Served flavor:
+    # mode "served" (this console IS the remote end — there is no bus_url to configure here),
+    # writes gated (WRITE_GATED below), token never in any payload.
     cfg = _app_config()
     db = str(default_db_path())
-    return {"db_path": db, "bus_source": f"served: {db}", "producers": cfg.get("producers", [])}
+    return {
+        "db_path": db,
+        "bus_source": f"served: {db}",
+        "producers": cfg.get("producers", []),
+        "mode": "served",
+        "bus_url": None,
+        "bus_token_set": False,
+        "active_pack": cfg.get("active_pack"),
+        "tracker_path": str(_vault_root()),
+        "surfaces": cfg.get("surfaces", []),
+        "live_viz": cfg.get("live_viz", []),
+        "config_path": None,  # the host's file path is not the served client's business
+    }
+
+
+def _h_get_user_overlay(_: dict[str, Any]) -> dict[str, Any]:
+    # The Settings panel's Personal tabs: the RESOLVED user overlay as RAW TEXT —
+    # the webview parses (one js-yaml parser client-side, no server-side reshaping to drift).
+    # Read-only by construction; the file is the interface.
+    from harness.settings import _PACKAGED_OVERLAY, overlay_path
+
+    path = overlay_path()
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    return {
+        "text": text,
+        "source": "packaged template" if path == _PACKAGED_OVERLAY else "user overlay",
+        # host filesystem paths stay the host's business (the get_config convention)
+        "path": None,
+    }
 
 
 def _h_list_surfaces(_: dict[str, Any]) -> list[dict[str, Any]]:
@@ -635,6 +669,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "distinct_meta": _h_distinct_meta,
     "app_version": _h_app_version,
     "get_config": _h_get_config,
+    "get_user_overlay": _h_get_user_overlay,
     "list_surfaces": _h_list_surfaces,
     "run_surface": _h_run_surface,
     "list_dashboards": _h_list_dashboards,
@@ -650,7 +685,10 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 }
 # 403 — desktop-console features + the Studio save/reset: native-only for now; an authed
 # write carve-out for served-console dashboard edits is tracked.
-WRITE_GATED = {"set_active_pack", "run_producer", "save_dashboard", "reset_dashboard"}
+WRITE_GATED = {"set_active_pack", "run_producer", "save_dashboard", "reset_dashboard",
+               # Settings-panel writes: connection config is the NATIVE console's to edit —
+               # a served browser must never rewrite the host's bus wiring.
+               "set_bus_config", "test_bus_connection"}
 NOT_YET: set[str] = set()  # empty today; kept for the next unmirrored command
 
 

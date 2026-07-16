@@ -68,8 +68,37 @@ def test_unknown_command_is_404(client: TestClient) -> None:
 
 
 def test_write_commands_are_gated_403(client: TestClient) -> None:
-    for cmd in ("set_active_pack", "run_producer"):
+    # incl. the Settings-panel writes: a served browser never rewrites the host's
+    # bus wiring — connection config is the native console's to edit.
+    for cmd in ("set_active_pack", "run_producer", "set_bus_config", "test_bus_connection"):
         assert invoke(client, cmd, headers=AUTH).status_code == 403
+
+
+def test_get_config_carries_the_settings_read_model(client: TestClient) -> None:
+    # the Rust get_config contract-mirror: served flavor = mode "served",
+    # no bus_url to configure, token never present in any payload, host paths withheld.
+    r = invoke(client, "get_config", headers=AUTH)
+    assert r.status_code == 200
+    cfg = r.json()
+    assert cfg["mode"] == "served"
+    assert cfg["bus_url"] is None
+    assert cfg["bus_token_set"] is False
+    assert cfg["config_path"] is None
+    assert "bus_token" not in cfg
+    assert isinstance(cfg.get("surfaces"), list)
+    assert isinstance(cfg.get("live_viz"), list)
+    assert "tracker_path" in cfg
+
+
+def test_get_user_overlay_is_served_read_only_text(client: TestClient) -> None:
+    # the Personal tabs' source: raw yaml text, host path withheld; parsing is
+    # the webview's job (one js-yaml parser client-side).
+    r = invoke(client, "get_user_overlay", headers=AUTH)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["path"] is None
+    assert isinstance(body["text"], str)
+    assert body["source"] in ("user overlay", "packaged template")
 
 
 def test_viz_commands_are_mirrored_as_of_phase_3(client: TestClient) -> None:

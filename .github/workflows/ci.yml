@@ -129,8 +129,10 @@ jobs:
   # The slow lane — runs on release tags + manual dispatch only (the rust/frontend jobs already gate
   # correctness on every push; rebuilding installers per-push would burn wall-clock for nothing).
   # Windows: NSIS .exe + WiX .msi (WiX fetched by tauri-cli on the runner). Linux: .deb
-  # (same apt dep set the rust job uses). macOS bundles stay LOCAL-build-only for now: CI artifacts
-  # would be unsigned (no cert in CI) → Gatekeeper-quarantined downloads, worse than build-from-source.
+  # (same apt dep set the rust job uses). macOS: .dmg (Apple Silicon; macos-latest runners are
+  # arm64) — UNSIGNED like the Windows exe, shipped anyway; the README documents the Gatekeeper
+  # right-click-Open / remove-quarantine path, the same honesty posture as the SmartScreen note.
+  # Notarization + a universal binary are roadmap.
   bundle:
     name: bundle (${{ matrix.platform }})
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -149,6 +151,10 @@ jobs:
             os: ubuntu-latest
             bundles: "deb/*.deb"
             build_args: "-- --bundles deb"   # deb only — the AppImage isn't shipped
+          - platform: macos
+            os: macos-latest
+            bundles: "dmg/*.dmg"
+            build_args: "-- --bundles dmg"
     runs-on: ${{ matrix.os }}
     env:
       # Self-update signing is OPT-IN: a boolean computed from secret presence, because secrets
@@ -237,6 +243,7 @@ jobs:
           for f in dist-bundles/*-setup.exe; do cp "$f" dist-bundles/Watchman-Setup-x64.exe; done
           for f in dist-bundles/*.msi;       do cp "$f" dist-bundles/Watchman-x64.msi; done
           for f in dist-bundles/*.deb;       do cp "$f" dist-bundles/watchman-amd64.deb; done
+          for f in dist-bundles/*.dmg;       do cp "$f" dist-bundles/Watchman-aarch64.dmg; done
           # Updater sidecars ride along when the signed lane ran (the versioned .sig must ship
           # beside the versioned exe; latest.json is the check endpoint).
           for f in src-tauri/target/release/bundle/nsis/*-setup.exe.sig; do cp "$f" dist-bundles/; done

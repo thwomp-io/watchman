@@ -61,7 +61,7 @@ const dashGroup = arg("--dash-group", "");
 const dashLane = arg("--dash-lane", "");
 const vizItem = arg("--viz-item", "");
 const hoverSel = arg("--hover", ""); // CSS selector to hover before capture (tooltip verification)
-const clickSel = arg("--click", ""); // CSS selector to click before capture (modal/popup verification)
+const clickSel = arg("--click", ""); // CSS selector(s), comma-separated, clicked in order (modal/popup + tab verification)
 const settleMs = Number(arg("--settle-ms", "4000"));
 
 const browser = await chromium.launch();
@@ -101,7 +101,7 @@ if (dashLane) {
 }
 // VIZ rail is grouped (top toggle → doc → item) — --viz-item selects a rail entry by
 // case-insensitive name, expanding collapsed top groups (chev "▸") first so fresh vault
-// discoveries are reachable in a cold headless session (2026-07-10 — the eye extended to the
+// discoveries are reachable in a cold headless session (the eye extended to the
 // VIZ rail; the DASH lanes got the same treatment earlier).
 if (vizItem) {
   await page.waitForTimeout(600);
@@ -126,8 +126,12 @@ if (hoverSel) {
   await page.waitForTimeout(500);
 }
 if (clickSel) {
-  await page.locator(clickSel).first().click({ force: true }).catch(() => {});
-  await page.waitForTimeout(700); // popup content fetch + paint
+  // comma-separated selectors click in ORDER (open the Settings modal, then pick a tab) —
+  // a single selector is the degenerate case, fully backward compatible.
+  for (const sel of clickSel.split(",").map((c) => c.trim()).filter(Boolean)) {
+    await page.locator(sel).first().click({ force: true }).catch(() => {});
+    await page.waitForTimeout(700); // popup/tab content fetch + paint
+  }
 }
 // fullPage captures the whole scrollable document — which mis-renders position:fixed chrome
 // (bars paint at scroll-top, not the viewport edge). --standalone implies viewport-true capture

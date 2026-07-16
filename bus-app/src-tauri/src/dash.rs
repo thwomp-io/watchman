@@ -47,7 +47,7 @@ pub struct Widget {
     pub suffix: Option<String>,
     /// stat-tile sign formatting opt-out (types.ts `signed?: boolean`): %-suffixed
     /// stats sign-format by default; `signed: false` = a magnitude read (e.g. UNWIND % COMPLETE).
-    /// Added 2026-07-13 after the desktop app DROPPED the key its typed parse didn't know while
+    /// Added after the desktop app DROPPED the key its typed parse didn't know while
     /// the python-served console passed it through — the two-parsers divergence class.
     #[serde(default)]
     pub signed: Option<bool>,
@@ -203,7 +203,10 @@ fn default_finance() -> Dashboard {
               hn_cmd(&["finance", "watch", "--no-mark", "--json"]), "market10m", 2,
               Some("prints"), None, None),
             Widget {
-                symbols: ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"]
+                // Neutral, liquid market examples — the compiled default is the no-pack fallback,
+                // where the portfolio seed is a neutral template; a user's real symbols come from
+                // their pack/corpus dashboards, never this list (generalize-first).
+                symbols: ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"]
                     .iter().map(|s| s.to_string()).collect(),
                 ..w("chart", "Position chart — bars + support levels", "viz",
                     hn_cmd(&["finance", "bars", "{symbol}", "--days", "120", "--viz"]),
@@ -517,7 +520,7 @@ fn default_compare() -> Dashboard {
                 "symbol", "price", "day_change_pct", "ps", "pe", "ev_ebitda", "market_cap", "screen",
             ]),
                 ..w("metrics", "Metrics — valuation × price × screen", "table",
-                  hn_cmd(&["finance", "compare", "AAPL", "MSFT", "GOOGL", "NVDA", "--json"]),
+                  hn_cmd(&["finance", "compare", "AAPL", "MSFT", "COST", "NVDA", "--json"]),
                   "market10m", 2, Some("rows"), None, None) },
         ],
     }
@@ -878,8 +881,9 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
-    /// Every save banks the replaced file into .backups/ (the data-integrity ask from the
-    /// breadth-drag incident) — the first backup a lane gets is its pre-Studio legacy config.
+    /// Every save banks the replaced file into .backups/ (the data-integrity layer: a bad
+    /// drag/edit is always one file-copy from undone) — the first backup a lane gets is its
+    /// pre-Studio legacy config.
     #[test]
     fn save_dashboard_banks_a_backup_of_the_replaced_file() {
         let dir = std::env::temp_dir().join(format!("harness-studio-bak-{}", std::process::id()));

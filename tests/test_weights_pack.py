@@ -66,11 +66,47 @@ def test_finance_portfolio_path_uses_the_loaded_pack(tmp_path: Path) -> None:
     assert s.portfolio_path == tmp_path / "finance" / "portfolio.yaml"
 
 
+def test_finance_feeds_path_falls_back_to_packaged_default(tmp_path: Path) -> None:
+    # Same isolation as the portfolio twin: an empty tmp tracker exposes the packaged branch.
+    packaged = FinanceSettings(weights_pack=None, tracker_path=tmp_path).feeds_path
+    assert packaged.name == "feeds.yaml" and "config" in str(packaged)
+    assert packaged.is_file()  # the packaged generic wire ships
+
+
+def test_finance_feeds_path_prefers_tracker_resident(tmp_path: Path) -> None:
+    # The v0.96.0 tier: a corpus-resident feeds roster wins over the packaged generic wire.
+    resident = tmp_path / "finance" / "config" / "feeds.yaml"
+    resident.parent.mkdir(parents=True)
+    resident.write_text("feeds: []\n")
+    s = FinanceSettings(weights_pack=None, tracker_path=tmp_path)
+    assert s.feeds_path == resident
+
+
+def test_finance_feeds_path_uses_the_loaded_pack(tmp_path: Path) -> None:
+    pack = tmp_path / "pack"
+    (pack / "finance").mkdir(parents=True)
+    (pack / "finance" / "feeds.yaml").write_text("feeds: []\n")
+    s = FinanceSettings(weights_pack=pack, tracker_path=tmp_path)
+    assert s.feeds_path == pack / "finance" / "feeds.yaml"
+
+
 # ----- travel lane -----
 
 
-def test_travel_weights_path_falls_back_to_packaged_default() -> None:
-    assert TravelSettings(weights_pack=None).weights_path == WEIGHTS_PATH
+def test_travel_weights_path_falls_back_to_packaged_default(tmp_path: Path) -> None:
+    # tracker_path pinned to an empty tmp dir: a scaffolded corpus at the real tracker_path must
+    # not shadow the packaged-fallback branch under test (same isolation as the finance twin).
+    assert TravelSettings(weights_pack=None, tracker_path=tmp_path).weights_path == WEIGHTS_PATH
+
+
+def test_travel_weights_path_prefers_tracker_resident(tmp_path: Path) -> None:
+    # The v0.96.0 tier: a corpus-resident travel/config/weights.yaml wins over the packaged
+    # template when no pack is loaded (the portfolio-seed precedence, third instance).
+    resident = tmp_path / "travel" / "config" / "weights.yaml"
+    resident.parent.mkdir(parents=True)
+    resident.write_text("flight:\n  home_airport: XXX\n")
+    s = TravelSettings(weights_pack=None, tracker_path=tmp_path)
+    assert s.weights_path == resident
 
 
 def test_travel_weights_path_uses_the_loaded_pack(tmp_path: Path) -> None:

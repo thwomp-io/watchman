@@ -3,6 +3,41 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-07-16
+
+This release adds a Settings panel, a single user-config overlay (`harness.yaml`), a whole-book
+intraday day-G/L surface, and a macOS installer built by CI. Documentation is restructured
+Settings-first. See [docs/CLI.md](docs/CLI.md) for the CLI/from-source reference.
+
+### Added
+- **⚙ Settings** — an in-app settings panel (grouped rail: General, Connection, Weight packs,
+  Producers). Connecting to a served bus is now a form with a **Test** probe; applying a remote
+  connection auto-clears an active demo pack, removing the silent-override footgun that previously
+  required a hand-edited config file. The pack switcher and theme menu moved into the panel.
+- **The user overlay** (`harness.yaml`) — one file for every user-specific setting, resolved
+  pack > corpus > packaged template. Per-lane `global_settings` (account display names, tracked
+  fund identity, home city/airports, resume render identity); `hn config show` prints the
+  resolved state; the Settings panel renders each configured lane as a read-only Personal tab.
+  `fund-holdings` reads its fund from the overlay — no flags needed once configured.
+- **`hn finance daygl`** — whole-book intraday day gain/loss in one number, decomposed by
+  valuation basis: live-quoted positions exact (per account), non-intraday funds estimated via
+  the configured proxy basket (coverage stated), static balances flat by definition. Drives a
+  six-tile decomposition row on the Finance dashboard. Stat tiles gained sign-aware rendering.
+- **macOS installer** — CI builds and attaches a `.dmg` to each release alongside the Windows
+  and Linux bundles (unsigned; Gatekeeper right-click-open steps in the README).
+- **Config templates are neutral by construction** — the packaged travel weights and news-feed
+  roster are now neutral templates with a corpus-resident resolution tier (matching the portfolio
+  seed); default dashboards use neutral market symbols. A user's real preferences live in their
+  corpus or overlay, never in the engine tree.
+- **`console-shot --click`** accepts comma-separated selectors clicked in order (open a modal,
+  then a tab — screenshot any nested UI state).
+
+### Changed
+- **Documentation is Settings-first**: the README leads with the Quickstart + Settings panel;
+  CLI and from-source detail moved to `docs/CLI.md`; configuration prose funnels through the
+  panel with hand-edit instructions kept as a labeled fallback. Fresh mobile screenshots and a
+  Settings tour join the demo media.
+
 ## [0.8.0] - 2026-07-14
 
 This release integrates the [beads](https://github.com/gastownhall/beads)
@@ -11,7 +46,7 @@ and per-issue ticket pages — plus user-customizable dashboards, a live GTC-ord
 console-wide quick-look popup. See [docs/BEADS.md](docs/BEADS.md) for the beads walkthrough.
 
 ### Added
-- **Beads integration** (`watchman beads board`): a read-only board over a beads project's
+- **Beads integration** (`hn beads board`): a read-only board over a beads project's
   `.beads/issues.jsonl` export — open/in-progress/shipped counts, the presence board (which agent
   is on what), an honest ready queue (blocking dependencies + defer dates respected), and the
   export's age surfaced so the board never performs more freshness than its file has. Drives the
@@ -22,14 +57,14 @@ console-wide quick-look popup. See [docs/BEADS.md](docs/BEADS.md) for the beads 
   blocking dependencies overlaid as dashed edges. Blocks are status-colored with a P1 accent;
   hovering shows a metadata card, hovering a dashed edge explains the relationship
   (blocker/blocked, side by side), and clicking a tile quick-looks the full ticket.
-- **Ticket pages** (`watchman beads tickets`): every issue renders to a markdown ticket in the
+- **Ticket pages** (`hn beads tickets`): every issue renders to a markdown ticket in the
   vault — status chips, details table, description, linked issues as wikilinks (tickets
   cross-navigate), the comment thread, and the close reason as the resolution. Board rows link
   straight into them.
 - **Dashboard Studio** — unlock any dashboard and rearrange it: drag/resize widgets on an explicit
   grid, with collision-safe shuffling (widgets never overwrite each other), automatic config
   backups, and a two-click return-to-default. Locked is always the default state.
-- **Trap map** (`watchman finance trap-map`): every resting GTC buy order drawn as a rung on its
+- **Trap map** (`hn finance trap-map`): every resting GTC buy order drawn as a rung on its
   symbol's price ladder — live price, distance-to-fill, committed dollars, and support shelves
   from recent price history. On the Finance dashboards and the VIZ gallery.
 - **Vest timeline on the VIZ gallery** — the sell-planning calendar (vest events, wash-sale
@@ -269,6 +304,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.9.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.9.0
 [0.8.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.8.0
 [0.7.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.1
 [0.7.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.0

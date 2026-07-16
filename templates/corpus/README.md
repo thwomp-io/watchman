@@ -7,7 +7,7 @@ build them from normal conversation; see the `corpus-operator` skill).
 
 The console (the Watchman app) reads this corpus when no weight pack is loaded. Point the toolkit at a
 different corpus with the `TRACKER_PATH` env var; load a portable *scenario* with a weight pack
-(`hn packs list`, or "Load Weight Pack…" in the app).
+(`hn packs list`, or ⚙ Settings → Weight packs in the app).
 
 ## Layout
 

@@ -18,9 +18,9 @@ from pydantic import BaseModel
 from harness.bus.store import harness_state_dir
 
 # The finance-pulse schedule — 9 runs per market day, Mon-Fri, local time.
-# Example slots expressed in US-Eastern market time — edit PULSE_SCHEDULE to your local clock;
-# keep in sync with whatever scheduler runs the pulse.
-# MANUAL-SYNC with the launchd plist (its StartCalendarInterval slots).
+# Default slots span a NYSE trading session as seen from one local clock — edit PULSE_SCHEDULE
+# to yours, and keep it in sync with whatever scheduler fires the pulse (e.g. a launchd plist's
+# StartCalendarInterval slots).
 PULSE_SCHEDULE: list[time] = [
     time(9, 45), time(10, 30), time(11, 15),
     time(12, 0), time(12, 45), time(13, 30),

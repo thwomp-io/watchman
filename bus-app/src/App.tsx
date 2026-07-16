@@ -12,9 +12,9 @@ import VaultZone from "./VaultZone";
 import Dash from "./Dash";
 import ErrorBoundary from "./ErrorBoundary";
 import PushBell from "./PushBell";
+import Settings from "./Settings";
 import UpdatePill from "./UpdatePill";
 import { NavContext, payloadRef, resolveRef, useNav, type Nav, type Ref } from "./nav";
-import { clearTheme, setTheme, storedTheme, THEMES, useTheme, type Theme } from "./theme";
 import { PUBLISHED } from "./published";
 import type {
   AgentHealth, AppConfig, BusEvent, DistinctMeta, Surface, SurfaceState, WatchmenStatus,
@@ -445,32 +445,7 @@ function navReducer(s: NavState, a: NavAction): NavState {
   }
 }
 
-// The theme menu — lives on the baseplate (the low-collision chrome strip). A native <select>
-// like the weight-pack loader (the in-window-dropdown pattern; native menus are off the table
-// for this Accessory app, and phones render a native picker — better than any custom popover).
-// AUTO = un-pin and follow the OS; picking a theme pins it (src/theme.ts persists the choice).
-function ThemeMenu() {
-  const theme = useTheme();
-  const GLYPHS: Record<string, string> = {
-    dark: "☾", bright: "☀", paper: "▤", phosphor: "▚", redwatch: "◉",
-    fjord: "❆", outrun: "◢", abyss: "≋", dusk: "☽", solar: "✹", mono: "◼",
-  };
-  const glyph = GLYPHS[theme] ?? "☾";
-  return (
-    <label className="theme-menu" title="Theme — AUTO follows the OS; picking one pins it">
-      <span className="glyph">{glyph}</span>
-      <select
-        value={storedTheme() ?? "auto"}
-        onChange={(e) => (e.target.value === "auto" ? clearTheme() : setTheme(e.target.value as Theme))}
-      >
-        <option value="auto">AUTO</option>
-        {THEMES.map((t) => (
-          <option key={t.value} value={t.value}>{t.label}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
+// (ThemeMenu moved into the Settings modal — de-clutter)
 
 // ————— Shell ——————————————————————————————————————————————————————————————————————————————————
 
@@ -482,6 +457,7 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [version, setVersion] = useState("");
   // scenario-switcher: the available sample packs + the active one ("" = the user's real corpus).
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [packs, setPacks] = useState<PackInfo[]>([]);
   const [pack, setPack] = useState("");
 
@@ -545,26 +521,7 @@ export default function App() {
           <h1>WATCHMAN</h1>
           <span className="model-no">WATCHMAN CONSOLE · v{version || "—"}</span>
         </div>
-        {isTauri() && (
-        <div className={"pack-switch" + (pack ? " active" : "")}
-             title="Load a weight pack (a scenario) — a bundled sample, your own folder, or your real data">
-          <label>PACK</label>
-          <select value={pack} onChange={(e) => void selectPack(e.target.value)}>
-            {/* "Real data" (no pack → your real corpus) is a dev-only affordance; the published app
-                centers on packs (a bundled demo or your own via Load Weight Pack…) + never surfaces the
-                implicit real-corpus toggle. */}
-            {!PUBLISHED && <option value="">Real data</option>}
-            {packs.map((p) => (
-              <option key={p.path} value={p.path}>{p.name}</option>
-            ))}
-            {pack && !packs.some((p) => p.path === pack) && (
-              <option value={pack}>{pack.split("/").filter(Boolean).pop()} (loaded)</option>
-            )}
-          </select>
-          <button className="pack-load" onClick={() => void loadPackFromDir()}
-                  title="Load Weight Pack — browse to any folder containing a pack">Load…</button>
-        </div>
-        )}
+        <button className="settings-open" title="Settings" onClick={() => setSettingsOpen(true)}>⚙ SETTINGS</button>
         <div className="navhist">
           <button className="navhist-btn" disabled={!nav.canGoBack} onClick={back} title="Back">◀</button>
           <button className="navhist-btn" disabled={!nav.canGoForward} onClick={forward} title="Forward">▶</button>
@@ -604,12 +561,18 @@ export default function App() {
         </ErrorBoundary>
       </main>
 
+      <Settings open={settingsOpen} onClose={() => setSettingsOpen(false)} version={version}
+        packs={packs} pack={pack} onSelectPack={selectPack} onLoadPackDir={loadPackFromDir}
+        onConfigChanged={() => {
+          void getConfig().then(setConfig);
+          void getActivePack().then((p) => selectPack(p || "")).catch(() => {});
+        }} />
+
       <footer className="baseplate">
         <span className="led-ok" /> <span>BUS.DB ONLINE</span>
         <span className="path">{config?.bus_source ?? config?.db_path ?? ""}</span>
         <div className="spacer" />
         <span className="status">{status}</span>
-        <ThemeMenu />
         {/* web-only: the native console notifies through the OS; the bell is the BROWSER's way
             to arm this device (docs/WEB-CONSOLE.md → Push notifications) */}
         {!isTauri() && <PushBell />}

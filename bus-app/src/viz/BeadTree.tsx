@@ -22,8 +22,13 @@ interface BeadNode {
 interface BeadEdge { source: string; target: string; kind: string }
 interface TreeData { beads: BeadNode[]; edges: BeadEdge[]; omitted?: number }
 
-const NODE_W = 148, NODE_H = 42, SLOT_W = 160, ROW_H = 92;
 const PAD = { x: 14, top: 30, shelf: 46, bottom: 16 };
+// COMPACT below ~560px (the phone layer): smaller blocks so three family slots fit a phone
+// screen without panning — reading beats panning on a glance surface.
+const dims = (availW: number) =>
+  availW < 560
+    ? { NODE_W: 116, NODE_H: 40, SLOT_W: 126, ROW_H: 84, idLen: 15, titleLen: 17 }
+    : { NODE_W: 148, NODE_H: 42, SLOT_W: 160, ROW_H: 92, idLen: 22, titleLen: 24 };
 
 const trunc = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
@@ -70,6 +75,8 @@ export default function BeadTree({ data }: { data: TreeData }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const { NODE_W, NODE_H, SLOT_W, ROW_H, idLen, titleLen } = dims(availW);
 
   const layout = useMemo(() => {
     const beads = data.beads ?? [];
@@ -155,7 +162,7 @@ export default function BeadTree({ data }: { data: TreeData }) {
       return { x: PAD.x + (i % shelfCols) * SLOT_W, y: shelfY + Math.floor(i / shelfCols) * (NODE_H + 22) };
     };
     return { beads, byId, childEdges, singles, familyRoots, xy, width, height, shelfY };
-  }, [data, availW]);
+  }, [data, availW]);  // dims derive from availW — same dep
 
   if (!layout.beads.length) {
     return <div className="viz-canvas"><p className="viz-hint">NO ACTIVE BEADS — a quiet board is a calm board</p></div>;
@@ -204,8 +211,8 @@ export default function BeadTree({ data }: { data: TreeData }) {
                  onClick={() => { if (b.ticket) setPopupDoc(b.ticket); }}>
                 <rect className="beadtree-box" width={NODE_W} height={NODE_H} rx={5} />
                 <rect className="beadtree-rail" width={3.5} height={NODE_H} rx={1.5} />
-                <text className="beadtree-id" x={10} y={16}>{trunc(b.id, 22)}</text>
-                <text className="beadtree-title" x={10} y={32}>{trunc(b.title, 24)}</text>
+                <text className="beadtree-id" x={10} y={16}>{trunc(b.id, idLen)}</text>
+                <text className="beadtree-title" x={10} y={31}>{trunc(b.title, titleLen)}</text>
               </g>
             );
           })}

@@ -76,3 +76,51 @@ class BaseToolkitSettings(BaseSettings):
         if not lane_dir.is_dir():
             return None
         return lane_dir.joinpath(*rel)
+
+
+# ————— the user overlay (harness.yaml) — one home for bespoke-install settings ————
+# Per-lane `global_settings` blocks the engine consults so personal nouns never enter code or
+# shipped defaults. Precedence mirrors the portfolio seed: pack > tracker-resident > packaged
+# neutral template. Missing/invalid files degrade to {} — the overlay is always optional.
+
+_PACKAGED_OVERLAY = Path(__file__).parent / "config" / "harness.yaml"
+
+
+def overlay_path(settings: BaseToolkitSettings | None = None) -> Path:
+    """The overlay file the current environment resolves to (pack > tracker > packaged)."""
+    s = settings or BaseToolkitSettings()
+    if s.weights_pack is not None:
+        pack_copy = s.weights_pack / "config" / "harness.yaml"
+        if pack_copy.is_file():
+            return pack_copy
+    tracker_copy = s.tracker_path.expanduser() / "config" / "harness.yaml"
+    if tracker_copy.is_file():
+        return tracker_copy
+    return _PACKAGED_OVERLAY
+
+
+def user_overlay(settings: BaseToolkitSettings | None = None) -> dict[str, object]:
+    """The parsed overlay (whole document). {} on missing/unparseable — never raises."""
+    import yaml
+
+    path = overlay_path(settings)
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def overlay_get(lane: str, *keys: str, default: object = None,
+                settings: BaseToolkitSettings | None = None) -> object:
+    """Walk `<lane>.global_settings.<keys…>`; None/missing at any hop → default.
+
+    The one accessor lanes use — e.g. `overlay_get("finance", "fund_holdings", "query")`."""
+    node: object = user_overlay(settings).get(lane, {})
+    if isinstance(node, dict):
+        node = node.get("global_settings", {})
+    for k in keys:
+        if not isinstance(node, dict):
+            return default
+        node = node.get(k)
+    return default if node is None else node

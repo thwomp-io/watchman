@@ -32,6 +32,16 @@ export const urgentUnreadCount = (): Promise<number> => invoke("urgent_unread_co
 export const distinctMeta = (): Promise<DistinctMeta> => invoke("distinct_meta");
 export const appVersion = (): Promise<string> => invoke("app_version");
 export const getConfig = (): Promise<AppConfig> => invoke("get_config");
+/** Set (url + optional token) or clear (null) the remote bus — native-only (door 403s it served).
+    Returns the fresh config so the panel refreshes in one hop. */
+export const setBusConfig = (url: string | null, token: string | null): Promise<AppConfig> =>
+  invoke("set_bus_config", { url, token });
+/** The resolved user overlay (harness.yaml) as raw text — the Personal tabs parse client-side. */
+export const getUserOverlay = (): Promise<{ text: string; source: string; path: string | null }> =>
+  invoke("get_user_overlay");
+/** Probe a remote bus before saving it. Returns a human line ("ok — bus reachable, N unread"). */
+export const testBusConnection = (url: string, token: string): Promise<string> =>
+  invoke("test_bus_connection", { url, token });
 export const runProducer = (id: string): Promise<string> => invoke("run_producer", { id });
 export const listSurfaces = (): Promise<Surface[]> => invoke("list_surfaces");
 export const runSurface = (id: string): Promise<string> => invoke("run_surface", { id });
@@ -50,7 +60,7 @@ export const listVaultDir = (path: string): Promise<DirDoc[]> => invoke("list_va
 export const readImage = (path: string): Promise<string> => invoke("read_image", { path });
 
 export const listDashboards = (): Promise<Dashboard[]> => invoke("list_dashboards");
-// Dashboard Studio save. Native-only until cuuq.3 opens the door's write
+// Dashboard Studio save. Native-only until a follow-up opens the door's write
 // carve-out — on the served console this invoke lands in WRITE_GATED and 403s (by design).
 export const saveDashboard = (dashboard: Dashboard): Promise<void> =>
   invoke("save_dashboard", { dashboard });

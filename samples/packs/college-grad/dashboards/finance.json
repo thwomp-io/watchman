@@ -1,311 +1,334 @@
 {
-  "lane": "finance",
-  "title": "Core",
-  "group": "Finance",
-  "widgets": [
-    {
-      "id": "networth",
-      "title": "Net worth",
-      "kind": "stat",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "networth",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 1,
-      "value_path": "total",
-      "prefix": "$",
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "proxy",
-      "title": "Fund proxy (est)",
-      "kind": "stat",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "fund-proxy",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 1,
-      "value_path": "estimate_pct",
-      "prefix": null,
-      "suffix": "%",
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "indexes",
-      "title": "Indexes",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "pulse",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": "indexes",
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [
-        "symbol",
-        "price",
-        "prev_close",
-        "day_change_pct",
-        "day_change"
-      ],
-      "rows": 1
-    },
-    {
-      "id": "trend",
-      "title": "Net worth trend",
-      "kind": "viz",
-      "source": {
-        "type": "file",
-        "path": "finance/networth-history.json"
-      },
-      "refresh": "local60s",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "daymoves",
-      "title": "Day moves",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "watch",
-          "--no-mark",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": "day_moves",
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [
-        "symbol",
-        "day_change_pct",
-        "day_gl",
-        "price",
-        "market_value"
-      ],
-      "rows": 1
-    },
-    {
-      "id": "traps",
-      "title": "Open traps",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "pulse",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": "orders",
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [
-        "symbol",
-        "side",
-        "qty",
-        "limit",
-        "price",
-        "distance_pct",
-        "day_pct"
-      ],
-      "rows": 1
-    },
-    {
-      "id": "concentration",
-      "title": "Concentration (LIVE)",
-      "kind": "viz",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "concentration",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "allocation",
-      "title": "Allocation (current → target)",
-      "kind": "viz",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "allocation",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "signals",
-      "title": "Signals",
-      "kind": "feed",
-      "source": {
-        "type": "bus",
-        "lane": "finance",
-        "limit": 12
-      },
-      "refresh": "local60s",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "prints",
-      "title": "Upcoming prints",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "watch",
-          "--no-mark",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 2,
-      "value_path": "prints",
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "chart",
-      "title": "Position chart — bars + support levels",
-      "kind": "viz",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "bars",
-          "{symbol}",
-          "--days",
-          "120",
-          "--viz"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 4,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "title_path": null,
-      "symbols": [
-        "VTI",
-        "VXUS",
-        "NVDA",
-        "DDOG",
-        "SCHD",
-        "VOO",
-        "SPY"
-      ],
-      "columns": [],
-      "rows": 1
-    }
-  ]
+ "lane": "finance",
+ "title": "Core",
+ "group": "Finance",
+ "widgets": [
+  {
+   "id": "networth",
+   "title": "Net worth",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "networth",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 1,
+   "value_path": "total",
+   "prefix": "$",
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "daygl_total",
+   "title": "Day G/L \u00b7 full book (est)",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "daygl",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 1,
+   "value_path": "total_day_gl",
+   "prefix": "$",
+   "signed": true,
+   "symbols": []
+  },
+  {
+   "id": "proxy",
+   "title": "Fund proxy (est)",
+   "kind": "stat",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "fund-proxy",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 1,
+   "value_path": "estimate_pct",
+   "prefix": null,
+   "suffix": "%",
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "indexes",
+   "title": "Indexes",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "pulse",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": "indexes",
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [
+    "symbol",
+    "price",
+    "prev_close",
+    "day_change_pct",
+    "day_change"
+   ],
+   "rows": 1
+  },
+  {
+   "id": "trend",
+   "title": "Net worth trend",
+   "kind": "viz",
+   "source": {
+    "type": "file",
+    "path": "finance/networth-history.json"
+   },
+   "refresh": "local60s",
+   "span": 2,
+   "value_path": null,
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "daymoves",
+   "title": "Day moves",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "watch",
+     "--no-mark",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": "day_moves",
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [
+    "symbol",
+    "day_change_pct",
+    "day_gl",
+    "price",
+    "market_value"
+   ],
+   "rows": 1
+  },
+  {
+   "id": "traps",
+   "title": "Open traps",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "pulse",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": "orders",
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [
+    "symbol",
+    "side",
+    "qty",
+    "limit",
+    "price",
+    "distance_pct",
+    "day_pct"
+   ],
+   "rows": 1
+  },
+  {
+   "id": "concentration",
+   "title": "Concentration (LIVE)",
+   "kind": "viz",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "concentration",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": null,
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "allocation",
+   "title": "Allocation (current \u2192 target)",
+   "kind": "viz",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "allocation",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": null,
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "signals",
+   "title": "Signals",
+   "kind": "feed",
+   "source": {
+    "type": "bus",
+    "lane": "finance",
+    "limit": 12
+   },
+   "refresh": "local60s",
+   "span": 2,
+   "value_path": null,
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "prints",
+   "title": "Upcoming prints",
+   "kind": "table",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "watch",
+     "--no-mark",
+     "--json"
+    ],
+    "cwd": "."
+   },
+   "refresh": "market10m",
+   "span": 2,
+   "value_path": "prints",
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [],
+   "columns": [],
+   "rows": 1
+  },
+  {
+   "id": "chart",
+   "title": "Position chart \u2014 bars + support levels",
+   "kind": "viz",
+   "source": {
+    "type": "command",
+    "cmd": "uv",
+    "args": [
+     "run",
+     "hn",
+     "finance",
+     "bars",
+     "{symbol}",
+     "--days",
+     "120",
+     "--viz"
+    ],
+    "cwd": "."
+   },
+   "refresh": "manual",
+   "span": 4,
+   "value_path": null,
+   "prefix": null,
+   "suffix": null,
+   "title_path": null,
+   "symbols": [
+    "VTI",
+    "VXUS",
+    "NVDA",
+    "DDOG",
+    "SCHD",
+    "VOO",
+    "SPY"
+   ],
+   "columns": [],
+   "rows": 1
+  }
+ ]
 }

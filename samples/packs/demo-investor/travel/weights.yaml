@@ -3,7 +3,6 @@
 # Generic premium-leaning weights for an established household with a Minneapolis home base. Every field not
 # set here falls back to the built-in WeightConfig defaults. Replace with your own home + preferences.
 
-synced_from: preferences.md
 
 flight:
   home_airport: ""

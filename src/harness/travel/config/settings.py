@@ -27,9 +27,19 @@ class Settings(BaseToolkitSettings):
 
     @property
     def weights_path(self) -> Path:
-        """The travel weights seed: the active weight pack's `travel/weights.yaml` when a pack is
-        loaded, else the packaged default. Unset pack -> the packaged default, unchanged."""
-        return self.pack_file("travel", "weights.yaml") or WEIGHTS_PATH
+        """The travel weights seed, resolved in precedence order:
+        1. the active weight pack's `travel/weights.yaml` (when a pack is loaded);
+        2. a TRACKER-RESIDENT `travel/config/weights.yaml` if the user scaffolded one (so travel
+           preferences are corpus-resident + TRACKER_PATH-sealed, mirroring the finance seed —
+           the `hn init` scaffold writes it);
+        3. the packaged default (a NEUTRAL TEMPLATE — real preferences never ship in the engine).
+        Additive + non-breaking: a tracker file only takes effect if it exists."""
+        if pack := self.pack_file("travel", "weights.yaml"):
+            return pack
+        tracker_resident = self.tracker_path / "travel" / "config" / "weights.yaml"
+        if tracker_resident.is_file():
+            return tracker_resident
+        return WEIGHTS_PATH
 
     @property
     def travel_corpus_path(self) -> Path:

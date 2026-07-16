@@ -91,6 +91,16 @@ def finance_fund_proxy(feed: str = "iex") -> dict[str, Any]:
 
 
 @mcp.tool()
+def finance_daygl(feed: str = "iex") -> dict[str, Any]:
+    """Full-book intraday day G/L in one number, decomposed by valuation basis: live-quoted
+    positions EXACT (cross-brokerage) + non-intraday funds ESTIMATED via the fund-proxy day% ×
+    last-known NAV value + static balances flat by definition. The est sleeve is directional
+    (partial proxy coverage — see est_coverage_pct); NAV truth arrives at the EOD sync. READ-ONLY
+    observation, not a recommendation."""
+    return _svc(feed).daygl().model_dump()
+
+
+@mcp.tool()
 def finance_resolve_cik(symbol: str) -> dict[str, Any]:
     """Resolve a ticker → SEC CIK (the permanent filer ID every EDGAR call needs) via the bundled
     company_tickers.json. Returns found/cik/title/source. A miss (found=False) means the symbol isn't

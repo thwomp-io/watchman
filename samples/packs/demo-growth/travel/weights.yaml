@@ -5,7 +5,6 @@
 # (no personal home-airport thumb, a generic home city, a handful of destination mappings). Replace
 # with your own home + preferences when you build a real pack.
 
-synced_from: preferences.md
 
 flight:
   # The home-airport convenience bonus is personal; the generic sample keeps it neutral (no thumb).

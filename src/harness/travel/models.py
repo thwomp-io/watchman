@@ -622,7 +622,7 @@ class FlightSearch(BaseModel):
     home_airport_served: bool = False  # dest on the local airport's route map (service still date-dependent)
     home_airport: str = ""  # the local/convenience origin IATA (config-driven; "" → hub-only)
     comparison_airport: str = ""  # the hub origin IATA used for the price/frequency comparison
-    home_airport_note: str = ""  # the convenience tagline for the local airport (e.g. "10 min from home")
+    home_airport_note: str = ""  # the convenience tagline for the local airport (e.g. "the close-in option")
     cabins: list[str] = Field(default_factory=list)
     options: list[FlightItinerary] = Field(default_factory=list)
     price_insight: PriceInsight | None = None  # from the hub economy search — "is this fare high/low"

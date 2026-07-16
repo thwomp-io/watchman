@@ -63,7 +63,7 @@ export default function Treemap({ data }: { data: TreemapData }) {
     return root.leaves() as unknown as Array<
       d3.HierarchyRectangularNode<TreemapNode>
     >;
-    // W/H MUST be deps (bug fixed 2026-07-10): without them the layout locks at whatever the
+    // W/H MUST be deps (a fixed field bug): without them the layout locks at whatever the
     // container measured at data-arrival — a warm session (instant data, measure lands second)
     // rendered the map at the 900px default inside a 2200px stage and never re-laid-out.
   }, [data, focus, W, H]);

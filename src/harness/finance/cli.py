@@ -744,6 +744,47 @@ def networth(
         _log_networth(nw.total)
 
 
+@app.command()
+def daygl(
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Full-book intraday day G/L: live quotes exact + fund NAV proxy-ESTIMATED + statics flat."""
+    try:
+        d = _svc().daygl()
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    if as_json:
+        console.print_json(d.model_dump_json())
+        return
+    table = Table(title="Day G/L — full book (est)")
+    for col in ("Sleeve", "Value", "Day $", "Day %", "Basis"):
+        table.add_column(col)
+    for r in d.rows:
+        table.add_row(
+            r.label,
+            f"${r.value:,.2f}",
+            _signed(r.day_gl, money=True) if r.day_gl is not None else "[dim]flat[/dim]",
+            _signed(r.day_pct) if r.day_pct is not None else "[dim]—[/dim]",
+            f"{r.kind}" + (f" · {r.detail}" if r.detail else ""),
+        )
+    console.print(table)
+    if d.total_day_gl is not None:
+        console.print(
+            f"\n[bold]Day G/L {_signed(d.total_day_gl, money=True)} "
+            f"({_signed(d.total_day_pct) if d.total_day_pct is not None else '—'}) est[/bold]  "
+            f"[dim]of net worth ${d.net_worth:,.2f}[/dim]"
+        )
+        if d.accounts:
+            split = " · ".join(f"{a} {_signed(v, money=True)}" for a, v in sorted(d.accounts.items()))
+            console.print(f"[dim]  exact sleeve by account: {split}[/dim]")
+    else:
+        console.print("[yellow]Nothing priced this run (no live quotes, no proxy estimate).[/yellow]")
+    for n in d.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+
+
 def _render_derived(diagram: str, data: dict[str, object], dest: str, name: str) -> None:
     """Render a service-derived viz data dict to {dest}/visuals/{name}.svg (composes the viz engine).
     The `--write` path for the derived net-worth-portrait verbs — same render call the `viz` verb uses,
@@ -888,13 +929,16 @@ def fund_proxy(
 
 @app.command(name="fund-holdings")
 def fund_holdings(
-    # No defaults on query/cik by design: a fund's name/CIK is per-user data, not tool
-    # config — both are required.
+    # A fund's name/CIK is per-user data, not tool config — so the defaults come from the USER
+    # OVERLAY (harness.yaml finance.global_settings.fund_holdings), never from code. Flags still
+    # override; with neither, the command errors naming both homes.
     query: str = typer.Option(
-        ..., "--query", help='The fund\'s exact series name for EDGAR full-text search ("Acme Growth Fund")'
+        "", "--query", help='The fund\'s exact series name for EDGAR full-text search ("Acme Growth '
+        'Fund"). Default: the user overlay\'s finance.fund_holdings.query.'
     ),
     cik: str = typer.Option(
-        ..., "--cik", help="The FILER trust's CIK (not the fund's — it's on the fund's EDGAR page)"
+        "", "--cik", help="The FILER trust's CIK (not the fund's — it's on the fund's EDGAR page). "
+        "Default: the user overlay's finance.fund_holdings.cik."
     ),
     top: int = typer.Option(15, "--top", help="Rows to print in the table"),
     write_yaml: str = typer.Option(
@@ -910,6 +954,16 @@ def fund_holdings(
     from datetime import date as _date
 
     from harness.finance import nport
+    from harness.settings import overlay_get
+
+    query = query.strip() or str(overlay_get("finance", "fund_holdings", "query", default="") or "")
+    cik = cik.strip() or str(overlay_get("finance", "fund_holdings", "cik", default="") or "")
+    if not query or not cik:
+        _fail(
+            "no fund configured — pass --query + --cik, or set finance.global_settings."
+            "fund_holdings.{query,cik} in your user overlay (<tracker>/config/harness.yaml)"
+        )
+        raise typer.Exit(code=1)
 
     try:
         accession, filed = nport.latest_filing_ref(query, cik)

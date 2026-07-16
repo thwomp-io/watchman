@@ -10,7 +10,7 @@ update from the footer — no full reinstall.
 
 | Piece | Where | Job |
 |---|---|---|
-| `tauri.conf.json → plugins.updater` | base config | **Points nowhere** (empty endpoints, placeholder pubkey) — dev/local builds never self-update |
+| `tauri.conf.json → plugins.updater` | base config | **Points nowhere** (empty endpoints; the minisign public key is baked in — it's not a secret) — dev/local builds never self-update |
 | `tauri.release.conf.json` | overlay config | Adds `createUpdaterArtifacts` + the GitHub `releases/latest/download/latest.json` endpoint; CI merges it over the base for signed release builds |
 | `#[cfg(not(debug_assertions))]` | `src-tauri/src/lib.rs` | The updater/process plugins only register in release builds — a debug binary can't even ask |
 | Capabilities | `capabilities/default.json` | Exactly three grants: `updater:allow-check`, `updater:allow-download-and-install`, `process:allow-restart` |
@@ -32,9 +32,10 @@ npx tauri signer generate -w ~/.tauri/watchman-updater.key
 
 This prints the **public key** and writes the **private key** (you'll be prompted for a password).
 
-1. **Bake the public key into the app**: replace `TAURI_UPDATER_PUBKEY_PLACEHOLDER` in
-   `bus-app/src-tauri/tauri.conf.json` (`plugins.updater.pubkey`) with the printed public key.
-   The public key is not a secret — committing it is correct.
+1. **Bake the public key into the app**: set `plugins.updater.pubkey` in
+   `bus-app/src-tauri/tauri.conf.json` to the printed public key (this repo ships with one baked
+   in — replace it if you fork or rotate keys). The public key is not a secret — committing it
+   is correct.
 2. **Store the private key + password as GitHub Actions secrets** on the public repo:
    - `TAURI_SIGNING_PRIVATE_KEY` — the *contents* of `~/.tauri/watchman-updater.key`
    - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — its password
@@ -67,7 +68,7 @@ breaks; there's just no self-update channel yet.
   never phones anywhere from a dev build.
 - A release's SemVer tag is the source of truth for what version a release *is*; the updater
   simply follows whatever `latest.json` the release CI attached.
-- macOS: the updater requires a signed app; local builds rely on a locally-provisioned self-signed
-  identity (Tauri falls back to ad-hoc signing when none is configured). CI does not build macOS
-  bundles (unsigned CI artifacts would be Gatekeeper-quarantined), so macOS self-update stays
-  local-build territory until that changes.
+- macOS: CI builds and attaches an **unsigned** `.dmg` (since 0.9.0 — install with the
+  right-click-open Gatekeeper steps in the README). The Tauri **self-updater** requires a signed
+  app, so macOS self-update remains unavailable until code-signing exists — update by installing
+  the newer `.dmg` over the app.

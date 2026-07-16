@@ -372,6 +372,12 @@ fn config_path() -> PathBuf {
     harness_home().join(".config/harness/bus-app.json")
 }
 
+/// Where the install config lives — surfaced read-only in the Settings panel footer so "go edit
+/// the file" support conversations can name the exact path.
+pub fn config_file() -> PathBuf {
+    config_path()
+}
+
 /// Persist the config (used by the scenario-switcher to remember the active pack across launches).
 /// Atomic: written to a sibling temp file, then renamed over — an in-place truncate-and-write
 /// leaves a zeroed registry if the process dies mid-save, and a zeroed registry reads as corrupt

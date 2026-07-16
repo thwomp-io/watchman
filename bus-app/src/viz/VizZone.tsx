@@ -69,7 +69,7 @@ export default function VizZone({ target }: { target?: string }) {
   };
 
   // vault-mirroring tree: top = first path segment (the lane/area), sub = the rest of the
-  // doc path. LIVE entries pin first under their lane. Categories collapse (the maintainer: the flat
+  // doc path. LIVE entries pin first under their lane. Categories collapse (operator feedback: the flat
   // list became a sift); the selection's category auto-expands.
   const tree = useMemo(() => {
     const out = new Map<string, Map<string, VizEntry[]>>();

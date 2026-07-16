@@ -20,10 +20,22 @@ from harness.career.config import role_hunt_root
 from harness.career.service import CareerService
 from harness.errors import ProviderError
 from harness.packs import PackGroup
-from harness.settings import BaseToolkitSettings
+from harness.settings import BaseToolkitSettings, overlay_get
 
 # the shared D3 render engine (harness.viz) — every lane imports it here
 from harness.viz import KNOWN_TYPES, VizError, render_diagram
+
+
+def _resume_output_stem() -> str:
+    """Render-output name stem — overlay-driven (career.global_settings.resume.output_stem),
+    generic "resume" default: the engine never hardcodes a person's filename (generalize-first)."""
+    return str(overlay_get("career", "resume", "output_stem", default="resume"))
+
+
+def _resume_source_md() -> str:
+    """The master-CV markdown SoT filename under docs/career/ — overlay-driven
+    (career.global_settings.resume.source_md), generic "resume.md" default."""
+    return str(overlay_get("career", "resume", "source_md", default="resume.md"))
 
 app = typer.Typer(
     cls=PackGroup,  # every verb accepts a trailing `--pack <dir>` (hn career shortlist --pack …)
@@ -288,7 +300,8 @@ def render(
     ),
     out: str = typer.Option(
         None, "--out",
-        help="Master-CV output path (PDF default docs/career/resume_<design>.pdf; "
+        help="Master-CV output path (PDF default docs/career/renders/pdf/<stem>_<design>.pdf, "
+        "stem from the overlay career.resume.output_stem, default 'resume'; "
         "applies to the .docx when --docx is the sole target)",
     ),
 ) -> None:
@@ -400,7 +413,7 @@ def _render_master_pdf(design: str, out_arg: str | None) -> None:
         out = Path(out_arg).expanduser()
     else:
         out = (get_settings().tracker_path / "docs" / "career" / "renders" / "pdf"
-               / f"resume_{design}.pdf")
+               / f"{_resume_output_stem()}_{design}.pdf")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     # Typst's per-file sandbox blocks the parent ../resume-content.typ import → --root the workspace.
@@ -446,7 +459,7 @@ def _render_master_docx(design: str, out_arg: str | None) -> None:
         raise typer.Exit(code=1)
 
     career = get_settings().tracker_path / "docs" / "career"
-    src = career / "resume_v2.md"
+    src = career / _resume_source_md()
     ref = career / "docx-template" / f"reference-{design}.docx"
     if not src.exists():
         _fail(f"master CV markdown not found at {src}")
@@ -457,7 +470,7 @@ def _render_master_docx(design: str, out_arg: str | None) -> None:
         raise typer.Exit(code=1)
 
     out = (Path(out_arg).expanduser() if out_arg
-           else career / "renders" / "docx" / f"resume_{design}.docx")
+           else career / "renders" / "docx" / f"{_resume_output_stem()}_{design}.docx")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = ["pandoc", str(src), f"--reference-doc={ref}", "-o", str(out)]

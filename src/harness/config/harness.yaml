@@ -1,0 +1,38 @@
+# harness.yaml — the USER OVERLAY (packaged NEUTRAL TEMPLATE, not real data).
+#
+# One sanctioned home for every bespoke-install detail that lays on top of the baseline console:
+# per-lane `global_settings` blocks the engine consults so personal nouns never enter code or
+# shipped defaults (the generalize-first doctrine). Real values belong in the TRACKER-RESIDENT
+# copy — `<tracker>/config/harness.yaml` — never here: this file ships inside installs.
+#
+# Resolution precedence (mirrors the portfolio seed): an active weight pack's
+# `config/harness.yaml` > the tracker-resident file > this packaged template.
+#
+# Every block is OPTIONAL — a missing lane, block, or key simply falls back to the tool's
+# neutral behavior (commands that need a value without one keep their required-flag errors).
+finance:
+  global_settings:
+    # Display names for your accounts/institutions (dashboards + docs render these; the engine
+    # itself keys accounts by whatever your portfolio.yaml names them).
+    brokerage: null            # e.g. "Example Brokerage"
+    unwind_source: null        # e.g. "Legacy Brokerage" — where a position unwind originates
+    # The non-intraday fund `fund-holdings` tracks (its EDGAR series name + FILER trust CIK).
+    # With these set, `hn finance fund-holdings` needs no --query/--cik flags.
+    fund_holdings:
+      query: null              # e.g. "Acme International Growth Fund"
+      cik: null                # e.g. "0001234567" (the filer TRUST's CIK, quoted)
+    # Standing-agent schedule identity (the future config-driven pulse home).
+    pulse:
+      timezone: null           # e.g. "America/Chicago"
+
+travel:
+  global_settings:
+    home_city: null            # e.g. "Springfield, IL" (weather/conditions default)
+    home_airports: []          # e.g. [ORD, MDW] — departure defaults for flight ranking
+
+career:
+  global_settings:
+    # Master-CV render identity — the engine never hardcodes a person's filename.
+    resume:
+      source_md: null          # e.g. "resume_v2.md" — the markdown SoT under docs/career/
+      output_stem: null        # e.g. "jane_doe_resume" — render output name stem (default "resume")

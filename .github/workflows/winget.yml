@@ -1,0 +1,33 @@
+# Publish each release to winget (microsoft/winget-pkgs) — metadata-only: the manifests point at
+# this repo's release assets; nothing is re-hosted. Requires a WINGET_TOKEN secret (classic PAT,
+# public_repo scope) so the action can fork winget-pkgs and open the version-bump PR; the job
+# no-ops green until the secret exists (the signed-updater-lane precedent).
+#
+# ⚠ Trigger is CI-completion-on-a-tag, NOT `release: released` — our publish flow creates the
+# release page BEFORE the tag run attaches installers, so a released-event trigger would fire
+# into an assetless release every time (the ordering bug, caught 2026-07-14 pre-flight).
+name: winget
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+jobs:
+  winget:
+    runs-on: windows-latest
+    if: >
+      github.repository_owner == 'thwomp-io' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    steps:
+      - name: Check for the winget token
+        id: token
+        shell: bash
+        run: echo "present=${{ secrets.WINGET_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      - name: Publish manifest PR to winget-pkgs
+        if: steps.token.outputs.present == 'true'
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: thwomp-io.Watchman
+          installers-regex: 'Watchman_.*\.(exe|msi)$'
+          release-tag: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.WINGET_TOKEN }}

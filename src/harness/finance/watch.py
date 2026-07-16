@@ -162,10 +162,10 @@ def vest_reconciliation_flags(
     window_days: int = 45,
     match_days: int = 5,
 ) -> list[PulseFlag]:
-    """The vest-reconciliation guard — born from a real failure mode: a vest can
+    """The vest-reconciliation guard — closes a subtle failure mode: a vest can
     be delivered at the broker without the portfolio lots ever being synced, and nothing
-    reconciled the vest CALENDAR against the ledgered LOTS (the broker has no API; the corpus is
-    manual-sync; the vest_approaching flag fires BEFORE the event and nothing checked after) —
+    reconciled the vest CALENDAR against the ledgered LOTS (brokers often expose no API; the
+    corpus is manual-sync; the vest_approaching flag fires BEFORE the event, nothing checks after) —
     a passed vest can sit unnoticed for weeks. Two pure config-vs-config checks, zero API,
     zero model:
 

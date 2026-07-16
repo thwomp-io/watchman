@@ -1,0 +1,16 @@
+# demo-investor's user overlay — FICTIONAL sample data (the pack-precedence demo: an active
+# pack's config/harness.yaml wins over the corpus-resident file).
+finance:
+  global_settings:
+    brokerage: Example Brokerage
+    unwind_source: Legacy Broker
+    fund_holdings:
+      query: Acme Growth Fund
+      cik: "0001234567"
+    pulse:
+      timezone: America/Chicago
+
+travel:
+  global_settings:
+    home_city: Minneapolis, MN
+    home_airports: [MSP]

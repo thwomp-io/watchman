@@ -18,7 +18,7 @@ load a pack and open **DASH ▸ Ops ▸ Backlog**.
 export** at `.beads/issues.jsonl`. The console reads only that file:
 
 ```
-bd (the source of truth) → .beads/issues.jsonl → watchman beads board --json → the console
+bd (the source of truth) → .beads/issues.jsonl → hn beads board --json → the console
 ```
 
 Point the engine at any directory containing a `.beads/` export (the corpus root — the same
@@ -27,9 +27,9 @@ is passive — it lags live `bd` operations until the next export — the board 
 **age** next to the Open count. The board never performs more freshness than its source has.
 
 ```sh
-watchman beads board # the board in your terminal
-watchman beads board --json # the console's data contract
-watchman beads tickets # render per-issue ticket pages into the vault
+hn beads board # the board in your terminal
+hn beads board --json # the console's data contract
+hn beads tickets # render per-issue ticket pages into the vault
 ```
 
 ## The Backlog tab
@@ -79,7 +79,7 @@ the **VIZ tab** as *Beads Board (LIVE)*.
 
 ## Ticket pages
 
-`watchman beads tickets` renders every issue to a markdown ticket in the vault
+`hn beads tickets` renders every issue to a markdown ticket in the vault
 (`ops/beads/<id>.md`): title and status chips, a details table, the description, **linked
 issues in both directions as wikilinks** (parent, children, blocked-by, blocks — tickets
 cross-navigate like an issue tracker's linked-issues panel), the comment thread, and the close
@@ -92,7 +92,7 @@ The docs are a generated cache, and the generator is careful about it:
   wanders into the directory is never touched);
 - the sync is incremental — an mtime stamp makes an unmoved export a single stat call, and
   unchanged tickets are never rewritten;
-- `watchman beads board` keeps the docs in sync implicitly, so the links on the Backlog tab
+- `hn beads board` keeps the docs in sync implicitly, so the links on the Backlog tab
   always resolve.
 
 ## Demo fixtures that don't age

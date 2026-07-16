@@ -74,7 +74,11 @@ Autostart-at-login is enabled from the app (tauri-plugin-autostart, LaunchAgent 
 ### Remote bus — `bus_url` mode (0.5.0)
 
 A watchman on any device can read a served bus (`hn bus serve` on the always-on node —
-docs/BUS.md "Serving the bus over HTTP") instead of a local file:
+docs/BUS.md "Serving the bus over HTTP") instead of a local file. **The way to connect is
+⚙ Settings → Connection → Online bus** — enter the URL + token, **Test**, then Connect; applying
+a remote connection auto-clears an active demo pack (which would otherwise silently override it).
+
+<details><summary>Manual fallback — hand-edit the config (older builds / headless recovery)</summary>
 
 ```json
 {
@@ -83,13 +87,14 @@ docs/BUS.md "Serving the bus over HTTP") instead of a local file:
 }
 ```
 
-Absent/blank `bus_url` = local rusqlite, unchanged. Prefer the MagicDNS name over the tailnet IP
-(survives node re-enrollment). The remote console runs the full loop — Inbox, badge, filters,
+If hand-editing: a fresh install seeds the demo pack, so also set `"active_pack": null`, then
+restart (an active pack silently overrides `bus_url` — the Settings flow handles this for you).
+
+</details>
+
+Absent/blank `bus_url` = local rusqlite, unchanged. Prefer a stable DNS name over a bare overlay
+IP (survives node re-enrollment). The remote console runs the full loop — Inbox, badge, filters,
 acks, its own native notifications under a per-device `desktop:{hostname}` marker; acks are
-global, so reading on one device clears badges everywhere. A bundled demo pack active always
-trumps `bus_url` (the demo seal renders sealed local state, never the mesh) — **and a fresh
-install seeds the demo pack, so a new device needs `"active_pack": null` alongside the two keys,
-then a restart** (otherwise the remote config is silently overridden and the footer keeps showing
-a local path). A dead mesh degrades to a skipped poll tick / an inline Inbox error (4s/10s
-timeouts), never a hung UI. Remote mode covers the bus surfaces (Inbox/badge/notifications/acks);
+global, so reading on one device clears badges everywhere. A dead mesh degrades to a skipped
+poll tick / an inline Inbox error (4s/10s timeouts), never a hung UI. Remote mode covers the bus surfaces (Inbox/badge/notifications/acks);
 DASH/VAULT read local contracts and render empty on a corpus-less satellite.

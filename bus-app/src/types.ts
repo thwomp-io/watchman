@@ -71,6 +71,20 @@ export interface AppConfig {
   /** What the Inbox actually reads: "remote: <bus_url>" in remote mode, else the local db path. */
   bus_source: string;
   producers: Producer[];
+  // ——— the Settings-panel read model — optional for wire back-compat with
+  // older servers whose get_config predates the panel ———
+  /** Effective mode: "local" | "remote" (native) | "served" (the browser console). */
+  mode?: string;
+  /** The CONFIGURED bus URL (may differ from effective mode when a demo pack seals local). */
+  bus_url?: string | null;
+  /** Whether a bearer token is stored — the token itself is never in any payload. */
+  bus_token_set?: boolean;
+  active_pack?: string | null;
+  tracker_path?: string;
+  surfaces?: Surface[];
+  live_viz?: { id: string; label: string; lane: string }[];
+  /** Where the install config lives (native only; null when served). */
+  config_path?: string | null;
 }
 
 export type SurfaceState =

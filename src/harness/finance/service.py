@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -27,6 +26,8 @@ from harness.finance.models import (
     CikLookup,
     CompareReport,
     CorrelationReport,
+    DayGL,
+    DayGLRow,
     FomcDecision,
     Fundamentals,
     MarketOverview,
@@ -342,7 +343,7 @@ class FinanceService:
         nw.notes.append(
             "Full-picture net worth (brokerage + retirement + cash, across institutions). Static / "
             "last-known balances are manually synced — refresh from a current broker screenshot at "
-            "the start of finance work. Excludes anything not in the corpus (real estate, vehicle, etc.)."
+            "the start of finance work. Excludes anything not in the corpus (e.g. real estate, vehicles)."
         )
         return nw
 
@@ -515,6 +516,118 @@ class FinanceService:
             weighted=weighted,
             coverage_pct=coverage,
             live_coverage_pct=live_coverage,
+        )
+
+    # ---- full-book intraday day G/L: exact + proxy-est + flat ----
+    def daygl(self) -> DayGL:
+        """One glanceable day-G/L number for the WHOLE book. Composition, by valuation basis:
+        live-quoted positions exact (cross-brokerage) · non-intraday funds estimated via the
+        fund-proxy day% × last-known NAV value (honestly labeled est) · statics flat by definition.
+        The est sleeve reconciles at the EOD NAV sync; statics stay honest via the screenshot ritual."""
+        snap = self.positions()
+
+        # exact sleeve — live quotes; track per-account split + quote gaps honestly
+        accounts: dict[str, float] = {}
+        quoted = 0
+        gaps: list[str] = []
+        live_value = 0.0
+        for p in snap.positions:
+            if p.valuation != "live":
+                continue
+            if p.day_gl is not None:
+                quoted += 1
+                live_value += p.market_value or 0.0
+                accounts[p.account] = accounts.get(p.account, 0.0) + p.day_gl
+            else:
+                gaps.append(p.symbol)
+
+        rows: list[DayGLRow] = [
+            DayGLRow(
+                label="Quoted sleeve",
+                kind="exact",
+                value=live_value,
+                day_gl=snap.quoted_day_gl,
+                day_pct=(
+                    snap.quoted_day_gl / (live_value - snap.quoted_day_gl) * 100.0
+                    if live_value - snap.quoted_day_gl
+                    else None
+                ),
+                detail=f"{quoted} live positions"
+                + (f" · no quote: {', '.join(gaps)} (treated flat)" if gaps else ""),
+            )
+        ]
+
+        # est sleeve — any last-known fund the proxy covers gets a proxy-estimated day move
+        est_total: float | None = None
+        est_coverage: float | None = None
+        proxy: ProxyEstimate | None = None
+        flat_value = snap.static_value
+        for p in snap.positions:
+            if p.valuation != "last_known" or not p.market_value:
+                continue
+            if proxy is None:
+                try:
+                    proxy = self.fund_proxy()
+                except ProviderError:
+                    proxy = ProxyEstimate(fund="")  # no proxy reachable — funds fall to flat below
+            if proxy.fund == p.symbol and proxy.estimate_pct is not None:
+                est = p.market_value * proxy.estimate_pct / 100.0
+                est_total = (est_total or 0.0) + est
+                est_coverage = proxy.live_coverage_pct or proxy.coverage_pct
+                rows.append(
+                    DayGLRow(
+                        label=f"{p.symbol} (proxy est)",
+                        kind="est",
+                        value=p.market_value,
+                        day_gl=est,
+                        day_pct=proxy.estimate_pct,
+                        detail=(
+                            f"cap-weighted basket, {est_coverage or '?'}% of fund quoted"
+                            if proxy.weighted
+                            else "equal-weight basket (rough sign/magnitude only)"
+                        ),
+                    )
+                )
+            else:
+                flat_value += p.market_value
+                rows.append(
+                    DayGLRow(
+                        label=f"{p.symbol} (last-known NAV)",
+                        kind="flat",
+                        value=p.market_value,
+                        detail="no proxy estimate — treated flat until the next NAV sync",
+                    )
+                )
+
+        rows.append(
+            DayGLRow(
+                label="Statics (retirement + cash)",
+                kind="flat",
+                value=snap.static_value,
+                detail="flat intraday by definition — manually synced balances",
+            )
+        )
+
+        total = snap.quoted_day_gl + (est_total or 0.0) if (quoted or est_total is not None) else None
+        prior = snap.net_worth - total if total is not None else None
+        return DayGL(
+            total_day_gl=total,
+            total_day_pct=(total / prior * 100.0 if total is not None and prior else None),
+            exact_day_gl=snap.quoted_day_gl,
+            est_day_gl=est_total,
+            est_coverage_pct=est_coverage,
+            flat_value=flat_value,
+            net_worth=snap.net_worth,
+            quoted_positions=quoted,
+            quote_gaps=gaps,
+            accounts=accounts,
+            rows=rows,
+            notes=[
+                "Full-book day G/L: quoted sleeve exact + fund sleeve proxy-ESTIMATED + statics flat. "
+                "The est is directional (proxy coverage is partial) — NAV truth arrives at the EOD "
+                "sync, and static balances stay honest via the screenshot reconciliation ritual.",
+                "Read-only observation, not a recommendation.",
+            ],
         )
 
     # ---- keyless news scan (per-ticker wire + filings rail) ----
@@ -1338,10 +1451,14 @@ class FinanceService:
 
 
 def _load_feeds() -> list[dict[str, str]]:
-    """feeds.yaml — packaged next to portfolio.yaml; absent file = no feeds."""
+    """feeds.yaml — resolved pack > tracker-resident > packaged (Settings.feeds_path,
+    the portfolio-seed precedence): the packaged file is a generic default wire; a tuned roster is
+    corpus data. Absent file = no feeds."""
     import yaml as _yaml
 
-    path = Path(__file__).parent / "config" / "feeds.yaml"
+    from harness.finance.config.settings import get_settings
+
+    path = get_settings().feeds_path
     if not path.exists():
         return []
     data = _yaml.safe_load(path.read_text()) or {}

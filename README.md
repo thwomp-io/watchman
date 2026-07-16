@@ -47,8 +47,8 @@ same seal._
 
 ![Cycling the theme fleet](docs/assets/themes-cycle.gif)
 
-_Eleven built-in themes — three utilitarian daily drivers and a creative fleet, one toggle in
-the footer._
+_Eleven built-in themes — three utilitarian daily drivers and a creative fleet, picked in
+**⚙ Settings → General**._
 
 **A clip for every lane — the full tour lives in [`docs/EXAMPLES.md`](docs/EXAMPLES.md).**
 
@@ -74,14 +74,14 @@ the footer._
 
 ## Your backlog, on the console
 
-If your project tracks work with [beads](https://github.com/gastownhall/beads) — a git-native issue
-tracker built for humans and AI agents sharing a backlog — Watchman renders it as a first-class
-surface: an **Ops ▸ Backlog** tab (counts, the presence board, an honest ready queue, shipped this
-week), an interactive **dependency graph** (epics and children as an org chart, blocking
-dependencies as dashed edges you can hover, tiles that quick-look the full ticket), and generated
-**ticket pages** that cross-link like an issue tracker's linked-issues panel. Read-only by
-construction — `bd` stays the source of truth. Every sample persona ships a fictional backlog, so
-the tab demos out of the box.
+Tracks work with [beads](https://github.com/gastownhall/beads) (a git-native issue tracker built
+for humans and AI agents sharing a backlog)? Watchman renders it first-class:
+
+- **Ops ▸ Backlog tab** — counts, the presence board, an honest ready queue, shipped-this-week
+- **Dependency graph** — epics/children as an org chart, blocking edges on hover, tile quick-looks
+- **Ticket pages** — generated docs that cross-link like a linked-issues panel
+- **Read-only by construction** — `bd` stays the source of truth
+- Every sample persona ships a fictional backlog, so the tab demos out of the box
 
 ![Hover cards, the relationship card, and the ticket quick-look](docs/assets/beads-interact.gif)
 
@@ -89,48 +89,40 @@ the tab demos out of the box.
 
 ## Quickstart — runs out of the box on bundled sample packs
 
-No personal data required: Watchman ships **fictional sample personas** so a fresh clone runs immediately.
+No personal data required: Watchman ships **fictional sample personas** so a fresh install runs
+immediately — download the console (below), and it opens on one.
 
-```bash
-uv sync # Python env + deps
-cp .env.example .env # optional — every API key is independently optional
+### ⚙ Settings — the console's control panel
 
-# run any lane against a bundled sample persona (a fictional ~$1M household):
-uv run hn finance networth --pack samples/packs/demo-investor
-uv run hn finance positions --pack samples/packs/demo-investor
-uv run hn career openings --pack samples/packs/demo-growth # an early-career job hunter
+<img src="docs/assets/settings-general.png" alt="The Settings modal" width="860">
 
-# or set it once for the session:
-export WEIGHTS_PACK=samples/packs/demo-investor
-uv run hn finance networth
-```
+Everything about *your* Watchman is configured in one place — hit **⚙ SETTINGS** in the masthead:
 
-Many senses are **keyless** (weather, air quality, earthquakes, geocoding; finance **fundamentals** via SEC
-EDGAR) and need no setup. Lanes that call paid providers (SerpAPI flights/hotels, Alpaca market data) only
-activate when you add their key — each is independently optional.
+- **General** — version, the 11-theme picker (AUTO follows your OS), update posture.
+- **Connection** — where this console reads its bus, and the **online-bus connect flow**: paste a
+  served URL + token, **Test** it live, **Connect** (the flow clears any active demo pack, which
+  would otherwise silently override remote mode). **Disconnect** returns to local.
+- **Weight packs** — swap the active persona or **Load…** your own pack folder; the whole console
+  re-renders from it.
+- **Producers & surfaces** — the roster of everything the console runs, human-readable.
+- **Personal** — your `config/harness.yaml` user overlay (display names, fund identity, home
+  city/airports), rendered per lane. Read-only by design: the file is the interface.
 
-The desktop console:
-
-```bash
-cd bus-app && npm install
-npm run tauri dev # needs Rust (rustup) + platform build tools
-```
-
-In the console, use the **PACK dropdown** in the masthead to load a sample persona, then swap to another —
-the whole dashboard set re-renders from the pack. Use **Load Weight Pack…** to point it at your own.
+Prefer the shell? The engine runs headless too — lanes, packs, and keys from the CLI are covered
+in **[`docs/CLI.md`](docs/CLI.md)**.
 
 ### Download the console — one prerequisite, no toolchain
 
 The full demo console, prebuilt and **self-contained**: each installer carries the engine inside it
 (no clone, no `npm`, no Rust). The one prerequisite is [uv](https://docs.astral.sh/uv/), which manages
 the console's Python runtime — on first launch the console prepares its environment (about a minute,
-one time). Download, install, pick a persona from the **PACK dropdown** — done:
+one time). Download, install, pick a persona in **⚙ Settings → Weight packs** — done:
 
 | Platform | Direct download | Notes |
 |---|---|---|
-| **Windows 10/11** | **[⬇ Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** · [.msi](../../releases/latest/download/Watchman-x64.msi) | unsigned — see SmartScreen note below |
+| **Windows 10/11** | **`winget install thwomp-io.Watchman`** · or **[⬇ Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** · [.msi](../../releases/latest/download/Watchman-x64.msi) | winget install is silent + SmartScreen-free; direct downloads are unsigned — see the note below |
 | **Linux (deb)** | **[⬇ watchman-amd64.deb](../../releases/latest/download/watchman-amd64.deb)** | `sudo apt install ./watchman-amd64.deb` |
-| **macOS** | build from source (below) | prebuilt bundles are on the roadmap |
+| **macOS** | **[⬇ Watchman-aarch64.dmg](../../releases/latest/download/Watchman-aarch64.dmg)** (Apple Silicon) | unsigned — first open needs one Gatekeeper step (below); Intel: build from source |
 
 **Windows install, start to finish:**
 
@@ -143,33 +135,30 @@ one time). Download, install, pick a persona from the **PACK dropdown** — done
 4. Launch **Watchman** — it opens on a bundled **fictional sample persona**. The first launch spends
    about a minute preparing the bundled engine's Python environment; the dashboards go live as it
    completes.
-5. Swap personas from the **PACK dropdown** in the masthead; the whole console re-renders.
+5. Swap personas in **⚙ Settings → Weight packs**; the whole console re-renders.
 
-The engine CLI on Windows (PowerShell) — install [uv](https://docs.astral.sh/uv/), then the same
-commands as above; the env-var syntax is the only difference:
+**macOS install, start to finish:**
 
-```powershell
-uv sync
-uv run hn finance networth --pack samples/packs/demo-investor
-# or for the session:
-$env:WEIGHTS_PACK = "samples/packs/demo-investor"
-uv run hn finance networth
-```
+1. Install [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`).
+2. Download **[Watchman-aarch64.dmg](../../releases/latest/download/Watchman-aarch64.dmg)**, open it, drag **Watchman** to Applications.
+3. First open: **right-click the app → Open → Open** (it's open-source but **unsigned** — no Apple
+   Developer cert). If macOS still blocks it: **System Settings → Privacy & Security → Open Anyway**,
+   or clear the quarantine flag: `xattr -d com.apple.quarantine /Applications/Watchman.app`.
+4. It opens on a bundled **fictional sample persona** (first launch preps the engine's Python
+   environment, about a minute). Swap personas in **⚙ Settings → Weight packs**.
 
-**Linux console from source** needs the Tauri v2 system libraries before `npm run tauri dev`/`build`
-(Debian/Ubuntu: `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
-libsoup-3.0-dev patchelf`; the tray icon wants an appindicator extension on GNOME).
+Running the engine from the shell (any platform) and building the console from source:
+**[`docs/CLI.md`](docs/CLI.md)**.
 
-> Platform notes: the **standing agents** (scheduled headless runs) are macOS-`launchd` today —
-> Task Scheduler / systemd ports are on the roadmap. On Windows/Linux the console renders a calm
-> *standby* state for them until configured. All state lives under `~/.local/state/harness` and
-> `~/.config/harness` on every platform (yes, dot-dirs on Windows too — one convention everywhere).
+> Platform notes:
+> - **Standing agents** (scheduled headless runs): macOS-`launchd` today; Task Scheduler / systemd
+> ports on the roadmap — Windows/Linux render a calm *standby* state until configured
+> - State lives under `~/.local/state/harness` + `~/.config/harness` everywhere (yes, dot-dirs on
+> Windows — one convention)
 
 ## The web console — any browser on your network
 
-The desktop app isn't the only way to see the console. The bus server can serve the **same UI** over
-HTTP — to a laptop browser, a second desktop, or your phone (installable as a PWA, where it reads like a
-native finance app):
+The bus server serves the **same UI** over HTTP — a laptop, a second desktop, your phone as a PWA:
 
 ```bash
 cd bus-app && npm install && npm run build # build the console once
@@ -177,12 +166,15 @@ uv run hn bus serve --console --ui bus-app/dist
 # → http://127.0.0.1:8787/ (the page prompts for the bearer token on first visit)
 ```
 
-One server, one token, one bind: the same process that serves the notification bus serves the console,
-every `/api` route requires the bearer token (auto-generated to a `0600` file on first run), and it binds
-localhost unless you deliberately point it at a private-network address. Run it on an always-on machine
-over a mesh/VPN (e.g. Tailscale/Headscale) and every device you own has the console at one URL. Details —
-tokens, phones/PWA, serving multiple console builds side by side — in
-[`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
+- **One server, one token, one bind** — the bus process serves the console; every `/api` route
+  requires the bearer token (auto-generated, `0600`); binds localhost unless you point it at a
+  private-network address
+- **Run it always-on over a mesh/VPN** (Tailscale/Headscale) → every device you own, one URL —
+  phone included (installable as a PWA)
+- **Connect a satellite console in Settings, not a config file** — **⚙ Settings → Connection →
+  Online bus**: paste URL + token, **Test**, **Connect** (auto-clears any demo pack that would
+  silently override remote mode)
+- Details — tokens, phones/PWA, variant mounts: [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md)
 
 ## Run as a container
 
@@ -202,9 +194,8 @@ docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman
   ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
 
-Images are tagged by release (`ghcr.io/thwomp-io/watchman:0.8.0`) plus a moving `:latest` — pin the
-version tag for anything durable. Volumes, the token, and running the standing agents from the image:
-[`docs/DOCKER.md`](docs/DOCKER.md).
+- Tagged by release (`:<version>`) + a moving `:latest` — **pin the version tag** for anything durable
+- Volumes, the token, standing agents from the image: [`docs/DOCKER.md`](docs/DOCKER.md)
 
 ## A pack is a persona
 
@@ -221,11 +212,12 @@ samples/packs/<persona>/
   dashboards/ # (optional) a curated console the pack describes for itself
 ```
 
-A pack only needs subdirs for the lanes it covers. Your **real** corpus lives **outside** this repo
-(config-pointed via `TRACKER_PATH` / `WEIGHTS_PACK`), so nothing personal is ever committed. Scaffold your
-own with **`hn init <dir>`** — it lays down the dirs + template weights to fill in (non-destructive). The
-bundled packs are the warm start; the [corpus-operator skill](skills/corpus-operator/SKILL.md) teaches an AI
-agent to build *your* corpus — passively, from natural conversation — and keep it current in your voice.
+- A pack only needs subdirs for the lanes it covers
+- Your **real** corpus lives **outside** this repo (`TRACKER_PATH` / `WEIGHTS_PACK`) — nothing
+  personal is ever committed
+- **`hn init <dir>`** scaffolds your own (dirs + template weights, non-destructive)
+- The [corpus-operator skill](skills/corpus-operator/SKILL.md) teaches an AI agent to build *your*
+  corpus — passively, from conversation, in your voice — and keep it current
 
 ## The weight packs
 

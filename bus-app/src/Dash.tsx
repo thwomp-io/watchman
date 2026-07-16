@@ -34,7 +34,7 @@ const MARKET_MS = 10 * 60_000;
 const LOCAL_MS = 60_000;
 const LOCAL30M_MS = 30 * 60_000; // gentle cadence for non-tick sources (the News wire)
 
-// ————— cache + dedupe (the maintainer's first-load lockup feedback) ————————————————————————————————————
+// ————— cache + dedupe (the first-load-lockup field feedback) ————————————————————————————————————
 // localStorage cache: DASH paints instantly with last-known data (CACHED chip + honest AS-OF),
 // then refreshes per policy in the background. In-flight dedupe: widgets sharing a source
 // (watch ×2, pulse ×2) share ONE subprocess run.
@@ -123,14 +123,17 @@ const VIZ_COMP: Record<string, React.ComponentType<{ data: never }>> = {
 function StatBody({ data, widget }: { data: unknown; widget: Widget }) {
   const v = pluck(data, widget.value_path);
   const num = typeof v === "number" ? v : Number(v);
-  const text = Number.isFinite(num) ? fmtNum(num) : String(v ?? "—");
   // Sign-formatting (the +/− day-change convention) defaults ON for "%" tiles, opt-out via
   // `signed: false` — magnitude reads (e.g. unwind %-complete) aren't deltas; "+" there is noise.
-  const signed = widget.signed !== false && widget.suffix === "%";
-  const sign = Number.isFinite(num) && signed ? (num > 0 ? "pos" : num < 0 ? "neg" : "") : "";
+  // `signed: true` opts IN for non-% tiles ($ deltas like the full-book day-G/L tile). The sign
+  // renders BEFORE the prefix ("-$374", never "$-374") — format the magnitude, place the sign.
+  const signed = widget.signed === true || (widget.signed !== false && widget.suffix === "%");
+  const text = Number.isFinite(num) ? fmtNum(Math.abs(num)) : String(v ?? "—");
+  const sign = !Number.isFinite(num) ? "" : num < 0 ? "-" : num > 0 && signed ? "+" : "";
+  const cls = Number.isFinite(num) && signed ? (num > 0 ? "pos" : num < 0 ? "neg" : "") : "";
   return (
-    <div className={`stat-big ${sign}`}>
-      {Number.isFinite(num) && num > 0 && signed ? "+" : ""}
+    <div className={`stat-big ${cls}`}>
+      {sign}
       {widget.prefix ?? ""}{text}{widget.suffix ?? ""}
     </div>
   );
@@ -564,6 +567,7 @@ function DocSeriesCard({ widget, forceTick }: { widget: Widget; forceTick: numbe
 }
 
 export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
+  const compact = useCompact();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [group, setGroup] = useState<string>("");
   const [lane, setLane] = useState<string>("");
@@ -732,14 +736,14 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         </span>
         {/* Studio unlock: native-only until the served door grows a write carve-out
             (save_dashboard sits in WRITE_GATED → a PWA unlock would 403 on save). */}
-        {current && !reloadKey && isTauri() && unlocked && (
+        {current && !reloadKey && isTauri() && !compact && unlocked && (
           <button className={`reset-default${armReset ? " armed" : ""}`} onClick={onReset}
                   title={armReset ? "Click again to confirm — current layout is banked to .backups/ first"
                                   : "Snap this dashboard back to its built-in default"}>
             {armReset ? "↺ CONFIRM RESET?" : "↺ DEFAULT"}
           </button>
         )}
-        {current && !reloadKey && isTauri() && (
+        {current && !reloadKey && isTauri() && !compact && (
           <button className={`unlock-toggle${unlocked ? " editing" : ""}`} onClick={toggleUnlock}
                   title={unlocked ? "Lock the layout (edits are already saved)"
                                   : "Unlock: drag + resize widgets; edits save as you go"}>
@@ -765,7 +769,7 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         </div>
       )}
       {current && !expandedWidget && (
-        isStudioManaged(current)
+        isStudioManaged(current) && !compact
           ? <StudioGrid dashboard={current} forceTick={allTick} editable={unlocked}
                         onCommit={(cells, activeId) => commitLayout(current, cells, activeId)} />
           : <div className={`dash-grid lane-${current.lane}`} key={current.lane}>
@@ -791,6 +795,24 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
 
 function isStudioManaged(d: Dashboard): boolean {
   return d.widgets.length > 0 && d.widgets.every((w) => !!w.layout);
+}
+
+// PHONE LAYER: below 600px, explicit Studio placement means nothing — spatial
+// memory doesn't survive a one-column screen. Compact mode renders EVERY dashboard through the
+// legacy reading-order flow (the phone CSS reflows it to 2 columns); Studio editing stays a
+// desktop affordance. Reactive so a browser resize/rotate re-flows live.
+function useCompact(): boolean {
+  const [compact, setCompact] = useState(
+    () => typeof window !== "undefined" && window.matchMedia?.("(max-width: 600px)")?.matches === true,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia?.("(max-width: 600px)");
+    if (!mq) return;
+    const on = (e: MediaQueryListEvent) => setCompact(e.matches);
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, []);
+  return compact;
 }
 
 // mirrors App.css's lane rule: .dash-grid.lane-finance runs 6 cols, everything else 4

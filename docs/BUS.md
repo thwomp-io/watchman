@@ -189,9 +189,17 @@ services (which only ever see ciphertext: the Web Push protocol encrypts payload
   [`WEB-CONSOLE.md`](WEB-CONSOLE.md) → Push notifications. `POST /api/push/test` (or the bell's TEST
   button) verifies the pipeline end to end.
 
-### The watchman in remote mode — `bus_url`
+### The watchman in remote mode — connect via ⚙ Settings
 
-Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file to a served bus:
+**⚙ Settings → Connection → Online bus** is the way to flip a watchman from the local file to a
+served bus (via the ⚙ Settings connection form): paste the served URL + the server's bearer token, **Test** (a live
+probe against the served stats endpoint), **Connect**. The flow **auto-clears any active demo
+pack** — the first-run footgun below can't happen on this path. **Disconnect** returns to local
+mode and drops the stored token.
+
+<details><summary>Manual fallback (older builds / headless recovery): the two config keys</summary>
+
+Two keys in `~/.config/harness/bus-app.json` are what the Settings flow writes:
 
 ```json
 {
@@ -199,6 +207,9 @@ Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file
   "bus_token": "<the server's ~/.config/harness/bus-token value>"
 }
 ```
+
+Editing by hand also requires `"active_pack": null` (see the demo-seal note below) + a restart.
+</details>
 
 - **Prefer the MagicDNS name over the tailnet IP**: the overlay IP (`100.64.0.1`) is stable across
   reboots and public-IP rotations (it's registration-bound, not DHCP), but a node delete +
@@ -210,12 +221,11 @@ Two keys in `~/.config/harness/bus-app.json` flip a watchman from the local file
   notifications — under its own per-device marker (`desktop:{hostname}`). Acks are global
   (`read_at`), so acking on one device clears badges everywhere within a poll tick (30s).
 - **Demo seal trumps remote**: while a bundled demo pack is active the console renders its sealed
-  local bus; a configured mesh bus never leaks into demo mode. **⚠ Setup step this implies (a
-  known first-run gotcha): a FRESH INSTALL seeds the bundled demo pack as `active_pack` — so on
-  a new device, remote mode requires BOTH adding `bus_url`/`bus_token` AND setting
-  `"active_pack": null`, then a restart.** With the pack active, a correct remote config is
-  silently overridden (the footer keeps showing a local path). A connect-dialog UX that surfaces
-  and handles this interplay is tracked; until then, this is the documented gotcha.
+  local bus; a configured mesh bus never leaks into demo mode. **The Settings connect flow handles
+  this automatically** (connecting clears the active pack). Only the manual-edit fallback still
+  needs the explicit `"active_pack": null` — a fresh install seeds the bundled demo pack, and with
+  a pack active a correct remote config is silently overridden (the footer keeps showing a local
+  path).
 - **Remote scope**: the served-bus mode covers the BUS surfaces — Inbox, tray badge, native
   notifications, acks. DASH/VAULT/VIZ read local contracts (spawned `hn` + local files) and render
   empty/standby on a corpus-less satellite; the full remote console is the

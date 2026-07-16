@@ -50,6 +50,19 @@ class Settings(BaseToolkitSettings):
         return PORTFOLIO_PATH
 
     @property
+    def feeds_path(self) -> Path:
+        """The news-wire roster (feeds.yaml), resolved with the same precedence as the portfolio
+        seed: pack > tracker-resident > packaged. The packaged default carries only the generic
+        broad-market wire; a user's tuned roster (geopolitics picks, thesis topics) is corpus
+        data and lives tracker-resident — media taste is a personal tell, same class as holdings."""
+        if pack := self.pack_file("finance", "feeds.yaml"):
+            return pack
+        tracker_resident = self.tracker_path / "finance" / "config" / "feeds.yaml"
+        if tracker_resident.is_file():
+            return tracker_resident
+        return Path(__file__).parent / "feeds.yaml"
+
+    @property
     def finance_corpus_file(self) -> Path:
         """The human source-of-truth prose (portfolio.yaml is kept in manual sync with this)."""
         return self.tracker_path / "narratives" / "finance.md"

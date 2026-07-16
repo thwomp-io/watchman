@@ -197,6 +197,36 @@ class ProxyEstimate(BaseModel):
     live_coverage_pct: float | None = None  # weights of the names that actually quoted this run
 
 
+class DayGLRow(BaseModel):
+    """One sleeve of the full-book day-G/L decomposition."""
+
+    label: str
+    kind: str  # "exact" (live quotes) | "est" (proxy-estimated) | "flat" (static by definition)
+    value: float = 0.0  # the sleeve's market value
+    day_gl: float | None = None  # $ move on the day (None = flat/no estimate)
+    day_pct: float | None = None
+    detail: str = ""
+
+
+class DayGL(BaseModel):
+    """Full-book intraday day-G/L estimate: live quotes exact + fund NAV estimated via the proxy +
+    statics flat by definition. An at-a-glance observation surface — the est sleeve reconciles at
+    the EOD NAV sync; statics stay honest via the manual screenshot ritual. Never a recommendation."""
+
+    total_day_gl: float | None = None  # exact + est (None only if nothing priced at all)
+    total_day_pct: float | None = None  # vs the implied prior-day total
+    exact_day_gl: float = 0.0  # live-quoted sleeve (cross-brokerage)
+    est_day_gl: float | None = None  # proxy-estimated fund sleeve ($); None = no proxy available
+    est_coverage_pct: float | None = None  # % of the fund the proxy basket represents
+    flat_value: float = 0.0  # statics + no-estimate last-knowns (day move assumed 0)
+    net_worth: float = 0.0
+    quoted_positions: int = 0
+    quote_gaps: list[str] = Field(default_factory=list)  # live holdings whose quote failed this run
+    accounts: dict[str, float] = Field(default_factory=dict)  # exact sleeve day-G/L by account
+    rows: list[DayGLRow] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class ScreenResult(BaseModel):
     """Values-screen verdict for a symbol — corpus-driven, no network call."""
 

@@ -111,8 +111,10 @@ class CorpusReader:
         text = (self._root / "preferences.md").read_text()
         avoid: list[str] = []
         # budget-carrier names mentioned in the user's preferences prose are picked up as an
-        # avoid-list; the sample corpus's premium-leaning persona names a few common ones
-        for name in ("Southwest", "Frontier", "Spirit"):
+        # avoid-list. The vocabulary below is a generic seed of the major US budget/LCC carriers —
+        # the parser recognizes any of them named in prose; the machine-readable avoid list proper
+        # lives in weights.yaml `airline_avoid_iata` (this prose pass is the drift-canary's input).
+        for name in ("Southwest", "Frontier", "Spirit", "Allegiant", "Sun Country", "Avelo"):
             if name in text:
                 avoid.append(name)
         return PreferencesDigest(

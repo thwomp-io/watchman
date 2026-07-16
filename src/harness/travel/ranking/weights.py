@@ -15,10 +15,10 @@ class FlightWeights(BaseModel):
     # The user's LOCAL/convenience airport (a small field near home) vs a major HUB used for price
     # comparison. The local airport gets a heavy convenience bonus + leads the search; the hub is the
     # deep-market price/frequency reference. Both config-driven — leave `home_airport` empty to query
-    # only the hub. `home_airport_note` is the convenience tagline shown next to it (e.g. "10 min away").
+    # only the hub. `home_airport_note` is the tagline shown next to it (e.g. "the close-in option").
     home_airport: str = ""  # convenience/local IATA (leads + earns the bonus); "" → hub-only search
     comparison_airport: str = ""  # the hub IATA for the deep-market price comparison
-    home_airport_note: str = ""  # convenience tagline for the local airport (e.g. "10 min from home")
+    home_airport_note: str = ""  # convenience tagline for the local airport (e.g. "the close-in option")
     home_airport_bonus: float = 25.0  # convenience thumb-on-the-scale for local-airport offers (NOT a filter)
     home_airport_served_iata: list[str] = Field(default_factory=list)  # dest IATAs the local airport serves
     hour_soft_cap: float = 4.0

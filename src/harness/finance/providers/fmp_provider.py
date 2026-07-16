@@ -3,7 +3,7 @@
 Why this exists: the keyless EDGAR path (`compute_multiples`) assembles TTM from raw XBRL facts, and
 the Q4-only-in-10-K filer cadence makes that assembly mis-tag TTM revenue/earnings for a LARGE share
 of names (the TTM-assembly trap — a mega-cap's P/S can come back many multiples too high when Q4 is
-only in the 10-K; a research batch needed hand-correction on most names). FMP pre-computes the TTM
+only in the 10-K). FMP pre-computes the TTM
 ratios on its side,
 sidestepping the whole assembly problem, and covers foreign filers / ADRs (TSM, ASML) that aren't in
 SEC's ticker→CIK map at all.

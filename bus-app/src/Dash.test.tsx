@@ -12,8 +12,10 @@ describe("Dash — pack-described dashboards", () => {
   beforeEach(() => {
     mockTauri.reset();
     stageEmptyWidgetSources();
-    // (the dash widget cache is localStorage-backed but localStorage is absent under jsdom here, so the
-    // cache no-ops via its try/catch — no cross-test bleed to clear.)
+    // The dash widget cache is localStorage-backed and current Node's jsdom DOES provide
+    // localStorage (an earlier comment here assumed it no-oped — disproven when a cached tile
+    // value bled between the signed-valence tests). Clear it so tests never share widget data.
+    try { localStorage.clear(); } catch { /* older jsdom without localStorage */ }
   });
 
   it("renders the grouped tab nav from list_dashboards", async () => {
@@ -85,6 +87,34 @@ describe("Dash — pack-described dashboards", () => {
     // the held AAPL selection reconciles to GOOGL → no "<sym> not in config" surfaces, GOOGL pill active.
     await waitFor(() => expect(screen.getByRole("button", { name: "GOOGL" })).toHaveClass("active"));
     expect(screen.queryByText(/not in config/)).not.toBeInTheDocument();
+  });
+
+  // `signed: true` opts a non-% tile into +/− valence (the full-book day-G/L $ tile);
+  // the sign renders BEFORE the prefix ("+$…", "-$…" — never "$-…").
+  it("signed: true gives a $ stat tile +/− valence with the sign before the prefix", async () => {
+    const w: Widget = {
+      ...statWidget("daygl", "Day G/L"),
+      value_path: "total_day_gl", prefix: "$", signed: true,
+    };
+    mockTauri.setValue("list_dashboards", [oneWidgetDash("finance", "Finance", "Core", w)]);
+    mockTauri.setValue("run_widget", JSON.stringify({ total_day_gl: 1257.37 }));
+    const { container } = render(<Dash reloadKey="pos" />);
+    await waitFor(() => expect(container.querySelector(".stat-big")).toHaveTextContent("+$1.3k"));
+    expect(container.querySelector(".stat-big")).toHaveClass("pos");
+  });
+
+  it("a negative signed $ tile renders -$… (sign outside the prefix) with neg valence", async () => {
+    // distinct widget id — the dash widget cache is id-keyed and jsdom's localStorage is real
+    // in current Node, so reusing "daygl" would serve the prior test's cached value.
+    const w: Widget = {
+      ...statWidget("daygl-neg", "Day G/L"),
+      value_path: "total_day_gl", prefix: "$", signed: true,
+    };
+    mockTauri.setValue("list_dashboards", [oneWidgetDash("finance", "Finance", "Core", w)]);
+    mockTauri.setValue("run_widget", JSON.stringify({ total_day_gl: -374.18 }));
+    const { container } = render(<Dash reloadKey="neg" />);
+    await waitFor(() => expect(container.querySelector(".stat-big")).toHaveTextContent("-$374.18"));
+    expect(container.querySelector(".stat-big")).toHaveClass("neg");
   });
 
   // THE REGRESSION (bug 1, same eyeball): a doc_series widget (a scan report / market take) never

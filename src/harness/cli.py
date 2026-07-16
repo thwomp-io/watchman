@@ -49,6 +49,11 @@ from harness.beads.cli import app as beads_app  # noqa: E402
 
 app.add_typer(beads_app, name="beads")
 
+# `hn config` — the user overlay (harness.yaml) surface.
+from harness.overlay_cli import app as config_app  # noqa: E402
+
+app.add_typer(config_app, name="config")
+
 # `hn init <dir>` — scaffold a new corpus (top-level, not lane-scoped).
 app.command(name="init")(init_cmd)
 

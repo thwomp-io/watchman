@@ -125,15 +125,91 @@ pub fn get_config() -> Result<serde_json::Value, String> {
     let cfg = config::load();
     // bus_source: what the Inbox is actually reading — the remote URL in bus_url mode, else the
     // local db path. Surfaced (token never included) so a remote-mode console is self-evident.
-    let bus_source = match config::bus_endpoint(&cfg) {
-        config::BusEndpoint::Remote { url, .. } => format!("remote: {url}"),
-        config::BusEndpoint::Local(path) => path.to_string_lossy().into_owned(),
+    let (mode, bus_source) = match config::bus_endpoint(&cfg) {
+        config::BusEndpoint::Remote { url, .. } => ("remote", format!("remote: {url}")),
+        config::BusEndpoint::Local(path) => ("local", path.to_string_lossy().into_owned()),
     };
+    // The Settings panel's read model. `bus_url` is the CONFIGURED value (may differ from the
+    // effective mode when a bundled demo pack seals the console local); the token is NEVER
+    // returned — only whether one is set.
     Ok(serde_json::json!({
         "db_path": config::db_path(&cfg).to_string_lossy(),
         "bus_source": bus_source,
         "producers": cfg.producers,
+        "mode": mode,
+        "bus_url": cfg.bus_url.as_deref().map(str::trim).filter(|s| !s.is_empty()),
+        "bus_token_set": cfg.bus_token.as_deref().map(str::trim).is_some_and(|s| !s.is_empty()),
+        "active_pack": cfg.active_pack,
+        "tracker_path": config::tracker_path(&cfg).to_string_lossy(),
+        "surfaces": cfg.surfaces,
+        "live_viz": cfg.live_viz,
+        "config_path": config::config_file().to_string_lossy(),
     }))
+}
+
+/// The user overlay (harness.yaml) as RAW TEXT for the Settings panel's Personal tabs — the
+/// webview parses (js-yaml); Rust stays yaml-dep-free. Precedence mirrors the engine: an active
+/// pack's config/harness.yaml > the tracker-resident file. Read-only — the file is the interface.
+#[tauri::command]
+pub fn get_user_overlay() -> Result<serde_json::Value, String> {
+    let cfg = config::load();
+    let tracker = config::tracker_path(&cfg).join("config").join("harness.yaml");
+    let pack_copy = cfg.active_pack.as_deref().map(str::trim).filter(|s| !s.is_empty())
+        .map(|p| Path::new(p).join("config").join("harness.yaml"));
+    let path = match pack_copy {
+        Some(p) if p.is_file() => p,
+        _ => tracker,
+    };
+    let text = std::fs::read_to_string(&path).unwrap_or_default();
+    Ok(serde_json::json!({
+        "text": text,
+        "source": if text.is_empty() { "none (scaffold <tracker>/config/harness.yaml)" } else { "user overlay" },
+        "path": path.to_string_lossy(),
+    }))
+}
+
+/// Set (or clear) the remote-bus connection — the Settings panel's "Connect to online bus" flow.
+/// Field-allowlisted write (the set_active_pack pattern): never a raw config patch. Enabling
+/// remote AUTO-CLEARS the active pack — a fresh install's seeded demo pack silently overrides
+/// `bus_url` (a fresh install's seeded demo pack silently overrides a remote config); the one
+/// flow that enables remote kills it at the source.
+#[tauri::command]
+pub fn set_bus_config(url: Option<String>, token: Option<String>) -> Result<serde_json::Value, String> {
+    let mut cfg = config::load();
+    let url = url.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let token = token.map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    match url {
+        Some(u) => {
+            if !(u.starts_with("http://") || u.starts_with("https://")) {
+                return Err("bus URL must start with http:// or https://".into());
+            }
+            let effective_token = token.or_else(|| {
+                cfg.bus_token.as_deref().map(str::trim).map(String::from).filter(|s| !s.is_empty())
+            });
+            if effective_token.is_none() {
+                return Err("a bearer token is required for a remote bus (the server's bus-token value)".into());
+            }
+            cfg.bus_url = Some(u);
+            cfg.bus_token = effective_token;
+            cfg.active_pack = None; // the footgun kill: a seeded demo pack would silently override remote
+        }
+        None => {
+            // clearing the URL returns the console to local mode; the token goes with it
+            cfg.bus_url = None;
+            cfg.bus_token = None;
+        }
+    }
+    config::save(&cfg)?;
+    get_config()
+}
+
+/// Probe a remote bus BEFORE saving it — hits the served stats endpoint with the given bearer.
+/// Returns a human line ("ok — N unread") so the Settings panel can show the result inline.
+#[tauri::command]
+pub fn test_bus_connection(url: String, token: String) -> Result<String, String> {
+    let remote = crate::remote::RemoteBus::new(url.trim().to_string(), token.trim().to_string())?;
+    let unread = remote.unread_count()?;
+    Ok(format!("ok — bus reachable, {unread} unread"))
 }
 
 #[tauri::command]
@@ -457,7 +533,7 @@ fn read_viz_blocking(path: String) -> Result<String, String> {
 
 /// Dirs the corpus browser never descends into (build/tooling noise). Any dotdir is skipped too.
 /// `visuals/` stays out — those rendered diagram SVGs are the VIZ zone's domain; `assets/` (report
-/// photos) IS browsable per the maintainer, so it's no longer skipped.
+/// photos) IS browsable by design (operator ruling), so it's no longer skipped.
 const VAULT_SKIP: &[&str] = &["node_modules", "__pycache__", "target", "dist", "screenshots", "tmp"];
 const VAULT_MAX_DEPTH: usize = 8;
 /// Image files the browser surfaces as standalone, viewable tree entries (Obsidian-style).
