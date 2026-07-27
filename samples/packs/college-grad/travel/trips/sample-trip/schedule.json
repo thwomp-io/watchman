@@ -1,0 +1,108 @@
+{
+  "title": "Denver with the crew — day plan",
+  "subtitle": "illustrative persona data (fictional venues) · couch-surf weekend, planned around work hours",
+  "start": "2026-08-14",
+  "end": "2026-08-17",
+  "dayStart": "08:00",
+  "dayEnd": "23:00",
+  "availability": {
+    "groups": [
+      { "key": "solo", "label": "solo time (friends at work)", "color": "#fde68a" },
+      { "key": "crew", "label": "crew time (everyone free)", "color": "#a7f3d0" }
+    ],
+    "weekday": [{ "until": "17:30", "group": "solo" }, { "group": "crew" }],
+    "weekend": [{ "group": "crew" }],
+    "dates": {
+      "2026-08-17": [{ "until": "12:00", "group": "solo" }, { "group": "crew" }]
+    }
+  },
+  "markerLabel": "what's on",
+  "markerCats": {
+    "free": { "label": "free events", "color": "#34d399" },
+    "logistics": { "label": "logistics", "color": "#60a5fa" }
+  },
+  "markers": [
+    { "date": "2026-08-15", "time": "10a", "label": "flea market (free entry)", "cat": "free" },
+    { "date": "2026-08-16", "time": "7p", "label": "movie in the park", "cat": "free" },
+    { "date": "2026-08-17", "label": "Maya took a half-day", "cat": "logistics" },
+    { "date": "2026-08-17", "time": "6:40p", "label": "flight home departs", "cat": "logistics" }
+  ],
+  "items": [
+    {
+      "date": "2026-08-14", "start": "15:30", "end": "17:00",
+      "label": "Land + bus to Maya's place", "lane": "logistics",
+      "note": "train downtown, then the 15 bus — $12 total"
+    },
+    {
+      "date": "2026-08-14", "start": "19:00", "end": "21:30",
+      "label": "Tacos — Union Yard", "lane": "food",
+      "note": "the reunion dinner, whole crew in",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Union+Yard+tacos&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "date": "2026-08-15", "start": "08:30", "end": "12:30",
+      "label": "Cottonwood Ridge trail hike", "lane": "outdoors",
+      "note": "carpool in Ben's car — start early, storms roll in by 2",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Cottonwood+Ridge+trailhead+Golden+CO" }]
+    },
+    {
+      "date": "2026-08-15", "start": "13:30", "end": "14:30",
+      "label": "Green Chile Garage burritos", "lane": "food",
+      "note": "post-hike — smothered, obviously",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Green+Chile+Garage&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "date": "2026-08-15", "start": "20:00", "end": "23:00",
+      "label": "Mile Marker Games night", "lane": "hang",
+      "note": "board-game bar — no cover before 9",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Mile+Marker+Games+Denver+CO" }]
+    },
+    {
+      "date": "2026-08-16", "start": "10:30", "end": "12:00",
+      "label": "Brunch — Sunny Side Rail", "lane": "food",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Sunny+Side+Rail&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "date": "2026-08-16", "start": "13:00", "end": "16:00",
+      "label": "City park loop + paddle boats", "lane": "outdoors",
+      "note": "cheap afternoon — boats are $10/half hour split 4 ways"
+    },
+    {
+      "date": "2026-08-17", "start": "09:30", "end": "11:30",
+      "label": "Solo museum morning (free hour)", "lane": "explore",
+      "note": "the art museum's Monday free window — go at open",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=art+museum+Denver+CO" }]
+    },
+    {
+      "date": "2026-08-17", "start": "12:30", "end": "14:00",
+      "label": "Last lunch — Rhino Ramen counter", "lane": "food",
+      "note": "Maya's half-day kicks in — she picks the spot",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Rhino+Ramen&find_loc=Denver%2C+CO" }]
+    }
+  ],
+  "bankTitle": "Idea bank — swap-ins (not yet scheduled)",
+  "bank": [
+    {
+      "group": "Cheap eats", "lane": "food", "label": "Arepa cart on Larimer",
+      "note": "$8 lunch if the museum morning runs short",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=arepa+cart+Larimer+Denver+CO" }]
+    },
+    {
+      "group": "Cheap eats", "lane": "food", "label": "Slice window — Colfax",
+      "note": "the late-night option after games night"
+    },
+    {
+      "group": "If it rains", "lane": "hang", "label": "Retro arcade — token night",
+      "note": "Tuesdays are half price but any day works",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=retro+arcade&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "group": "If it rains", "lane": "explore", "label": "Thrift crawl on Broadway",
+      "note": "three blocks, four shops — Ben knows the good racks"
+    },
+    {
+      "group": "If it rains", "lane": "hang", "label": "Coffee + planning the next one",
+      "note": "the standing tradition — pick the next city before flying out"
+    }
+  ]
+}

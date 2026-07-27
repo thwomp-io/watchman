@@ -3,6 +3,47 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-07-26
+
+This release adds an SEC filing reader, a weather/conditions upgrade with an outdoor-windows
+solver, an interactive events calendar, and a second generation of the trip-planning views.
+
+### Added
+- **Filing reader** — `watchman finance filing SYM` fetches and renders a filing's content from
+  SEC EDGAR: it resolves the newest 8-K's press-release exhibit via the filing's document table
+  (filename backstop when untyped) and prints it as text. `--list` shows a filing's document
+  table, `--accession`/`--form`/`--doc` select a specific filing or exhibit. Requires the SEC
+  fair-access contact variable documented in docs/CLI.md; fails loud without it.
+- **Conditions v1.5** — the weather surface reads the full forecast response (feels-like, wind,
+  humidity, precipitation probability), alerts are feels-like-aware, and an hourly
+  **outdoor-windows solver** answers "when today is it actually nice out." The Travel dashboard
+  gains an at-a-glance conditions tile row.
+- **Events calendar** — `watchman travel calendar` merges the travel almanac and ticketed events
+  into a month grid; the console renders it as an interactive widget and a full wall-board
+  dashboard tab.
+- **Trip-planning views, second generation** — the schedule and food-bank views add a
+  source-link contract (`links: [{label, url}]` per entry, rendered as ↗ anchors in tooltips and
+  detail records), a schedule-bank options panel for the unscheduled layer, and **per-date
+  availability bands** — a trip whose home base changes mid-trip now renders the correct band
+  per day instead of a weekly pattern.
+- **Reviews texture tier** (travel) — an optional reviews provider for destination and
+  restaurant research (SerpAPI-keyed; the demo experience stays keyless).
+- Sample packs ship schedule + food-bank trip data, so the planner views demonstrate out of the
+  box on the VIZ tab.
+
+### Changed
+- **VAULT on phones** uses a master-detail layout (list, then document) — the side-by-side
+  layout was unusable at phone widths.
+- **Trap-map ladder, third generation** — chunky rung bars, per-symbol lane accents (hot rungs
+  keep their lane color; heat rides an accent-colored glow), live strips, and distance chips.
+- The theme menu returned to the app baseplate alongside its Settings home.
+
+### Fixed
+- Filing exhibit resolution uses one uniform type map across list and fetch paths.
+- Schedule marker capacity counts the time prefix, so long marker labels no longer overflow.
+- `console-shot` expands collapsed rail groups before capture, so screenshots cannot silently
+  omit a dashboard group.
+
 ## [0.9.0] - 2026-07-16
 
 This release adds a Settings panel, a single user-config overlay (`harness.yaml`), a whole-book
@@ -304,6 +345,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.10.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.0
 [0.9.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.9.0
 [0.8.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.8.0
 [0.7.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.7.1

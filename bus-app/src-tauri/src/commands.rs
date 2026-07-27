@@ -171,8 +171,7 @@ pub fn get_user_overlay() -> Result<serde_json::Value, String> {
 /// Set (or clear) the remote-bus connection — the Settings panel's "Connect to online bus" flow.
 /// Field-allowlisted write (the set_active_pack pattern): never a raw config patch. Enabling
 /// remote AUTO-CLEARS the active pack — a fresh install's seeded demo pack silently overrides
-/// `bus_url` (a fresh install's seeded demo pack silently overrides a remote config); the one
-/// flow that enables remote kills it at the source.
+/// `bus_url`; the one flow that enables remote kills it at the source.
 #[tauri::command]
 pub fn set_bus_config(url: Option<String>, token: Option<String>) -> Result<serde_json::Value, String> {
     let mut cfg = config::load();
@@ -306,6 +305,42 @@ fn run_json_command(cmd: &str, args: &[String], cwd: &str, label: &str) -> Resul
     Ok(trimmed.to_string())
 }
 
+/// Resolve a `symbols_from: portfolio` widget's dynamic chip list. The webview
+/// names a widget, never a command: the resolver reuses the WIDGET'S OWN spawn shape (cmd + cwd
+/// from its config — the same sealed `tool_command` path every widget run takes) with the args
+/// swapped to the fixed `finance symbols --json` verb. A widget that hasn't opted in resolves
+/// nothing; a non-Command source (or a non-uv runner) falls back to the static list webview-side.
+#[tauri::command]
+pub async fn list_portfolio_symbols(lane: String, id: String) -> Result<Vec<String>, String> {
+    let pack = config::load()
+        .active_pack
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(config::expand_home);
+    tauri::async_runtime::spawn_blocking(move || {
+        let widget = dash::find_widget_for(pack.as_deref(), &lane, &id)
+            .ok_or_else(|| format!("unknown widget: {lane}/{id}"))?;
+        if widget.symbols_from.as_deref() != Some("portfolio") {
+            return Err(format!("widget {lane}/{id} has no dynamic symbol source"));
+        }
+        let dash::WidgetSource::Command { cmd, cwd, .. } = &widget.source else {
+            return Err("dynamic symbols need a command-sourced widget".into());
+        };
+        let args: Vec<String> =
+            ["run", "hn", "finance", "symbols", "--json"].iter().map(|s| s.to_string()).collect();
+        let raw = run_json_command(cmd, &args, cwd, "portfolio symbols")?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&raw).map_err(|e| format!("symbols parse: {e}"))?;
+        Ok(parsed["symbols"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn list_dashboards() -> Result<Vec<dash::Dashboard>, String> {
     // Pack-described dashboards (v2): an active pack that ships a `dashboards/` dir owns the
@@ -415,8 +450,22 @@ pub async fn run_widget(
         let widget = dash::find_widget_for(pack.as_deref(), &lane, &id)
             .ok_or_else(|| format!("unknown widget: {lane}/{id}"))?;
         // parameterized widgets: the symbol must be one the CONFIG declares — the webview
-        // selects from a closed list, it never injects arguments
+        // selects from a closed list, it never injects arguments. Widgets that opt into a
+        // DYNAMIC list (`symbols_from: portfolio`) can't enumerate it in config,
+        // so they get a closed GRAMMAR instead: a strict ticker shape that is injection-safe
+        // for the {symbol} substitution (no flags/spaces/paths can pass) while admitting
+        // whatever the portfolio currently holds. Static widgets keep the exact closed list.
+        // (Mirrored in the python door's _h_run_widget — the two-parsers rule.)
         let sym = match symbol {
+            Some(s) if widget.symbols_from.is_some() => {
+                let ok = (1..=10).contains(&s.len())
+                    && s.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                    && s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '.' || c == '-');
+                if !ok {
+                    return Err(format!("symbol {s} fails the ticker grammar"));
+                }
+                Some(s)
+            }
             Some(s) if widget.symbols.iter().any(|w| w == &s) => Some(s),
             Some(s) => return Err(format!("symbol {s} not in widget config")),
             None => None,

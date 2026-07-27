@@ -266,6 +266,95 @@ class TravelService:
             out.append(e)
         return out
 
+    def calendar_data(
+        self, start: date, end: date, *, city: str | None = None, variant: str = "grid"
+    ) -> dict[str, object]:
+        """The interactive-calendar viz contract: the reference almanac + live
+        ticketed events near home, merged into PER-DAY buckets over [start, end].
+
+        Shape: {title, subtitle, from, to, days:[{date, items:[{label, kind, segment, tier,
+        venue, time, url, source}]}], months:[...]} — `days`+`from`+`to` is the sniff signature
+        (all three sniffer surfaces); `months` is derived so the SAME JSON also drives the static
+        `calendar` SVG renderer (the two-consumer contract). Live events are best-effort: no
+        Ticketmaster key / a transient outage yields an almanac-only calendar, never an error —
+        the almanac is corpus-resident and always renders."""
+        pairs: list[tuple[EventResult, str]] = [
+            (e, self.event_tier(e)) for e in self.scan_reference(start, end)
+        ]
+        live_note = ""
+        home = city or self.weights.conditions.home
+        try:
+            if home:
+                for ce in self.scan_events([home], start, end):
+                    pairs += [(ev, self.event_tier(ev)) for ev in ce.events]
+        except ProviderError as live_err:
+            live_note = f"live events unavailable ({live_err}) — almanac only"
+
+        def kind_of(e: EventResult, tier: str) -> str:
+            seg = (e.segment or "").lower()
+            if "mega" in seg:
+                return "mega-event"
+            if "art" in seg or "theatre" in seg or "theater" in seg:
+                return "arts"
+            if seg in ("sports", "holiday", "personal", "music"):
+                return seg
+            return "misc"
+
+        # Calendar-local dedupe: (base-name, date) for EVERYTHING — a calendar is a per-day
+        # surface, so a residency keeps each night (unlike dedupe_events' tour-folding), and an
+        # almanac entry that also appears as an identically-named live listing folds once.
+        seen: set[tuple[str, str]] = set()
+        by_day: dict[str, list[dict[str, object]]] = {}
+        for e, tier in pairs:
+            base = e.name.split(" - ")[0].strip().lower()
+            key = (base, e.local_date)
+            if base and key in seen:
+                continue
+            seen.add(key)
+            by_day.setdefault(e.local_date, []).append({
+                "label": e.name, "kind": kind_of(e, tier), "segment": e.segment, "tier": tier,
+                "venue": e.venue, "time": e.local_time, "url": e.url, "source": e.source,
+            })
+        def _time_key(i: dict[str, object]) -> str:
+            return str(i.get("time") or "")
+
+        days: list[dict[str, object]] = [
+            {"date": day, "items": sorted(items, key=_time_key)}
+            for day, items in sorted(by_day.items())
+        ]
+
+        # months[] for the static renderer (name + {label, kind} + score = item count)
+        month_items: dict[str, list[dict[str, object]]] = {}
+        for day, items in sorted(by_day.items()):
+            month_items.setdefault(day[:7], []).extend(
+                {"label": i["label"], "kind": i["kind"]} for i in items
+            )
+        months = [
+            {
+                "name": date.fromisoformat(f"{mkey}-01").strftime("%b %Y"),
+                "items": mitems,
+                "score": len(mitems),
+            }
+            for mkey, mitems in sorted(month_items.items())
+        ]
+
+        subtitle = f"{home or 'almanac'} · {start.isoformat()} → {end.isoformat()}"
+        if live_note:
+            subtitle += f" · {live_note}"
+        out: dict[str, object] = {
+            "title": "Calendar — almanac + ticketed events",
+            "subtitle": subtitle,
+            "from": start.isoformat(),
+            "to": end.isoformat(),
+            "days": days,
+            "months": months,
+        }
+        if variant == "big":
+            # The sniff marker for the BIG month-board twin (one month at a time, wall-display
+            # cells) — same shape otherwise, so both twins ride one emitter (v2).
+            out["variant"] = "big"
+        return out
+
     def scan_events(
         self,
         cities: list[str],
@@ -459,6 +548,7 @@ class TravelService:
             timezone=tz or (loc.timezone or ""),
             temperature_unit="°F" if fahrenheit else "°C",
             precipitation_unit="inch" if fahrenheit else "mm",
+            wind_unit="mph" if fahrenheit else "km/h",
             days=days,
         )
 
@@ -510,6 +600,23 @@ class TravelService:
             air = None  # air sense down -> weather flags still fire (graceful degradation)
         flags = compute_flags(scope="home", place=cfg.home, weather=weather, air=air, th=cfg.thresholds)
 
+        # v1.5 tiers B+C: today's outdoor-windows read + the current-conditions "now" half
+        # (ONE hourly+current fetch + the pure solver; overlay prefs). Best-effort — a down
+        # hourly endpoint degrades to outdoor=None/now=None, never kills the pulse.
+        outdoor = None
+        now = None
+        try:
+            from harness.travel.conditions import compute_outdoor_plan, outdoor_prefs_from_overlay
+            from harness.travel.providers import get_weather_provider as _gwp
+
+            provider = _gwp("open-meteo")
+            hours, now = provider.hourly_forecast(
+                weather.latitude, weather.longitude, day0, day0, fahrenheit=True
+            )
+            outdoor = compute_outdoor_plan(day0.isoformat(), hours, outdoor_prefs_from_overlay())
+        except ProviderError:
+            outdoor = None  # a down hourly endpoint never kills the pulse (hourly is contract now)
+
         # finalized trips within arm_days -> watch the destination over its (horizon-capped) window
         armed: list[str] = []
         for trip in self.reader.scan_trips():
@@ -532,10 +639,14 @@ class TravelService:
             )
             armed.append(f"{trip.destination} ({trip.start.isoformat()})")
 
-        return ConditionsReport(
+        from harness.travel.conditions import conditions_tiles
+
+        rep = ConditionsReport(
             as_of=day0.isoformat(), home=cfg.home, quiet=not flags,
-            flags=flags, weather=weather, air=air, armed_trips=armed,
+            flags=flags, weather=weather, air=air, armed_trips=armed, outdoor=outdoor, now=now,
         )
+        rep.tiles = conditions_tiles(rep)  # the flat dashboard contract (tier C) — derived last
+        return rep
 
     def get_earthquakes(
         self,
@@ -576,16 +687,23 @@ class TravelService:
         *,
         radius_m: int = 1500,
         live_ratings: bool = False,
+        yelp: bool = False,
+        yelp_query: str | None = None,
         refresh: bool = False,
         hero_images: bool = False,
     ) -> FoodReport:
-        """Eateries near `place` — two-tier. Tier 1 (default, KEYLESS): OSM Overpass
-        enumeration — what exists, from data instead of memory. Tier 2 (`live_ratings=True`, QUOTA
-        — confirm first): SerpAPI google_maps ratings merged on, ~1 search, cached."""
+        """Eateries near `place` — multi-tier (what exists + what's good +
+        what locals say). Tier 1 (default,
+        KEYLESS): OSM Overpass enumeration — what exists, from data instead of memory. Tier 2
+        (`live_ratings=True`, QUOTA — confirm first): SerpAPI google_maps ratings merged on,
+        ~1 search, cached. Tier 3 (`yelp=True`, QUOTA — confirm first): the Yelp texture layer —
+        review snippets + neighborhoods + Yelp's own ratings, ~1 search, cached; `yelp_query`
+        drives Yelp's lens ("brunch", "cocktail bars"; default "restaurants")."""
         from harness.travel.providers.food_provider import (
             OverpassFoodProvider,
             SerpApiLocalFoodProvider,
             merge_eateries,
+            merge_yelp_eateries,
         )
 
         loc = geocode(place)
@@ -595,8 +713,10 @@ class TravelService:
             loc.latitude, loc.longitude, radius_m=radius_m
         )
         notes = [f"OSM Overpass enumeration (keyless): {len(eateries)} mapped eateries"]
-        if live_ratings:
+        provider: SerpApiLocalFoodProvider | None = None
+        if live_ratings or yelp:
             provider = SerpApiLocalFoodProvider(get_settings().serpapi_key)
+        if live_ratings and provider is not None:
             rated = provider.rated_eateries(
                 geocode_label(loc), loc.latitude, loc.longitude, refresh=refresh
             )
@@ -608,6 +728,18 @@ class TravelService:
             )
         else:
             notes.append("ratings tier NOT spent (opt-in: --live-ratings) — enumeration only")
+        if yelp and provider is not None:
+            before = provider.search_count
+            yelp_rows = provider.yelp_eateries(
+                geocode_label(loc), find_desc=yelp_query or "restaurants", refresh=refresh
+            )
+            eateries = merge_yelp_eateries(eateries, yelp_rows)
+            y_spent = "cache (0 quota)" if provider.search_count == before else "1 search"
+            notes.append(
+                f"Yelp texture merged ({yelp_query or 'restaurants'!s}): {len(yelp_rows)} rows · "
+                f"{y_spent}. Snippets/neighborhoods ride the rows; un-snippeted rows fell below "
+                "Yelp's ~10-row organic fold, not bad signs."
+            )
         if hero_images:
             from harness.travel.providers.food_provider import enrich_hero_images
 

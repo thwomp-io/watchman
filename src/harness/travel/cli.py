@@ -404,6 +404,40 @@ def events(
 
 
 @app.command()
+def calendar(
+    frm: str = typer.Option(..., "--from", help="YYYY-MM-DD"),
+    to: str = typer.Option(..., "--to", help="YYYY-MM-DD"),
+    city: str | None = typer.Option(
+        None, "--city", help="Live-events city (default: your home base, weights `conditions.home`)"
+    ),
+    variant: str = typer.Option(
+        "grid", "--variant",
+        help="Twin selector: 'grid' = the dense multi-month view; 'big' = the one-month wall board",
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """The calendar-grid contract: reference almanac + live ticketed events merged
+    into per-day buckets — the Travel ▸ Calendar interactive grid's data source (also renders via
+    the static `calendar` viz type through its derived months[]). Live events are best-effort;
+    the almanac always renders."""
+    svc = TravelService()
+    data = svc.calendar_data(date.fromisoformat(frm), date.fromisoformat(to), city=city, variant=variant)
+    if as_json:
+        console.print_json(json.dumps(data))
+        return
+    days = data.get("days") or []
+    console.print(f"[bold]{data.get('title')}[/bold]  [dim]{data.get('subtitle')}[/dim]")
+    assert isinstance(days, list)
+    for d in days[:30]:
+        items = d.get("items") or []
+        names = " · ".join(str(i.get("label")) for i in items[:4])
+        more = f" (+{len(items) - 4})" if len(items) > 4 else ""
+        console.print(f"  {d.get('date')}  {names}{more}")
+    if len(days) > 30:
+        console.print(f"[dim]  … {len(days) - 30} more day(s) — use --json for the full set[/dim]")
+
+
+@app.command()
 def reference(
     frm: str = typer.Option(..., "--from", help="YYYY-MM-DD"),
     to: str = typer.Option(..., "--to", help="YYYY-MM-DD"),
@@ -589,10 +623,15 @@ def weather(
     if not fc.days:
         console.print("[yellow]No forecast days returned for that window.[/yellow]")
         return
+    d0 = fc.days[0]
+    if d0.sunrise and d0.sunset:  # v1.5: the sun window rides the card header (same-call field)
+        console.print(f"[dim]sun {d0.sunrise[11:16]}–{d0.sunset[11:16]} ({d0.date})[/dim]")
     table = Table()
     unit = fc.temperature_unit
     punit = fc.precipitation_unit
-    for col in ("Date", "Conditions", f"High ({unit})", f"Low ({unit})", "Precip %", "Rain (hrs)", "Snow"):
+    cols = ("Date", "Conditions", f"High ({unit})", "Feels", f"Low ({unit})", "Precip %",
+            "Rain (hrs)", "Snow", "UV", f"Gusts ({fc.wind_unit})")
+    for col in cols:
         table.add_column(col)
     for d in fc.days:
         rain = "—"
@@ -603,9 +642,12 @@ def weather(
         table.add_row(
             d.date, d.condition,
             "—" if d.temp_max is None else f"{d.temp_max:.0f}",
+            "—" if d.feels_max is None else f"{d.feels_max:.0f}",
             "—" if d.temp_min is None else f"{d.temp_min:.0f}",
             "—" if d.precip_prob is None else f"{d.precip_prob}%",
             rain, snow,
+            "—" if d.uv_index_max is None else f"{d.uv_index_max:.0f}",
+            "—" if d.wind_gusts_max is None else f"{d.wind_gusts_max:.0f}",
         )
     console.print(table)
 
@@ -741,9 +783,12 @@ def pulse(
         return
 
     console.print(f"\nconditions · {rep.as_of} · [bold]{rep.home}[/bold]")
+    if rep.outdoor and rep.outdoor.note:  # v1.5: the outdoor-windows one-liner rides every render
+        console.print(f"[cyan]{rep.outdoor.note}[/cyan]")
     if rep.quiet:
         console.print(
-            "[green]QUIET — nothing crossed. No heat / smoke / wet day / snow in the window.[/green]"
+            "[green]QUIET — nothing crossed. No heat / smoke / wet day / snow / UV / wind "
+            "in the window.[/green]"
         )
         return
     table = Table()
@@ -761,20 +806,31 @@ def food(
     live_ratings: bool = typer.Option(
         False, "--live-ratings", help="QUOTA: merge Google ratings (1 SerpAPI search, cached; confirm first)"
     ),
+    yelp: bool = typer.Option(
+        False, "--yelp", help="QUOTA: merge the Yelp texture layer — snippets/neighborhoods/Yelp "
+        "ratings (1 SerpAPI search, cached; confirm first)"
+    ),
+    yelp_query: str = typer.Option(
+        "restaurants", "--yelp-query",
+        help="Yelp's find_desc lens ('brunch', 'cocktail bars', 'Best dinner restaurants')",
+    ),
     refresh: bool = typer.Option(False, "--refresh", help="Bypass the ratings cache (re-spends quota)"),
     hero_images: bool = typer.Option(
         False, "--hero-images", help="KEYLESS: scrape each place's own-website og:image hero"
     ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Eateries near a place — two-tier food discovery. Default = OSM Overpass
-    enumeration (KEYLESS, free): what exists, from data not memory. --live-ratings layers Google
-    ratings/price on top (1 quota search, day-cached). --hero-images lifts og:image heroes from
-    the places' own websites (keyless GETs, no quota)."""
+    """Eateries near a place — multi-tier food discovery (what exists + what's good + what
+    locals say). Default =
+    OSM Overpass enumeration (KEYLESS, free): what exists, from data not memory. --live-ratings
+    layers Google ratings/price on top (1 quota search, day-cached). --yelp layers the Yelp
+    texture tier — review snippets, neighborhoods, Yelp's own ratings (1 quota search, day-cached;
+    --yelp-query drives the lens). --hero-images lifts og:image heroes from the places' own
+    websites (keyless GETs, no quota)."""
     try:
         rep = TravelService().find_food(
-            near, radius_m=radius, live_ratings=live_ratings, refresh=refresh,
-            hero_images=hero_images,
+            near, radius_m=radius, live_ratings=live_ratings, yelp=yelp, yelp_query=yelp_query,
+            refresh=refresh, hero_images=hero_images,
         )
     except ProviderError as e:
         _fail(str(e))
@@ -796,6 +852,9 @@ def food(
         table.add_column(col)
     for ea in rep.eateries:
         rating = "—" if ea.rating is None else f"{ea.rating:.1f} ({ea.reviews or 0})"
+        if ea.yelp_rating is not None:
+            # Both lenses shown side-by-side — cross-source divergence is signal, not noise.
+            rating = f"{rating} · Y {ea.yelp_rating:.1f} ({ea.yelp_reviews or 0})"
         table.add_row(
             ea.name,
             ea.category.replace("_", " "),

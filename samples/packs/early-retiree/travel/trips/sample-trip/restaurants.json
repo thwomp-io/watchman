@@ -1,0 +1,91 @@
+{
+  "title": "Santa Fe week — restaurant bank",
+  "subtitle": "illustrative persona data (fictional venues) · quiet rooms, early seatings, green chile",
+  "taste": {
+    "loves": ["green chile", "kiva fireplaces", "early seatings", "a good margarita at 5"],
+    "avoid": ["loud bar scenes", "late dinners", "tasting menus over two hours"],
+    "notes": "Time-rich travel — no rush, but dinners start by 6:30. One dress-up dinner per trip; the rest stays relaxed."
+  },
+  "groups": [
+    { "key": "locked", "label": "On the schedule" },
+    { "key": "santafe", "label": "Candidates — Santa Fe" },
+    { "key": "taos", "label": "Candidates — Taos leg" },
+    { "key": "daytime", "label": "Daytime / market" }
+  ],
+  "restaurants": [
+    {
+      "name": "La Farola", "group": "locked", "area": "East of the Plaza", "cuisine": "Northern New Mexican",
+      "price": "$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "arrival-night supper, five minutes from the casita",
+      "confirm": "table for two held, 11/8 at 18:00",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=La+Farola&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "name": "El Cuervo Azul", "group": "locked", "area": "Plaza", "cuisine": "Contemporary Southwestern",
+      "price": "$$$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "the one dress-up dinner — corner table, early seating",
+      "confirm": "reservation held for 11/13, 18:00",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=El+Cuervo+Azul&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "name": "Casa de Cedro", "group": "locked", "area": "Taos Plaza", "cuisine": "New Mexican",
+      "price": "$$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "the Taos-overnight anchor — kiva fireplace room requested",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Casa+de+Cedro&find_loc=Taos%2C+NM" }]
+    },
+    {
+      "name": "Adobe Sky Cafe", "group": "locked", "area": "Ladera Lane", "cuisine": "New Mexican cafe",
+      "price": "$$", "status": "booked", "meals": ["lunch"],
+      "hostfit": "gallery-walk lunch — the sopaipillas are the draw",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Adobe+Sky+Cafe+Santa+Fe+NM" }]
+    },
+    {
+      "name": "Cocina de la Acequia", "group": "santafe", "area": "Railyard", "cuisine": "Farm-to-table",
+      "price": "$$$", "status": "banked", "meals": ["dinner"],
+      "note": "the swap-in if a night frees up; garden room is the ask",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Cocina+de+la+Acequia&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "name": "Posada del Sol dining room", "group": "santafe", "area": "Old Santa Fe Trail", "cuisine": "Continental / Southwestern",
+      "price": "$$$", "status": "verify", "meals": ["dinner"],
+      "note": "lovely room; confirm the shoulder-season schedule",
+      "confirm": "November midweek hours unconfirmed — call",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Posada+del+Sol+Santa+Fe+NM" }]
+    },
+    {
+      "name": "Chile Line Diner", "group": "santafe", "area": "Cerrillos Rd", "cuisine": "Diner / New Mexican",
+      "price": "$", "status": "new", "meals": ["breakfast", "lunch"],
+      "note": "from the trip thread — christmas-style enchiladas, zero pretense",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Chile+Line+Diner&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "name": "High Road Mercantile kitchen", "group": "taos", "area": "Truchas (en route)", "cuisine": "Cafe / bakery",
+      "price": "$", "status": "banked", "meals": ["lunch"],
+      "note": "the planned high-road lunch stop — pies worth the detour",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=mercantile+cafe+Truchas+NM" }]
+    },
+    {
+      "name": "Sagebrush & Juniper", "group": "taos", "area": "Taos, Paseo del Norte", "cuisine": "New American",
+      "price": "$$$", "status": "new", "meals": ["dinner"],
+      "note": "the backup if Casa de Cedro can't do the fireplace room",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Sagebrush+and+Juniper&find_loc=Taos%2C+NM" }]
+    },
+    {
+      "name": "Morning Kiln Bakery", "group": "daytime", "area": "Guadalupe district", "cuisine": "Bakery / coffee",
+      "price": "$", "status": "banked", "meals": ["breakfast"],
+      "note": "the default slow-morning stop — blue-corn pancakes on weekends",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Morning+Kiln+Bakery+Santa+Fe+NM" }]
+    },
+    {
+      "name": "Farmers market chile stand", "group": "daytime", "area": "Railyard (Sat)", "cuisine": "Market stall",
+      "price": "$", "status": "banked", "meals": ["snack"],
+      "note": "roasted-chile string to carry home — last outdoor market week"
+    },
+    {
+      "name": "Chocolate & Pinon", "group": "daytime", "area": "Plaza portal", "cuisine": "Chocolatier / cafe",
+      "price": "$$", "status": "new", "meals": ["snack"],
+      "note": "afternoon hot chocolate when the plaza turns cold",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Chocolate+and+Pinon&find_loc=Santa+Fe%2C+NM" }]
+    }
+  ]
+}

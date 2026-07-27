@@ -8,7 +8,7 @@
 #
 # Real preferences (home airport, screens, destination maps) belong in the tracker-resident
 # file, NEVER here: this file ships inside bundled-engine app installs, where personal data
-# becomes a frozen time-capsule (the ghost-lot incident class). Every field omitted here
+# becomes a frozen time-capsule (stale personal data baked into an install). Every field omitted here
 # falls back to the built-in model defaults, so this template changes no behavior.
 #
 # SYNC DISCIPLINE (for the tracker-resident copy): keep it in manual sync with the human

@@ -1,0 +1,81 @@
+{
+  "title": "Portland weekend — food bank",
+  "subtitle": "illustrative persona data (fictional venues) · food halls + one splurge",
+  "taste": {
+    "loves": ["food halls", "spicy noodles", "natural wine", "doughnuts"],
+    "avoid": ["hour-plus waits", "anything requiring a jacket"],
+    "notes": "Budget weekend — one mid splurge dinner max, the rest stays under $25/head. Partner is vegetarian-flexible."
+  },
+  "groups": [
+    { "key": "locked", "label": "On the schedule" },
+    { "key": "candidates", "label": "Candidates" },
+    { "key": "quick", "label": "Quick / cheap" }
+  ],
+  "restaurants": [
+    {
+      "name": "Rose Line Food Hall", "group": "locked", "area": "Central Eastside", "cuisine": "Food hall",
+      "price": "$$", "status": "booked", "meals": ["lunch"],
+      "hostfit": "arrival-day anchor — eight stalls, everyone wins",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Rose+Line+Food+Hall&find_loc=Portland%2C+OR" }]
+    },
+    {
+      "name": "Copper Fir Brewing", "group": "locked", "area": "Slabtown", "cuisine": "Brewpub",
+      "price": "$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "patio + a solid veggie burger — the easy first night",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Copper+Fir+Brewing+Portland+OR" }]
+    },
+    {
+      "name": "Marrow & Wheat", "group": "locked", "area": "Buckman", "cuisine": "Ramen",
+      "price": "$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "the late-night Saturday slot; queue thins after 8",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Marrow+and+Wheat+ramen&find_loc=Portland%2C+OR" }]
+    },
+    {
+      "name": "Fern & Filament", "group": "candidates", "area": "Alberta", "cuisine": "New Northwest",
+      "price": "$$$", "status": "verify", "meals": ["dinner"],
+      "note": "the one splurge candidate — check if the counter takes walk-ins",
+      "confirm": "no reservation yet; counter seats only",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Fern+and+Filament&find_loc=Portland%2C+OR" }]
+    },
+    {
+      "name": "Banh Mi Depot", "group": "candidates", "area": "Old Town", "cuisine": "Vietnamese",
+      "price": "$", "status": "banked", "meals": ["lunch"],
+      "note": "grab-and-go for a bookstore day",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Banh+Mi+Depot+Portland+OR" }]
+    },
+    {
+      "name": "Cart Block on Ash", "group": "candidates", "area": "Downtown", "cuisine": "Food carts",
+      "price": "$", "status": "banked", "meals": ["lunch", "dinner"],
+      "note": "the classic cart pod — birria cart is the pick",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Cart+Block+on+Ash&find_loc=Portland%2C+OR" }]
+    },
+    {
+      "name": "Glasswing Wine Bar", "group": "candidates", "area": "Division", "cuisine": "Natural wine / snacks",
+      "price": "$$", "status": "new", "meals": ["dinner"],
+      "note": "from the trip thread — small plates, no bookings",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Glasswing+Wine+Bar+Portland+OR" }]
+    },
+    {
+      "name": "Tamale Window", "group": "candidates", "area": "St. Johns", "cuisine": "Mexican",
+      "price": "$", "status": "new", "meals": ["lunch"],
+      "note": "far out — only if we end up on that side of the river"
+    },
+    {
+      "name": "Pink Anvil Doughnuts", "group": "quick", "area": "Hawthorne", "cuisine": "Doughnuts",
+      "price": "$", "status": "booked", "meals": ["breakfast"],
+      "hostfit": "the Monday-morning send-off",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Pink+Anvil+Doughnuts&find_loc=Portland%2C+OR" }]
+    },
+    {
+      "name": "Kettle & Crumb", "group": "quick", "area": "Pearl", "cuisine": "Bakery / coffee",
+      "price": "$", "status": "banked", "meals": ["breakfast"],
+      "note": "default morning stop near the hotel"
+    },
+    {
+      "name": "Gorge Fruit Stand (Hwy 30)", "group": "quick", "area": "Columbia Gorge", "cuisine": "Fruit stand",
+      "price": "$", "status": "banked", "meals": ["snack"],
+      "note": "Sunday hike lunch — peaches + sandwiches at the overlook",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=fruit+stand+Highway+30+Columbia+River+Gorge" }]
+    }
+  ]
+}

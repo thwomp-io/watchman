@@ -32,6 +32,12 @@ class Settings(BaseToolkitSettings):
     # Q4-in-10-K TTM-assembly trap). Free tier (250 req/day). Optional: absent →
     # `multiples` uses the keyless EDGAR path; present → it prefers FMP (auto). Set FMP_API_KEY.
     fmp_api_key: str | None = None
+    # SEC fair-access contact for www.sec.gov Archives fetches (N-PORT + the filing reader).
+    # Resolving it HERE (not bare os.environ) is the fix for a latent papercut: the var's documented
+    # home is the gitignored .env, which pydantic-settings loads into Settings fields — a direct
+    # os.environ read only ever saw a shell-exported value. Env var still overrides the file
+    # (pydantic-settings precedence), so both setups work. Sent ONLY to www.sec.gov, never shipped.
+    harness_sec_contact: str = ""
 
     @property
     def portfolio_path(self) -> Path:

@@ -59,3 +59,37 @@ describe("VaultZone — in-doc wikilink navigation (regression)", () => {
     expect(navigate).toHaveBeenCalledWith({ zone: "vault", doc: CITY.path });
   });
 });
+
+describe("VaultZone — phone master-detail (the 7/21 mobile-unusable field report)", () => {
+  beforeEach(() => {
+    mockTauri.reset();
+    mockTauri.setValue("list_vault_docs", [TRIP, CITY]);
+    mockTauri.set("read_doc", () => Promise.resolve("# hello"));
+  });
+
+  it("desktop: auto-selects a default doc (no empty stage) and marks the zone doc-open", async () => {
+    window.innerWidth = 1024;
+    const { container } = renderVault(vi.fn());
+    await screen.findByText("A trip");
+    expect(container.querySelector(".vault-zone.doc-open")).not.toBeNull();
+  });
+
+  it("phone: lands on the TREE (no auto-select), ◀ back returns from a doc", async () => {
+    window.innerWidth = 390;
+    const ROOT: VaultDoc = {
+      path: "travel/notes.md", area: "travel", dir: "travel",
+      name: "notes", title: "Root note", kind: "doc",
+    };
+    mockTauri.setValue("list_vault_docs", [ROOT, TRIP]);
+    const { container } = renderVault(vi.fn());
+    // the travel folder is open by default → its root-level doc is visible in the TREE
+    await screen.findByText("Root note");
+    // no doc auto-opened → the tree is the page
+    expect(container.querySelector(".vault-zone.doc-open")).toBeNull();
+    // open a doc → doc-open (CSS swaps rail→stage); ◀ returns to the tree
+    fireEvent.click(screen.getByText("Root note"));
+    expect(container.querySelector(".vault-zone.doc-open")).not.toBeNull();
+    fireEvent.click(screen.getByText("◀"));
+    expect(container.querySelector(".vault-zone.doc-open")).toBeNull();
+  });
+});

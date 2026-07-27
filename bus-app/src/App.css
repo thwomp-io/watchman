@@ -640,11 +640,11 @@ button {
   box-shadow: 0 1px 0 var(--etch-deep);
   transition: border-color 120ms, color 120ms, background 120ms;
 }
-button:hover:not(:disabled) { border-color: rgba(var(--amber-rgb), 0.45); color: var(--ink-max); }
-button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+button:hover:not(disabled) { border-color: rgba(var(--amber-rgb), 0.45); color: var(--ink-max); }
+button:active:not(disabled) { transform: translateY(1px); box-shadow: none; }
 button:disabled { opacity: 0.35; cursor: default; }
 button.primary { border-color: rgba(var(--amber-rgb), 0.5); color: var(--amber); }
-button.primary:hover:not(:disabled) { background: var(--amber-dim); }
+button.primary:hover:not(disabled) { background: var(--amber-dim); }
 
 select {
   font: 600 10.5px/1 var(--mono);
@@ -715,7 +715,7 @@ select {
 .navhist { display: flex; gap: 2px; }
 .navhist-btn { border: var(--hairline); background: var(--graphite-0); color: var(--ink-dim);
                padding: 4px 9px; border-radius: 4px; font-size: 11px; }
-.navhist-btn:not(:disabled):hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.4); }
+.navhist-btn:not(disabled):hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.4); }
 .navhist-btn:disabled { opacity: 0.3; cursor: default; }
 
 .clock { color: var(--ink-dim); letter-spacing: 0.12em; font-size: 11px;
@@ -969,7 +969,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   color: rgba(var(--amber-rgb), 0.62);
   font-size: 9px; letter-spacing: 0.16em;
 }
-.theme-toggle:hover:not(:disabled) { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45);
+.theme-toggle:hover:not(disabled) { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45);
                                      background: transparent; }
 .theme-toggle .glyph { font-size: 10px; line-height: 1; }
 /* self-update pill — rides the baseplate beside the build stamp (the version is the noun, this is
@@ -982,9 +982,9 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   padding: 3px 8px; font-size: 9px; letter-spacing: 0.14em;
   color: var(--ink-dim); background: transparent;
 }
-.updater-btn:hover:not(:disabled) { color: var(--amber); border-color: rgba(232, 163, 61, 0.45); }
+.updater-btn:hover:not(disabled) { color: var(--amber); border-color: rgba(232, 163, 61, 0.45); }
 .updater-btn.updater-go { color: var(--amber); border-color: rgba(232, 163, 61, 0.5); }
-.updater-btn.updater-go:hover:not(:disabled) { background: var(--amber-dim); }
+.updater-btn.updater-go:hover:not(disabled) { background: var(--amber-dim); }
 .updater-note { font-size: 9px; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; }
 .updater-avail { color: var(--amber); }
 .updater-dim { color: var(--ink-faint); }
@@ -1002,7 +1002,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .viz-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
             background: transparent; border: none; box-shadow: none; border-radius: 0;
             padding: 6px 12px; }
-.viz-item:hover:not(:disabled) { background: rgba(var(--etch-rgb), 0.03); }
+.viz-item:hover:not(disabled) { background: rgba(var(--etch-rgb), 0.03); }
 .viz-item.active { background: var(--amber-dim); box-shadow: inset 2px 0 0 var(--amber); }
 .viz-item.unsupported { opacity: 0.35; cursor: default; }
 .viz-item-name { font-size: 11.5px; color: var(--ink); text-transform: capitalize; }
@@ -1061,6 +1061,22 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
                     text-transform: none; }
 
 .vault-stage { flex: 1; min-width: 0; overflow-y: auto; padding: 0; }
+.vault-back { display: none; font: inherit; background: transparent; color: var(--amber);
+  border: 1px solid rgba(var(--amber-rgb), 0.4); border-radius: 5px; padding: 4px 10px; cursor: pointer; }
+/* PHONE MASTER-DETAIL (the 7/21 field report: rail + reader side-by-side left the reader ~10
+   chars wide — one-word-per-line recipes). ≤720px: the tree is the page; opening a doc swaps to
+   a full-width reader with ◀ back. Desktop untouched. */
+@media (max-width: 720px) {
+  .vault-zone { padding: 8px 10px; gap: 0; }
+  .vault-rail { width: 100%; }
+  .vault-stage { display: none; }
+  .vault-zone.doc-open .vault-rail { display: none; }
+  .vault-zone.doc-open .vault-stage { display: block; }
+  .vault-back { display: inline-flex; flex: none; }
+  .vault-stage-head { padding: 8px 10px; gap: 8px; }
+  .vault-stage-head .surface-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0; }
+}
 .vault-stage-head {
   display: flex; align-items: center; gap: 10px; padding: 10px 16px;
   border-bottom: var(--hairline); position: sticky; top: 0; z-index: 2;
@@ -1295,6 +1311,30 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
              border-radius: 2px; padding: 0 4px; margin-right: 6px; font-size: 8px;
              letter-spacing: 0.14em; animation: pulse 2.4s infinite; }
 
+/* viz-twin v2: structured detail rows + the source-links row + the schedule bank panel */
+.viz-detail-rows { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px;
+                   margin: 8px 0 0; font-size: 12.5px; line-height: 1.5; }
+.viz-detail-rows .k { color: var(--ink-faint); }
+.viz-detail-rows .v { color: var(--ink-dim); }
+.food-detail-meta { margin: 6px 0 0; font-size: 11px; color: var(--ink-dim); letter-spacing: 0.03em; }
+.viz-detail-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; }
+.viz-detail-links a { padding: 4px 10px; border: 1px solid rgba(var(--amber-rgb), 0.5);
+                      border-radius: 4px; color: var(--amber); font-size: 11.5px;
+                      letter-spacing: 0.04em; text-decoration: none; }
+.viz-detail-links a:hover { background: rgba(var(--amber-rgb), 0.14); border-color: var(--amber); }
+a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
+.sched-avail-legend { margin-top: 4px; }
+.sched-bank { margin-top: 12px; border-top: var(--hairline); padding-top: 10px; }
+.sched-bank-group { display: flex; align-items: baseline; gap: 12px; margin-top: 8px; }
+.sched-bank-cap { flex: none; min-width: 118px; font-size: 9.5px; color: var(--ink-faint);
+                  letter-spacing: 0.1em; text-transform: uppercase; }
+.sched-bank-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sched-bank-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+                   font-size: 11px; color: var(--ink-dim); text-align: left; border-radius: 12px; }
+.sched-bank-chip:hover { color: var(--ink); }
+.sched-bank-chip.selected { border-color: rgba(var(--amber-rgb), 0.6); color: var(--ink);
+                            box-shadow: inset 0 0 0 1px rgba(var(--amber-rgb), 0.3); }
+
 .boundary-fault { margin: 14px 16px; padding: 14px 16px; }
 
 .sched-rail-cap { font: 600 8px var(--mono); fill: var(--ink-faint); letter-spacing: 0.12em; }
@@ -1315,10 +1355,15 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .widget.span-4 { grid-column: span 4; }
 .widget.span-5 { grid-column: span 5; }
 .widget.span-6 { grid-column: span 6; }
+.widget.span-7 { grid-column: span 7; }
 /* Core (finance lane) runs a 6-column grid so the at-a-glance stat row fits 6 big-number tiles
    (a six-tile stat row) across the top. Half-width widgets are
    span-3, full-width span-6 in finance.json. Other dashboards stay on the default 4-col grid. */
 .dash-grid.lane-finance { grid-template-columns: repeat(6, 1fr); }
+/* Conditions runs 7 cols for the at-a-glance tile row (now/feels/UV/gusts/AQI/sunset/window
+    tier C); the span-2 tables below wrap onto clean halves (2+2+2 of 7 leaves a gap
+   column — acceptable; the row is the point). */
+.dash-grid.lane-travel-conditions { grid-template-columns: repeat(7, 1fr); }
 /* expand-in-place: a viz widget's title is clickable → DASH renders just that widget full-bleed
    (the `widget` nav ref); the masthead ◀ back restores the grid. Titles that get cut off in the
    small tile (concentration/allocation) are readable + the diagram renders large. */
@@ -1335,8 +1380,12 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
    (overriding the default fixed 340px) and its inner HTML content scrolls. */
 .widget.rows-2 { grid-row: span 2; }
 .widget.rows-3 { grid-row: span 3; }
+.widget.rows-4 { grid-row: span 4; }
+.widget.rows-5 { grid-row: span 5; }
 .dash-grid .widget.rows-2 .viz-canvas:not(.donut-bank),
-.dash-grid .widget.rows-3 .viz-canvas:not(.donut-bank) { height: 100%; }
+.dash-grid .widget.rows-3 .viz-canvas:not(.donut-bank),
+.dash-grid .widget.rows-4 .viz-canvas:not(.donut-bank),
+.dash-grid .widget.rows-5 .viz-canvas:not(.donut-bank) { height: 100%; box-sizing: border-box; }
 
 /* Dashboard Studio: the react-grid-layout path for layout-bearing dashboards.
    RGL absolutely-positions its cells, so the legacy span-N/rows-N grid classes are inert inside a
@@ -1450,6 +1499,9 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .dash-grid .treemap-canvas .viz-stage { flex: 1; min-height: 0; }
 .dash-grid .treemap-canvas .viz-svg { width: 100%; height: 100%; }
 .dash-grid .viz-hint { position: absolute; bottom: 3px; left: 12px; margin: 0; z-index: 1; }
+/* the calendar canvas flows its own legend+hint (the absolute dash-grid hint collided with the
+   legend row — eye-caught); keep them stacked in-flow at the canvas bottom */
+.dash-grid .cal-canvas .viz-hint { position: static; margin: 0; text-align: left; }
 /* Donut tile: fixed height + donut and legend SIDE-BY-SIDE so the round chart uses the wide span-2
    tile (instead of a small square with whitespace). */
 .dash-grid .donut-bank { height: 340px; align-items: center; }
@@ -1605,7 +1657,8 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
    natural-height column, in document order. Desktop is untouched. */
 @media (max-width: 720px) {
   .dash-grid,
-  .dash-grid.lane-finance {
+  .dash-grid.lane-finance,
+  .dash-grid.lane-travel-conditions {
     grid-template-columns: repeat(2, 1fr);
     grid-auto-flow: row;      /* dense backfill is a wide-canvas trick — keep reading order */
     grid-auto-rows: auto;
@@ -1673,37 +1726,52 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   html.pwa .console { height: 100dvh; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
 }
 
-/* the trap-map ladder bank — one vertical price ladder per laddered symbol */
+/* the trap-map ladder bank — v3 CHUNKY (the damage-meter pass):
+   dense stacks of fat accent-gradient bars; ladder order preserved; near-zero dead canvas */
 .ladder-bank { display: flex; flex-direction: column; gap: 6px; height: 100%; overflow: auto; }
 .ladder-committed { font: 600 10px var(--mono); letter-spacing: 0.08em; color: var(--ink-dim); }
-.ladder-row { display: flex; gap: 14px; flex: 1; overflow-x: auto; }
-.ladder-col { display: flex; flex-direction: column; min-width: 190px; flex: 1 1 190px; }
-.ladder-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 2px 4px;
-               min-width: 0; gap: 6px; }
-.ladder-sym { font: 700 12px var(--mono); color: var(--ink-strong); letter-spacing: 0.06em; }
-.ladder-day { font: 600 10px var(--mono); white-space: nowrap; overflow: hidden;
-              text-overflow: ellipsis; min-width: 0; }
+.ladder-row { display: flex; gap: 10px; flex: 1; overflow-x: auto; align-items: flex-start; }
+.ladder-col { display: flex; flex-direction: column; min-width: 178px; flex: 1 1 178px; gap: 3px; }
+.ladder-head { display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px; border-radius: 4px; }
+.ladder-sym { font: 800 13px var(--mono); color: var(--ink-strong); letter-spacing: 0.08em; }
+.ladder-day { font: 700 11px var(--mono); white-space: nowrap; }
 .ladder-day.pos { color: var(--sig-ok, #7fbf7f); } .ladder-day.neg { color: var(--sig-alert); }
-.ladder-day.dim { color: var(--ink-faint); }
-.ladder-svg { width: 100%; height: auto; }
-.ladder-rail { stroke: var(--etch); stroke-width: 1; }
-.ladder-shelf { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.55; }
-.ladder-shelf-label { font: 500 8.5px var(--mono); fill: var(--ink-faint); }
-/* v2 bold pass: rungs are value-scaled BARS (fills, not strokes); in-bar labels ride dark for
-   contrast on the green in both themes; hot (≤2% to fill) = brighter fill + the SVG glow filter */
-.ladder-rung { stroke: none; }
-.ladder-rung.buy { fill: var(--sig-ok, #7fbf7f); }
-.ladder-rung.sell { fill: var(--sig-alert); }
-.ladder-rung.hot { fill: var(--amber); }
-.ladder-rung-inlabel { font: 700 10px var(--mono); fill: #101314; }
-.ladder-rung-label { font: 700 10px var(--mono); }
-.ladder-rung-label.buy { fill: var(--sig-ok, #7fbf7f); }
-.ladder-rung-label.sell { fill: var(--sig-alert); }
-.ladder-dist { font: 600 9.5px var(--mono); fill: var(--ink-dim); }
-.ladder-dist.hot { fill: var(--amber); font-weight: 800; }
-.ladder-price { fill: var(--amber); }
-.ladder-price-pill { fill: var(--amber); }
-.ladder-price-text { font: 800 10.5px var(--mono); fill: #101314; }
+.ladder-day.dim { color: var(--ink-faint); font-weight: 500; }
+.ladder-stack { display: flex; flex-direction: column; gap: 3px; }
+/* the live-price strip — the brightest row in the column, the "you are here" divider */
+.ladder-price-strip { display: flex; align-items: center; gap: 7px; padding: 4px 8px;
+  border-radius: 3px; background: linear-gradient(180deg,
+    color-mix(in srgb, var(--amber, #e8a33d) 88%, white),
+    color-mix(in srgb, var(--amber, #e8a33d) 78%, black));
+  border: 1px solid color-mix(in srgb, var(--amber, #e8a33d) 55%, black);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35); }
+.ladder-price-caret { font: 800 10px var(--mono); color: #101314; }
+.ladder-price-num { font: 800 15px var(--mono); color: #101314; letter-spacing: 0.03em; }
+.ladder-price-tag { margin-left: auto; font: 700 8.5px var(--mono); letter-spacing: 0.14em;
+  color: color-mix(in srgb, #101314 72%, transparent); }
+/* rung rows — the fat bars; length = committed-$ share (chunk-floored) */
+.ladder-rung-row { display: flex; align-items: center; gap: 6px; }
+.ladder-rung-bar { display: flex; align-items: center; gap: 8px; height: 30px;
+  padding: 0 8px; border-radius: 3px; border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 1px 2px rgba(0,0,0,0.18);
+  min-width: 0; overflow: hidden; }
+.ladder-rung-qty { font: 800 12.5px var(--mono); color: #101314; white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.25); }
+.ladder-rung-val { font: 700 10px var(--mono); color: color-mix(in srgb, #101314 68%, transparent);
+  white-space: nowrap; margin-left: auto; }
+.ladder-rung-bar.hot { animation: ladderHot 1.6s ease-in-out infinite; }
+@keyframes ladderHot {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 0 4px 1px color-mix(in srgb, var(--hot-c, var(--amber, #e8a33d)) 55%, transparent); }
+  50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 0 12px 4px color-mix(in srgb, var(--hot-c, var(--amber, #e8a33d)) 85%, transparent); }
+}
+.ladder-dist { font: 800 11px var(--mono); color: var(--ink-dim); white-space: nowrap; margin-left: auto; }
+.ladder-dist.hot { color: var(--amber); }
+/* shelf rows — slim compact context strips (every shelf labeled; rows are cheap now) */
+.ladder-shelf-row { display: flex; align-items: center; height: 14px; padding: 0 8px;
+  border-radius: 2px; background: color-mix(in srgb, var(--ink-faint, #888) 12%, transparent);
+  border-left: 3px dotted var(--ink-faint); }
+.ladder-shelf-level { font: 600 9px var(--mono); color: var(--ink-faint); letter-spacing: 0.04em; }
 
 /* ————— bead family tree (bead-tree viz — the backlog org chart) ————————————————————— */
 .beadtree-canvas { display: flex; flex-direction: column; min-height: 0; }
@@ -1852,7 +1920,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   border: var(--hairline); border-radius: 4px; padding: 5px 8px; cursor: pointer;
 }
 .settings-actions { display: flex; gap: 8px; }
-.settings-actions button:hover:not(:disabled) { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
+.settings-actions button:hover:not(disabled) { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
 .settings-actions button:disabled { opacity: 0.4; cursor: default; }
 .settings-value { font: 400 10.5px var(--mono); color: var(--ink-strong); word-break: break-all; text-align: right; }
 .settings-value.dim, .settings-table .dim { color: var(--ink-faint); }
@@ -1884,7 +1952,7 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   /* one grid: 2 columns everywhere — the per-lane 6-col overrides yield to the viewport */
   .dash-grid, .dash-grid[class*="lane-"] { grid-template-columns: repeat(2, 1fr) !important; }
   .widget.span-2, .widget.span-3, .widget.span-4,
-  .widget.span-5, .widget.span-6 { grid-column: span 2; }
+  .widget.span-5, .widget.span-6, .widget.span-7 { grid-column: span 2; }
   /* tables SWIPE, never truncate — natural column widths inside a scroll window */
   .widget-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .widget-table table { min-width: max-content; font-size: 11px; }
@@ -1902,4 +1970,97 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
   /* the stage header: the raw path overlapped the title at phone — the title wins */
   .viz-stage-head .surface-when { display: none; }
   .viz-stage-head { flex-wrap: wrap; }
+}
+
+/* ── interactive calendar (the `calendar` twin) ─────────────────────────────── */
+.cal-canvas { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+/* the months grid owns the scroll (legend + hint stay pinned below — the eye caught the hint
+   overlapping January when the whole canvas tried to overflow instead) */
+.cal-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
+  flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
+.cal-month { padding: 10px 12px 12px; }
+.cal-month-name { margin: 0 0 8px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-wd { font-size: 9px; text-align: center; opacity: 0.55; padding-bottom: 2px; }
+.cal-cell {
+  position: relative; aspect-ratio: 1; border: 1px solid var(--stroke, #4443);
+  border-radius: 5px; background: transparent; color: inherit; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 2px; cursor: default; min-width: 0;
+}
+.cal-cell.blank { border: none; }
+.cal-cell.outside { opacity: 0.35; }
+.cal-cell.has-items { cursor: pointer; background: color-mix(in srgb, currentColor 7%, transparent); }
+.cal-cell.has-items:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.cal-cell.today { outline: 2px solid var(--amber, #d97706); outline-offset: -2px; }
+.cal-cell[data-tier="centerpiece"] { border-color: #1f5bc4; box-shadow: inset 0 0 0 1px #1f5bc4; }
+.cal-daynum { font-size: 10.5px; line-height: 1; }
+.cal-dots { display: flex; align-items: center; gap: 2px; }
+.cal-dots i { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.cal-more { font-size: 8px; font-style: normal; opacity: 0.7; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 2px 2px 0; flex: none; }
+.cal-legend-item { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; opacity: 0.8; }
+.cal-legend-item i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.cal-tip { position: fixed; z-index: 60; width: 260px; }
+.cal-tip-row { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; }
+.cal-tip-row i { width: 6px; height: 6px; border-radius: 50%; flex: none; position: relative; top: -1px; }
+.cal-tip-label { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-tip-time { font-size: 9.5px; opacity: 0.6; margin-left: auto; flex: none; }
+.cal-popup { max-width: 520px; }
+.cal-popup-body { padding: 12px 16px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.cal-popup-item { border: 1px solid var(--stroke, #4443); border-radius: 6px; padding: 8px 10px; }
+.cal-popup-item-head { display: flex; align-items: center; gap: 7px; }
+.cal-popup-item-head i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.cal-popup-item-meta { font-size: 10.5px; opacity: 0.7; margin: 3px 0 4px; }
+.cal-chip { font-size: 8px; font-style: normal; letter-spacing: 0.08em; padding: 1px 5px;
+  border-radius: 3px; border: 1px solid #1f5bc4; color: #1f5bc4; }
+@media (max-width: 720px) { .cal-months { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .cal-months { grid-template-columns: 1fr; } }
+
+/* ── the BIG calendar board (variant="big" — the fullscreen wall calendar) ────────────────── */
+.calbig-canvas { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+.calbig-head { display: flex; align-items: center; gap: 12px; flex: none; }
+.calbig-title { margin: 0; font-size: 22px; letter-spacing: 0.04em; min-width: 240px; text-align: center; }
+.calbig-nav, .calbig-today {
+  font: inherit; font-size: 12px; letter-spacing: 0.08em; padding: 5px 12px; cursor: pointer;
+  background: transparent; color: inherit; border: 1px solid var(--stroke, #4443); border-radius: 5px;
+}
+.calbig-nav:disabled { opacity: 0.3; cursor: default; }
+.calbig-nav:not(disabled):hover, .calbig-today:hover { border-color: var(--amber, #d97706); }
+.calbig-legend { margin-left: auto; display: flex; flex-wrap: wrap; gap: 12px; }
+.calbig-grid {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: auto; grid-auto-rows: 1fr; gap: 6px;
+}
+.calbig-wd { font-size: 11px; letter-spacing: 0.14em; opacity: 0.55; text-align: center; padding: 2px 0; }
+.calbig-cell {
+  border: 1px solid var(--stroke, #4443); border-radius: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden;
+}
+.calbig-cell.blank { border: none; }
+.calbig-cell.outside { opacity: 0.35; }
+.calbig-cell.has-items { cursor: pointer; background: color-mix(in srgb, currentColor 5%, transparent); }
+.calbig-cell.has-items:hover { background: color-mix(in srgb, currentColor 11%, transparent); }
+.calbig-cell.today { outline: 2.5px solid var(--amber, #d97706); outline-offset: -2.5px; }
+.calbig-cell[data-tier="centerpiece"] { border-color: #1f5bc4; box-shadow: inset 0 0 0 1px #1f5bc4; }
+.calbig-daynum { font-size: 15px; font-weight: 700; line-height: 1; flex: none; }
+.calbig-cell.today .calbig-daynum { color: var(--amber, #d97706); }
+.calbig-pills { display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: hidden; }
+.calbig-pill {
+  font-size: 11px; line-height: 1.35; padding: 2px 6px 2px 7px; border-radius: 3px;
+  border-left: 3px solid transparent; background: color-mix(in srgb, currentColor 8%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none;
+}
+.calbig-more { font-size: 9.5px; font-style: normal; opacity: 0.65; }
+/* the Big Calendar lane: its one widget IS the page — fill the viewport below the chrome
+   (masthead + group tabs + subtabs + paddings ≈ 158px), so a fullscreen monitor gets a true
+   wall calendar instead of a default-height tile (the 4K eye-shot caught the collapse). */
+.dash-grid.lane-travel-calendar-big .widget { grid-column: 1 / -1; height: calc(100vh - 178px); min-height: 480px; }
+.dash-grid.lane-travel-calendar-big .widget .viz-canvas { height: 100%; box-sizing: border-box; }
+
+@media (max-width: 720px) {
+  .calbig-title { min-width: 0; font-size: 16px; }
+  .calbig-legend { display: none; }
+  .calbig-pill { font-size: 9px; }
+  .calbig-daynum { font-size: 12px; }
 }

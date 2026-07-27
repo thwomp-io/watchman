@@ -9,7 +9,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { GridLayout, noCompactor, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
-import { listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard, runWidget, saveDashboard } from "./api";
+import {
+  listPortfolioSymbols, listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard, runWidget, saveDashboard } from "./api";
 import ErrorBoundary from "./ErrorBoundary";
 import JsonView from "./JsonView";
 import type { BusEvent, Dashboard, DirDoc, NewsItem, SurfaceState, Widget, WireDigest } from "./types";
@@ -26,6 +27,7 @@ import Treemap from "./viz/Treemap";
 import VestTimeline from "./viz/VestTimeline";
 import Ladder from "./viz/Ladder";
 import BeadTree from "./viz/BeadTree";
+import Calendar from "./viz/Calendar";
 import { useNav } from "./nav";
 import { isTauri } from "./transport";
 import { preprocessLinks, VaultImage } from "./VaultZone";
@@ -95,7 +97,10 @@ function pluck(data: unknown, path?: string | null): unknown {
 }
 
 function sniffViz(v: Record<string, unknown>): string {
-  if (v.windows && v.vests) return "vest-timeline";  // the vest-timeline sell-planning calendar
+  if (v.windows && v.vests) return "vest-timeline";
+  // calendar grid: per-day buckets + the window bounds (days alone would collide with forecasts);
+  // variant="big" routes to the one-month wall-board twin — same shape, one emitter
+  if (Array.isArray(v.days) && v.from && v.to) return v.variant === "big" ? "calendar-big" : "calendar";  // the vest-timeline sell-planning calendar
   // trap-map ladders: top-level symbols[] whose entries carry rungs (disjoint from every other shape)
   if (Array.isArray(v.symbols) && (v.symbols[0] as { rungs?: unknown } | undefined)?.rungs) return "ladder";
   // bead family tree: `beads` + `edges` (deliberately NOT nodes/links, so sankey can't claim it)
@@ -117,7 +122,8 @@ function sniffViz(v: Record<string, unknown>): string {
 const VIZ_COMP: Record<string, React.ComponentType<{ data: never }>> = {
   treemap: Treemap, sankey: Sankey, pies: Donuts, line: LineChart, matrix: Matrix,
   compare: Radar, schedule: Schedule, "food-bank": FoodBank, "vest-timeline": VestTimeline,
-  "rank-bar": BarChart, ladder: Ladder, "bead-tree": BeadTree,
+  "rank-bar": BarChart, ladder: Ladder, "bead-tree": BeadTree, calendar: Calendar,
+  "calendar-big": Calendar,  // same component — data.variant drives the wall-board layout
 };
 
 function StatBody({ data, widget }: { data: unknown; widget: Widget }) {
@@ -296,14 +302,28 @@ function NewsReader({ data }: { data: WireDigest }) {
 }
 
 function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget; forceTick: number }) {
+  // symbols_from: a dynamic chip list resolved from the portfolio seed — the widget
+  // tracks the real book lock-step. Resolved once per mount; the static `symbols` list is the
+  // offline/error fallback, so a failed resolve degrades to exactly the pre-dynamic-symbols behavior.
+  const [dynSymbols, setDynSymbols] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (widget.symbols_from !== "portfolio") return;
+    let alive = true;
+    listPortfolioSymbols(lane, widget.id)
+      .then((s) => { if (alive && s.length) setDynSymbols(s); })
+      .catch(() => {}); // fallback = the static list; never a broken chip row
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lane, widget.id, widget.symbols_from]);
+  const symbolList = dynSymbols ?? widget.symbols;
   // parameterized widgets: the selected symbol scopes the run AND the cache
   const [symbol, setSymbol] = useState<string | null>(widget.symbols?.[0] ?? null);
-  // Reconcile against the CURRENT widget: a pack swap can replace the symbol list while this component
-  // instance (same widget id) keeps its selected-symbol state — snap to a valid symbol so a bars/
-  // position widget never queries a ticker the freshly-loaded persona doesn't hold. Driving the run +
-  // cache key off effSymbol (not raw state) means the query is always valid even before the state-sync
-  // effect below commits.
-  const effSymbol = symbol && widget.symbols?.includes(symbol) ? symbol : (widget.symbols?.[0] ?? null);
+  // Reconcile against the CURRENT list: a pack swap (or the dynamic resolve landing) can replace
+  // the symbol list while this component instance (same widget id) keeps its selected-symbol
+  // state — snap to a valid symbol so a bars/position widget never queries a ticker the current
+  // book doesn't hold. Driving the run + cache key off effSymbol (not raw state) means the query
+  // is always valid even before the state-sync effect below commits.
+  const effSymbol = symbol && symbolList?.includes(symbol) ? symbol : (symbolList?.[0] ?? null);
   const ck = effSymbol ? `${widget.id}:${effSymbol}` : widget.id;
   // boot from cache: instant paint with last-known data, honest CACHED chip
   const [state, setState] = useState<SurfaceState>(() => {
@@ -372,11 +392,11 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
   // effSymbol already keeps the run/cache key correct; this just snaps the state so the pills highlight
   // the right symbol. ck derives from effSymbol, so this setSymbol won't re-trigger a run.
   useEffect(() => {
-    if (symbol !== null && widget.symbols && !widget.symbols.includes(symbol)) {
-      setSymbol(widget.symbols[0] ?? null);
+    if (symbol !== null && symbolList && !symbolList.includes(symbol)) {
+      setSymbol(symbolList[0] ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [widget.symbols]);
+  }, [symbolList]);
 
   const elapsed = state.status === "running"
     ? Math.max(0, Math.round((now.getTime() - state.startedAt.getTime()) / 1000))
@@ -403,9 +423,9 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
             return v != null && v !== "" ? <span className="widget-title-accent"> · {String(v)}</span> : null;
           })()}
         </span>
-        {(widget.symbols?.length ?? 0) > 0 && (
+        {(symbolList?.length ?? 0) > 0 && (
           <span className="symbol-pills">
-            {widget.symbols.map((s) => (
+            {symbolList.map((s) => (
               <button key={s} className={s === effSymbol ? "active" : ""}
                       onClick={() => setSymbol(s)}>{s}</button>
             ))}

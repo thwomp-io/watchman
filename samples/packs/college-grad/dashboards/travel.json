@@ -35,7 +35,7 @@
       "kind": "viz",
       "source": {
         "type": "file",
-        "path": "travel/trips/sample-trip/visuals/compare-data.json"
+        "path": "travel/trips/sample-trip/compare-data.json"
       },
       "refresh": "local60s",
       "span": 2,

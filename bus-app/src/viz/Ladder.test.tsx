@@ -35,11 +35,11 @@ describe("Ladder", () => {
     const { container } = render(<Ladder data={fixture} />);
     expect(screen.getByText("ACME")).toBeInTheDocument();
     expect(screen.getByText(/committed by resting buys/)).toBeInTheDocument();
-    expect(screen.getByText("3 @ 95.50")).toBeInTheDocument();    // in-bar label (v2: widest rung = map max)
-    expect(screen.getByText(/\$100 ×3/)).toBeInTheDocument();      // the clear shelf is labeled
-    expect(screen.queryByText(/\$95.80/)).toBeNull();               // the crowded shelf: line only (de-clutter)
-    expect(container.querySelectorAll(".ladder-shelf").length).toBe(2); // both LINES render regardless
-    expect(container.querySelectorAll(".ladder-price").length).toBe(1); // only the quotable symbol
+    expect(screen.getByText("3 @ 95.50")).toBeInTheDocument();    // on-bar label (v3 chunky rows)
+    expect(screen.getByText(/\$100 ×3/)).toBeInTheDocument();      // shelf strip labeled
+    expect(screen.getByText(/\$95.80 ×1/)).toBeInTheDocument();    // v3: EVERY shelf gets a strip (rows are cheap; the v2 de-clutter rule retired with the axis)
+    expect(container.querySelectorAll(".ladder-shelf-row").length).toBe(2); // both shelf strips render
+    expect(container.querySelectorAll(".ladder-price-strip").length).toBe(1); // only the quotable symbol
     expect(screen.getByText("unquotable")).toBeInTheDocument();    // honest degradation
   });
 

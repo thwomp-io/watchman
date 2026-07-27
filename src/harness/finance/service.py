@@ -28,6 +28,7 @@ from harness.finance.models import (
     CorrelationReport,
     DayGL,
     DayGLRow,
+    FilingReadout,
     FomcDecision,
     Fundamentals,
     MarketOverview,
@@ -117,6 +118,84 @@ class FinanceService:
         return self._fundamentals_provider(recent).get_fundamentals(
             symbol, lookup.cik, entity_name=lookup.title
         )
+
+    # ---- filing reader: fetch + read a filing's content from the Archives ----
+    def filing(
+        self,
+        symbol: str,
+        *,
+        form: str = "8-K",
+        cik: str | None = None,
+        accession: str | None = None,
+        doc: str | None = None,
+        list_only: bool = False,
+    ) -> FilingReadout:
+        """Read a filing's content — the earnings-print reader. Defaults resolve to the newest
+        8-K's EX-99 press-release exhibit (where a print's numbers/guidance/KPIs land within
+        minutes of the release); every default is overridable for the nonstandard case
+        (--accession for an older filing, --doc for a specific exhibit, --list to see the
+        directory first). Requires HARNESS_SEC_CONTACT for the Archives fetch (fail-loud)."""
+        from harness.finance.filing import (
+            fetch_document,
+            fetch_document_types,
+            html_to_text,
+            list_documents,
+            pick_press_release,
+        )
+        from harness.finance.providers.news_provider import fetch_filing_refs
+
+        lookup = self.resolve_cik(symbol, cik=cik)
+        if not lookup.found or lookup.cik is None:
+            raise ProviderError(
+                f"could not resolve a CIK for {symbol.upper()} — funds/ETFs/foreign ADRs aren't "
+                "US SEC filers (no 8-K to read); pass --cik <number> if you have one."
+            )
+        notes: list[str] = []
+        primary_doc = ""
+        filed = ""
+        if accession:
+            ref_accession = accession
+            notes.append("accession passed explicitly — form/filed reflect the request, not a lookup")
+        else:
+            refs = fetch_filing_refs(lookup.cik, form=form)
+            if not refs:
+                raise ProviderError(
+                    f"no recent {form} filings for {symbol.upper()} (CIK {lookup.cik}) in the "
+                    "submissions window — is the print actually out? (`hn finance watch` shows "
+                    "confirmed dates)"
+                )
+            ref = refs[0]
+            ref_accession, filed, primary_doc = ref.accession, ref.filed, ref.primary_doc
+            form = ref.form
+            if len(refs) > 1:
+                # Carry the accessions — a date alone can't be re-aimed at (dogfood catch, day one).
+                older = ", ".join(f"{r.form} {r.filed} = {r.accession}" for r in refs[1:4])
+                notes.append(f"older {form.split('/')[0]}s available via --accession: {older}")
+        documents = list_documents(lookup.cik, ref_accession)
+        doc_types = fetch_document_types(lookup.cik, ref_accession)
+        readout = FilingReadout(
+            symbol=symbol.upper(),
+            cik=lookup.cik,
+            form=form,
+            filed=filed,
+            accession=ref_accession,
+            documents=documents,
+            doc_types=doc_types,
+            notes=notes,
+        )
+        if list_only:
+            return readout
+        if doc:
+            if doc not in documents:
+                raise ProviderError(f"{doc} is not in this filing's directory — see the documents list")
+            chosen, why = doc, "document passed explicitly"
+        else:
+            chosen, why = pick_press_release(documents, primary_doc, doc_types)
+        readout.notes.append(why)
+        readout.doc = chosen
+        readout.url, raw = fetch_document(lookup.cik, ref_accession, chosen)
+        readout.text = html_to_text(raw)
+        return readout
 
     # ---- valuation multiples: EDGAR fundamentals + live price ----
     def multiples(

@@ -1,0 +1,90 @@
+{
+  "title": "Kona anniversary — restaurant bank",
+  "subtitle": "illustrative persona data (fictional venues) · booked anchors + candidates by coast",
+  "taste": {
+    "loves": ["fresh fish", "sunset seating", "quiet rooms", "Kona coffee desserts"],
+    "avoid": ["loud bar scenes", "long waits without a reservation"],
+    "notes": "Anniversary week — two anchor dinners booked, everything else stays swappable. Partner prefers early seatings."
+  },
+  "groups": [
+    { "key": "locked", "label": "On the schedule" },
+    { "key": "kailua", "label": "Candidates — Kailua side" },
+    { "key": "kohala", "label": "Candidates — Kohala side" },
+    { "key": "casual", "label": "Casual / daytime" }
+  ],
+  "restaurants": [
+    {
+      "name": "Pele Table", "group": "locked", "area": "Kailua seawall", "cuisine": "Pacific fine dining",
+      "price": "$$$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "the anniversary anchor — window table at sunset",
+      "confirm": "reservation held for 10/11, 19:00",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Pele+Table&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "name": "Coral Lanai", "group": "locked", "area": "Kailua seawall", "cuisine": "Island grill",
+      "price": "$$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "easy arrival-night dinner, walkable from the hotel",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Coral+Lanai+Kailua-Kona+HI" }]
+    },
+    {
+      "name": "Driftwood Deck", "group": "locked", "area": "Waikoloa", "cuisine": "Brunch",
+      "price": "$$$", "status": "booked", "meals": ["brunch"],
+      "hostfit": "farewell brunch before the airport run",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Driftwood+Deck&find_loc=Waikoloa%2C+HI" }]
+    },
+    {
+      "name": "Ahi Lantern", "group": "kailua", "area": "Old Kailua town", "cuisine": "Sushi / raw bar",
+      "price": "$$$", "status": "banked", "meals": ["dinner"],
+      "note": "counter seats face the harbor; walk-in early or skip",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Ahi+Lantern&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "name": "Mauka Porch", "group": "kailua", "area": "Holualoa (upslope)", "cuisine": "Farm-to-table",
+      "price": "$$$", "status": "verify", "meals": ["dinner"],
+      "note": "pairs with the coffee-farm afternoon — call about the Tuesday closure",
+      "confirm": "hours unconfirmed for October",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Mauka+Porch+Holualoa+HI" }]
+    },
+    {
+      "name": "Hilo Moon Noodle House", "group": "kailua", "area": "Kailua industrial row", "cuisine": "Saimin / noodles",
+      "price": "$$", "status": "new", "meals": ["lunch", "dinner"],
+      "note": "locals-lunch pick from the trip thread",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Hilo+Moon+Noodle+House&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "name": "Sea Salt & Cane", "group": "kohala", "area": "Kohala Sands Resort", "cuisine": "Steak / seafood",
+      "price": "$$$$", "status": "banked", "meals": ["dinner"],
+      "hostfit": "the on-property candidate for the last big dinner",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Sea+Salt+and+Cane+Waimea+HI" }]
+    },
+    {
+      "name": "Paniolo House", "group": "kohala", "area": "Waimea town", "cuisine": "Ranch / grill",
+      "price": "$$$", "status": "new", "meals": ["dinner"],
+      "note": "upcountry drive; cool evenings — bring a layer",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Paniolo+House&find_loc=Waimea%2C+HI" }]
+    },
+    {
+      "name": "Puako Fish Counter", "group": "kohala", "area": "Puako strip", "cuisine": "Fish market plates",
+      "price": "$$", "status": "new", "meals": ["lunch"],
+      "note": "post-snorkel lunch option near the north harbor",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Puako+Fish+Counter+Puako+HI" }]
+    },
+    {
+      "name": "Tide Shack", "group": "casual", "area": "Kailua pier", "cuisine": "Poke window",
+      "price": "$", "status": "banked", "meals": ["lunch"],
+      "note": "the default beach-day lunch — cash only",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Tide+Shack+poke&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "name": "Hoku Grove Roastery Cafe", "group": "casual", "area": "Holualoa", "cuisine": "Coffee / pastry",
+      "price": "$", "status": "banked", "meals": ["breakfast"],
+      "note": "attached to the farm tour — mac-nut sticky buns",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Hoku+Grove+Roastery+Holualoa+HI" }]
+    },
+    {
+      "name": "Lanikea Shave Ice", "group": "casual", "area": "Waikoloa shops", "cuisine": "Shave ice",
+      "price": "$", "status": "new", "meals": ["snack"],
+      "note": "the Kohala-days afternoon stop"
+    }
+  ]
+}

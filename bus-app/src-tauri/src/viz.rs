@@ -30,6 +30,14 @@ fn sniff(v: &serde_json::Value) -> &'static str {
     if has("windows") && has("vests") {
         return "vest-timeline";
     }
+    // calendar grid: per-day buckets + window bounds (days alone would collide with forecasts);
+    // variant="big" routes to the one-month wall-board twin — same shape, one emitter
+    if v.get("days").is_some_and(|d| d.is_array()) && has("from") && has("to") {
+        if v.get("variant").and_then(|x| x.as_str()) == Some("big") {
+            return "calendar-big";
+        }
+        return "calendar";
+    }
     if let Some(symbols) = v.get("symbols").and_then(|s| s.as_array()) {
         if symbols.first().is_some_and(|s| s.get("rungs").is_some()) {
             return "ladder";
@@ -115,7 +123,7 @@ fn walk(dir: &Path, depth: usize, vault: &Path, out: &mut Vec<VizEntry>) {
                 supported: matches!(viz_type,
                     "sankey" | "treemap" | "pies" | "line" | "matrix" | "compare" | "schedule"
                         | "food-bank" | "scatter" | "rank-bar" | "vest-timeline" | "ladder"
-                        | "bead-tree"),
+                        | "bead-tree" | "calendar" | "calendar-big"),
             });
         }
     }

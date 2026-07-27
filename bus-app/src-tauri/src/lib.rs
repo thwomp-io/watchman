@@ -65,6 +65,7 @@ pub fn run() {
             commands::run_surface,
             commands::list_viz,
             commands::list_dashboards,
+            commands::list_portfolio_symbols,
             commands::save_dashboard,
             commands::reset_dashboard,
             commands::run_widget,

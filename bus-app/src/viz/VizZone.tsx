@@ -20,9 +20,10 @@ import Treemap from "./Treemap";
 import VestTimeline from "./VestTimeline";
 import Ladder from "./Ladder";
 import BeadTree from "./BeadTree";
+import Calendar from "./Calendar";
 
 const PHASE_BY_TYPE: Record<string, string> = {
-  unknown: "TBD",  // remaining: radial/map/calendar — interactive on demand
+  unknown: "TBD",  // remaining: radial/map — interactive on demand (calendar landed)
 };
 
 // `target` (a VizEntry.path) deep-links a specific diagram (e.g. back/forward restoring the scatter you
@@ -185,6 +186,8 @@ export default function VizZone({ target }: { target?: string }) {
         {data != null && selected?.viz_type === "vest-timeline" && <VestTimeline data={data as never} />}
         {data != null && selected?.viz_type === "ladder" && <Ladder data={data as never} />}
         {data != null && selected?.viz_type === "bead-tree" && <BeadTree data={data as never} />}
+        {data != null && selected?.viz_type === "calendar" && <Calendar data={data as never} />}
+        {data != null && selected?.viz_type === "calendar-big" && <Calendar data={data as never} />}
         {!selected && <p className="empty">SELECT A DIAGRAM FROM THE RAIL</p>}
         </ErrorBoundary>
       </section>

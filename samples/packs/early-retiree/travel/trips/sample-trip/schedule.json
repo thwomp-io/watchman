@@ -1,0 +1,117 @@
+{
+  "title": "Santa Fe shoulder-season week — day plan",
+  "subtitle": "illustrative persona data (fictional venues) · casita base, Taos overnight mid-week",
+  "start": "2026-11-08",
+  "end": "2026-11-14",
+  "dayStart": "08:00",
+  "dayEnd": "21:00",
+  "availability": {
+    "groups": [
+      { "key": "road", "label": "on the road (from Scottsdale)", "color": "#d1d5db" },
+      { "key": "plaza", "label": "Santa Fe casita base", "color": "#fcd34d" },
+      { "key": "taos", "label": "Taos overnight", "color": "#c4b5fd" }
+    ],
+    "weekday": [{ "group": "plaza" }],
+    "weekend": [{ "until": "10:00", "group": "plaza" }, { "group": "plaza" }],
+    "dates": {
+      "2026-11-08": [{ "until": "16:00", "group": "road" }, { "group": "plaza" }],
+      "2026-11-11": [{ "until": "11:00", "group": "plaza" }, { "group": "taos" }],
+      "2026-11-12": [{ "until": "15:00", "group": "taos" }, { "group": "plaza" }]
+    }
+  },
+  "markerLabel": "in town",
+  "markerCats": {
+    "art": { "label": "art / openings", "color": "#f472b6" },
+    "logistics": { "label": "logistics", "color": "#60a5fa" }
+  },
+  "markers": [
+    { "date": "2026-11-09", "time": "10a", "label": "Ladera Lane openings", "cat": "art" },
+    { "date": "2026-11-11", "label": "high road — aspens holding", "cat": "logistics" },
+    { "date": "2026-11-13", "time": "8a", "label": "farmers market (last outdoor week)", "cat": "art" },
+    { "date": "2026-11-14", "time": "9a", "label": "checkout + the long way home", "cat": "logistics" }
+  ],
+  "items": [
+    {
+      "date": "2026-11-08", "start": "18:00", "end": "19:30",
+      "label": "Arrival supper — La Farola", "lane": "dining",
+      "note": "walkable from the casita; early seating after the drive",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=La+Farola&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "date": "2026-11-09", "start": "10:00", "end": "12:30",
+      "label": "Ladera Lane gallery walk", "lane": "art",
+      "note": "opening morning — start at the weaving studio end",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Ladera+Lane+galleries+Santa+Fe+NM" }]
+    },
+    {
+      "date": "2026-11-09", "start": "13:00", "end": "14:00",
+      "label": "Green chile lunch — Adobe Sky Cafe", "lane": "dining",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Adobe+Sky+Cafe&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "date": "2026-11-10", "start": "09:30", "end": "11:00",
+      "label": "Folk art museum (member hour)", "lane": "art",
+      "note": "quiet before the tour buses",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=folk+art+museum+Santa+Fe+NM" }]
+    },
+    {
+      "date": "2026-11-10", "start": "16:00", "end": "18:00",
+      "label": "Twilight soak — Piedra Azul Springs", "lane": "relax",
+      "note": "the quiet pools; robes included with the couples slot",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Piedra+Azul+Springs&find_loc=Santa+Fe%2C+NM" }]
+    },
+    {
+      "date": "2026-11-11", "start": "11:00", "end": "14:30",
+      "label": "High road drive to Taos", "lane": "logistics",
+      "note": "the base flip — slow route through the weaving villages, lunch en route"
+    },
+    {
+      "date": "2026-11-11", "start": "18:30", "end": "20:00",
+      "label": "Dinner — Casa de Cedro", "lane": "dining",
+      "note": "the Taos anchor — kiva fireplace room requested",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Casa+de+Cedro&find_loc=Taos%2C+NM" }]
+    },
+    {
+      "date": "2026-11-12", "start": "09:00", "end": "11:30",
+      "label": "Rio Seco cliff dwellings loop", "lane": "explore",
+      "note": "an easy two miles; the light is best before noon",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Rio+Seco+cliff+dwellings+trail+Taos+NM" }]
+    },
+    {
+      "date": "2026-11-13", "start": "08:30", "end": "10:00",
+      "label": "Farmers market + coffee", "lane": "explore",
+      "note": "roasted-chile string for the freezer at home"
+    },
+    {
+      "date": "2026-11-13", "start": "18:00", "end": "20:00",
+      "label": "Farewell dinner — El Cuervo Azul", "lane": "dining",
+      "note": "the week's one dress-up dinner; corner table held",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=El+Cuervo+Azul&find_loc=Santa+Fe%2C+NM" }]
+    }
+  ],
+  "bankTitle": "Idea bank — swap-ins (not yet scheduled)",
+  "bank": [
+    {
+      "group": "Town", "lane": "art", "label": "Weaving studio visit",
+      "note": "by appointment — call if the Wednesday plan shifts",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=weaving+studio+Santa+Fe+NM" }]
+    },
+    {
+      "group": "Town", "lane": "relax", "label": "Second soak — morning slot",
+      "note": "if the Tuesday twilight books out"
+    },
+    {
+      "group": "Town", "lane": "art", "label": "Print shop demo (Fridays)",
+      "note": "hand-press demo at 2 — pairs with a plaza afternoon"
+    },
+    {
+      "group": "Day trips", "lane": "explore", "label": "Abiquiu-side mesa drive",
+      "note": "the long red-rock loop; save for a clear-sky day",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=mesa+scenic+drive+Abiquiu+NM" }]
+    },
+    {
+      "group": "Day trips", "lane": "explore", "label": "Ridge walk — Cerro Blanco",
+      "note": "check wind forecast; exposed above the saddle"
+    }
+  ]
+}

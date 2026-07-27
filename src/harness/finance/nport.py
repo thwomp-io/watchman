@@ -17,7 +17,6 @@ keys) and fails LOUD with instructions when unset. Nothing personal ships in thi
 
 from __future__ import annotations
 
-import os
 import re
 
 from pydantic import BaseModel, Field
@@ -59,7 +58,12 @@ class NportDiff(BaseModel):
 
 
 def _sec_contact_headers() -> dict[str, str]:
-    contact = os.environ.get("HARNESS_SEC_CONTACT", "").strip()
+    # Resolved via Settings since (env var > .env file — pydantic-settings precedence):
+    # a bare os.environ read only ever saw a shell-exported value, despite this module documenting
+    # the .env as the var's home. Same resolver as the filing reader — one behavior, two labels.
+    from harness.finance.config.settings import get_settings
+
+    contact = get_settings().harness_sec_contact.strip()
     if not contact:
         raise ProviderError(
             "SEC archive fetches require an email-contact User-Agent (SEC fair-access policy; "

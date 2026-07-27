@@ -238,6 +238,10 @@ function VaultZone({ target }: { target?: string }) {
     void listVaultDocs().then((ds) => {
       setDocs(ds);
       if (target) return; // a deep-link target opens via the effect below — don't flash the default first
+      // Phone master-detail: land on the TREE, not a default doc (the 7/21 field report — a
+      // phone opening straight into a doc buries the browse surface). Desktop keeps the
+      // no-empty-stage default-select.
+      if (window.innerWidth <= 720) return;
       const first = ds.find((d) => d.area === "travel") ?? ds[0];
       if (first) select(first);
     });
@@ -319,7 +323,7 @@ function VaultZone({ target }: { target?: string }) {
   const processed = useMemo(() => preprocessLinks(body), [body]);
 
   return (
-    <div className="vault-zone">
+    <div className={`vault-zone${selected ? " doc-open" : ""}`}>
       <nav className="vault-rail bezel">
         <div className="vault-rail-head">
           <input
@@ -368,6 +372,8 @@ function VaultZone({ target }: { target?: string }) {
       <section className="vault-stage bezel">
         {selected && (
           <header className="vault-stage-head">
+            {/* phone master-detail: the reader replaces the tree; ◀ returns to it (CSS-hidden on desktop) */}
+            <button className="vault-back" onClick={() => setSelected(null)}>◀</button>
             <span className="lane-tag">{selected.area}</span>
             <span className="surface-when">{selected.path}</span>
           </header>

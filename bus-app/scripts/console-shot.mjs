@@ -105,8 +105,15 @@ if (dashLane) {
 // VIZ rail; the DASH lanes got the same treatment earlier).
 if (vizItem) {
   await page.waitForTimeout(600);
-  for (const t of await page.locator('.viz-top-toggle:has-text("▸")').all())
+  // expand collapsed top groups ONE AT A TIME, re-querying between clicks — each expansion
+  // re-renders the rail, so a batch of pre-collected handles goes stale after the first click
+  // (the eye-run: BEADS expanded, TRAVEL/PLANS silently didn't)
+  for (let i = 0; i < 12; i++) {
+    const t = page.locator('.viz-top-toggle:has-text("▸")').first();
+    if ((await t.count()) === 0) break;
     await t.click().catch(() => {});
+    await page.waitForTimeout(150);
+  }
   await page.waitForTimeout(400);
   await page.locator(".viz-rail button", { hasText: new RegExp(vizItem, "i") }).first()
     .click().catch(() => {});

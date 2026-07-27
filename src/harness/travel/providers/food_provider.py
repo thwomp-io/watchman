@@ -147,6 +147,51 @@ class SerpApiLocalFoodProvider:
             )
         return out
 
+    def yelp_eateries(
+        self, find_loc: str, *, find_desc: str = "restaurants", refresh: bool = False
+    ) -> list[Eatery]:
+        """SerpAPI `yelp` engine — the review-TEXTURE tier. 1 quota search, cached
+        like everything else. Returns Yelp's organic ranking for `find_desc` near `find_loc`
+        (a location STRING — Yelp geocodes it; no lat/lng needed, unlike google_maps).
+
+        What this tier adds over the google_maps ratings pack: the review `snippet` (the
+        what-locals-say one-liner), `neighborhoods`, Yelp's own rating/review-count (kept separate —
+        cross-source divergence is signal), and `place_ids` (the key the yelp_reviews engine will
+        want for the deep-reviews follow-up). `find_desc` is a real lens — "Best dinner
+        restaurants" / "brunch" / "cocktail bars" each pull a different Yelp ranking."""
+        params: dict[str, Any] = {
+            "engine": "yelp",
+            "find_desc": find_desc,
+            "find_loc": find_loc,
+        }
+        raw, _ = self._cached_or_search(params, refresh=refresh)
+        out: list[Eatery] = []
+        for r in raw.get("organic_results") or []:
+            name = (r.get("title") or "").strip()
+            if not name:
+                continue
+            categories = ", ".join(
+                c.get("title", "") for c in (r.get("categories") or []) if c.get("title")
+            )
+            place_ids = r.get("place_ids") or []
+            out.append(
+                Eatery(
+                    name=name,
+                    category="restaurant",
+                    cuisine=categories,
+                    sources=["yelp"],
+                    yelp_rating=r.get("rating"),
+                    yelp_reviews=r.get("reviews"),
+                    price=r.get("price") or "",
+                    snippet=(r.get("snippet") or "").strip(),
+                    neighborhood=r.get("neighborhoods") or "",
+                    yelp_url=r.get("link") or "",
+                    yelp_place_id=str(place_ids[0]) if place_ids else "",
+                    thumbnail=r.get("thumbnail") or "",
+                )
+            )
+        return out
+
     def place_photos(self, data_id: str, *, refresh: bool = False, limit: int = 12) -> list[str]:
         """Full photo gallery for ONE place (google_maps_photos engine) — 1 quota search per place,
         date-cached like everything else. The rich layer for FINALISTS, never the whole sweep:
@@ -237,6 +282,35 @@ def merge_eateries(osm: list[Eatery], rated: list[Eatery]) -> list[Eatery]:
             by_key[key] = r
     out = list(by_key.values())
     out.sort(key=lambda e: (-(e.rating or 0), -(e.reviews or 0), e.name.lower()))
+    return out
+
+
+def merge_yelp_eateries(base: list[Eatery], yelp: list[Eatery]) -> list[Eatery]:
+    """Yelp texture merged onto the existing rows on normalized-name match; Yelp-only finds
+    appended. Same honest-gaps semantics as `merge_eateries` — Yelp's organic page is ~10 rows, so
+    an un-snippeted row just fell below Yelp's fold. Google fields are never overwritten (the
+    separate-ratings doctrine on the Eatery model); Yelp contributes its own fields + fallbacks
+    for price/cuisine when the base row has none."""
+    by_key = {normalize_name(e.name): e for e in base}
+    for y in yelp:
+        key = normalize_name(y.name)
+        if key in by_key:
+            row = by_key[key]
+            row.yelp_rating, row.yelp_reviews = y.yelp_rating, y.yelp_reviews
+            row.snippet = y.snippet or row.snippet
+            row.neighborhood = y.neighborhood or row.neighborhood
+            row.yelp_url, row.yelp_place_id = y.yelp_url, y.yelp_place_id
+            row.price = row.price or y.price
+            row.cuisine = row.cuisine or y.cuisine
+            row.thumbnail = row.thumbnail or y.thumbnail
+            row.sources = [*row.sources, "yelp"]
+        else:
+            by_key[key] = y
+    out = list(by_key.values())
+    # Sort keeps the Google-rating primary ordering; Yelp-only rows rank by their own rating.
+    out.sort(
+        key=lambda e: (-(e.rating or e.yelp_rating or 0), -(e.reviews or e.yelp_reviews or 0), e.name.lower())
+    )
     return out
 
 

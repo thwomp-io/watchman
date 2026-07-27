@@ -219,6 +219,19 @@ def find_reference(
 
 
 @mcp.tool()
+def travel_calendar(
+    start_date: str, end_date: str, city: str | None = None, variant: str = "grid"
+) -> dict[str, Any]:
+    """The calendar-grid contract: reference almanac + live ticketed events merged
+    into per-day buckets ({days:[{date, items:[{label,kind,segment,tier,venue,time,url}]}]}) —
+    the Travel ▸ Calendar interactive grid's data. Live events best-effort (no key / outage →
+    almanac-only, noted in the subtitle). Dates YYYY-MM-DD."""
+    return _svc().calendar_data(
+        date.fromisoformat(start_date), date.fromisoformat(end_date), city=city, variant=variant
+    )
+
+
+@mcp.tool()
 def list_trips(include_past: bool = False) -> list[dict[str, str]]:
     """The travel horizon — every upcoming trip + visit from the corpus `trip:` frontmatter blocks
     (corpus/travel/{trips,visits}/), countdown-ordered soonest-first. Each row: {when, date, status,
@@ -264,15 +277,27 @@ def get_air_quality(city: str, start_date: str, end_date: str) -> dict[str, Any]
 
 @mcp.tool()
 def find_food(
-    near: str, radius_m: int = 1500, live_ratings: bool = False
+    near: str,
+    radius_m: int = 1500,
+    live_ratings: bool = False,
+    yelp: bool = False,
+    yelp_query: str = "restaurants",
 ) -> dict[str, Any]:
-    """Eateries near a place — two-tier food discovery (what exists + optionally what's good).
-    Default tier is OSM Overpass (KEYLESS/free): every mapped eatery with name/cuisine/hours —
+    """Eateries near a place — multi-tier food discovery (what exists + what's good + what locals
+    say). Default tier is OSM Overpass (KEYLESS/free): every mapped eatery with name/cuisine/hours —
     enumeration from data, not memory. live_ratings=True merges Google ratings/price via SerpAPI
-    (QUOTA: ~1 search of the shared 250/mo, day-cached — confirm before spending).
+    (QUOTA: ~1 search of the shared 250/mo, day-cached — confirm before spending). yelp=True merges
+    the Yelp texture layer — review snippets, neighborhoods, Yelp's own rating/review-count kept
+    separate from Google's (divergence is signal) — same quota discipline, 1 search, day-cached;
+    yelp_query drives Yelp's lens ("brunch", "cocktail bars").
     Returns {location, count, eateries:[{name, category, cuisine, rating, reviews, price,
-    opening_hours, address, website, sources}], notes}."""
-    return _svc().find_food(near, radius_m=radius_m, live_ratings=live_ratings).model_dump()
+    opening_hours, address, website, sources, yelp_rating, yelp_reviews, snippet, neighborhood,
+    yelp_url}], notes}."""
+    return (
+        _svc()
+        .find_food(near, radius_m=radius_m, live_ratings=live_ratings, yelp=yelp, yelp_query=yelp_query)
+        .model_dump()
+    )
 
 
 @mcp.tool()

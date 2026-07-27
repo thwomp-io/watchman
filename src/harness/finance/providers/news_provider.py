@@ -21,7 +21,7 @@ from urllib.parse import quote_plus, urlparse
 
 from harness._http import get_with_retry
 from harness.errors import ProviderError
-from harness.finance.models import Filing, NewsItem
+from harness.finance.models import Filing, FilingRef, NewsItem
 
 _YAHOO_RSS_URL = "https://feeds.finance.yahoo.com/rss/2.0/headline"
 _SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
@@ -103,6 +103,30 @@ def _submissions_recent(cik: str, *, label: str) -> dict[str, Any]:
     if not isinstance(recent, dict):
         raise ProviderError(f"{label}: unexpected submissions shape")
     return recent
+
+
+def fetch_filing_refs(cik: str, form: str = "8-K", limit: int = 8) -> list[FilingRef]:
+    """Recent filing REFS (accession-bearing) for one form family — the filing-reader's discovery
+    step. Same submissions JSON as the news rail; the difference is the payload:
+    the rail shows display rows, this returns the accession numbers an Archives fetch is keyed on.
+
+    `form` matches the family: "8-K" also matches "8-K/A" (amendments carry the corrected print —
+    excluding them would silently read the superseded numbers)."""
+    recent = _submissions_recent(cik, label=f"edgar filing refs CIK{cik}")
+    forms = recent.get("form", [])
+    dates = recent.get("filingDate", [])
+    accessions = recent.get("accessionNumber", [])
+    docs = recent.get("primaryDocument", [])
+    out: list[FilingRef] = []
+    for f, date, accession, doc in zip(forms, dates, accessions, docs, strict=False):
+        if not (f == form or f.startswith(f"{form}/")):
+            continue
+        if not accession:
+            continue
+        out.append(FilingRef(form=f, filed=date, accession=accession, primary_doc=doc or ""))
+        if len(out) >= limit:
+            break
+    return out
 
 
 def fetch_recent_filings(cik: str, limit: int = 5) -> list[Filing]:

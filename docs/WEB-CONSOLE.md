@@ -43,6 +43,8 @@ front) and treat the bind address as the deliberate act it is.
 The console is responsive down to phone widths and ships a web-app manifest: **Add to Home Screen** on
 iOS/Android installs it standalone — no browser chrome, safe-area aware, with the zone tabs along the
 bottom where thumbs live. Day-to-day it reads like a native finance app pointed at your own data.
+At phone widths the VAULT zone is a master-detail flow: the document tree is the page, opening a doc
+swaps to a full-width reader with a **◀ back** control.
 
 <img src="assets/phone-core.png" alt="The console installed as a PWA — one column, zone tabs at the thumb line" width="360">
 

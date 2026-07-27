@@ -1165,6 +1165,58 @@ def multiples(
 
 
 @app.command()
+def filing(
+    symbol: str = typer.Argument(..., help="Ticker, e.g. NOW (must be a US SEC filer)"),
+    form: str = typer.Option("8-K", "--form", help="Form family to read (8-K also matches 8-K/A)"),
+    cik: str | None = typer.Option(None, "--cik", help="Override: use this CIK directly (skip the map)"),
+    accession: str | None = typer.Option(
+        None, "--accession", help="Read a specific filing (dashed accession number) instead of the newest"
+    ),
+    doc: str | None = typer.Option(
+        None, "--doc", help="Read a specific document from the filing directory (see --list)"
+    ),
+    list_docs: bool = typer.Option(
+        False, "--list", help="List the filing's documents without fetching content"
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Fetch + READ a filing's content from the EDGAR Archives — the earnings-print reader.
+
+    Default resolves to the newest 8-K's EX-99 press-release exhibit (headline numbers, guidance,
+    KPI tables — on EDGAR within minutes of the wire release). The loop it enables: the pulse's
+    print_landed flag fires -> this verb reads the release -> grade against the scenario map.
+    Requires HARNESS_SEC_CONTACT in .env (SEC fair-access UA for www.sec.gov, fail-loud).
+    Honest boundary: call transcripts + un-filed IR slides are NOT SEC documents — this reads
+    what EDGAR carries."""
+    try:
+        r = _svc().filing(
+            symbol.upper(), form=form, cik=cik, accession=accession, doc=doc, list_only=list_docs
+        )
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    if as_json:
+        console.print_json(r.model_dump_json())
+        return
+    filed = f" filed {r.filed}" if r.filed else ""
+    console.print(f"[bold]{r.symbol}[/bold]  {r.form}{filed}  [dim]accession {r.accession}[/dim]")
+    if list_docs:
+        table = Table(title="Filing documents")
+        table.add_column("Document")
+        table.add_column("Type")  # from the filing's own SGML header — how you spot EX-99.2 slides
+        for name in r.documents:
+            table.add_row(name, r.doc_types.get(name, ""))
+        console.print(table)
+    else:
+        console.print(f"[dim]{r.url}[/dim]\n")
+        # markup/highlight off: the document is foreign text — brackets/numbers must print verbatim.
+        console.print(r.text, markup=False, highlight=False)
+    for n in r.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+
+
+@app.command()
 def compare(
     symbols: list[str] = typer.Argument(..., help="Two or more tickers, e.g. AAPL MSFT GOOGL"),
     recent: int = typer.Option(8, "--recent", help="Facts pulled per concept before TTM assembly"),
@@ -1332,6 +1384,30 @@ def screen(
     color = "red" if r.status == "excluded" else "green"
     console.print(f"[{color}]{r.symbol}: {r.status}[/{color}]")
     console.print(f"  {r.note}")
+
+
+@app.command()
+def symbols(
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output"),
+) -> None:
+    """The QUOTABLE portfolio symbols (stocks/ETFs), largest cost-basis first — corpus-only,
+    no network. The dynamic source behind `symbols_from: portfolio` dashboard widgets: a
+    parameterized chart derives its chip list from the portfolio seed at
+    refresh, so it tracks buys/sells lock-step instead of drifting as a static config snapshot.
+    Mutual funds / statics are excluded (not bar-chartable); symbols dedupe across lot entries."""
+    seed = _svc().reader.read_portfolio()
+    basis: dict[str, float] = {}
+    for h in seed.holdings:
+        if h.quotable:
+            basis[h.symbol] = basis.get(h.symbol, 0.0) + (h.cost_basis or 0.0)
+    ordered = sorted(basis, key=lambda s: -basis[s])
+    if as_json:
+        import json as _json
+
+        console.print_json(_json.dumps({"symbols": ordered}))
+        return
+    for s in ordered:
+        console.print(s)
 
 
 @app.command()

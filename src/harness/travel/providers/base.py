@@ -7,6 +7,7 @@ from typing import Protocol, runtime_checkable
 
 from harness.errors import ProviderError  # re-exported for back-compat (was defined here)
 from harness.travel.models import (
+    CurrentConditions,
     DailyAirQuality,
     DailyWeather,
     Earthquake,
@@ -17,6 +18,7 @@ from harness.travel.models import (
     GeoLocation,
     HotelQuery,
     HotelSearch,
+    HourlyWeather,
     ImageCandidate,
     PriceInsight,
 )
@@ -103,6 +105,20 @@ class WeatherProvider(Protocol):
         fahrenheit: bool = True,
     ) -> tuple[list[DailyWeather], str]:
         """Daily forecast over [start_date, end_date]. Returns (days, resolved_timezone)."""
+        ...
+
+    def hourly_forecast(
+        self,
+        latitude: float,
+        longitude: float,
+        start_date: date,
+        end_date: date,
+        *,
+        fahrenheit: bool = True,
+    ) -> tuple[list[HourlyWeather], CurrentConditions | None]:
+        """Hourly forecast over the window + the current-conditions read (v1.5 tiers B+C).
+        Part of the weather contract: a swapped provider must supply hours or raise ProviderError;
+        current may be None (best-effort — the tile row degrades, the solver never does)."""
         ...
 
 

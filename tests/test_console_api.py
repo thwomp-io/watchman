@@ -215,6 +215,16 @@ def _write_dashboard(config_dir: Path) -> None:
                 },
                 "symbols": ["AAA"],
             },
+            {
+                "id": "dynchart",
+                "title": "Dynamic chart",
+                "kind": "viz",
+                "source": {
+                    "type": "command", "cmd": "uv", "args": ["run", "hn", "finance", "bars"], "cwd": "",
+                },
+                "symbols": ["AAA"],
+                "symbols_from": "portfolio",
+            },
         ],
     }
     (config_dir / "dashboards").mkdir(parents=True)
@@ -225,7 +235,7 @@ def test_dashboards_listed_from_config_dir(client: TestClient, tmp_path: Path) -
     assert invoke(client, "list_dashboards", headers=AUTH).json() == []  # fresh machine → empty
     _write_dashboard(tmp_path / "config")
     (dash,) = invoke(client, "list_dashboards", headers=AUTH).json()
-    assert dash["lane"] == "finance" and len(dash["widgets"]) == 3
+    assert dash["lane"] == "finance" and len(dash["widgets"]) == 4
 
 
 def test_dashboards_passthrough_preserves_unknown_and_studio_keys(
@@ -287,6 +297,40 @@ def test_run_widget_rejects_undeclared_symbols(client: TestClient, tmp_path: Pat
     assert r.status_code == 400
     assert "not in widget config" in r.json()["error"]
     assert invoke(client, "run_widget", {"lane": "x", "id": "y"}, headers=AUTH).status_code == 400
+
+
+def test_run_widget_symbols_from_uses_the_ticker_grammar(
+    client: TestClient, tmp_path: Path
+) -> None:
+    # symbols_from widgets trade the closed list for a closed GRAMMAR: any
+    # well-formed ticker passes validation (the spawn still fails later without a live engine —
+    # 400 either way, but the ERROR distinguishes the paths); injection shapes are rejected
+    # at the grammar.
+    _write_dashboard(tmp_path / "config")
+    for bad in ("zzz", "--help", "A B", "../x", "TOOLONGTICKR"):
+        r = invoke(
+            client, "run_widget", {"lane": "finance", "id": "dynchart", "symbol": bad},
+            headers=AUTH,
+        )
+        assert r.status_code == 400
+        assert "ticker grammar" in r.json()["error"], bad
+    # a well-formed ticker clears the grammar (whatever the engine then does)
+    r = invoke(
+        client, "run_widget", {"lane": "finance", "id": "dynchart", "symbol": "ZZZ"},
+        headers=AUTH,
+    )
+    assert "ticker grammar" not in str(r.json())
+
+
+def test_list_portfolio_symbols_reads_the_seed(client: TestClient) -> None:
+    # in-process resolver: quotable holdings only, deduped, basis-desc — off whatever corpus
+    # TRACKER_PATH points at (the fixture vault has no portfolio.yaml → the packaged NEUTRAL
+    # template resolves → an EMPTY list, which is itself the honest fresh-install answer).
+    r = invoke(client, "list_portfolio_symbols", headers=AUTH)
+    assert r.status_code == 200
+    # the BARE list — the door mirrors the native Vec<String> shape exactly (a {"symbols": …}
+    # wrapper here made the webview silently fall back to the static list; eye-caught)
+    assert isinstance(r.json(), list)
 
 
 def test_app_config_reads_bus_app_json(client: TestClient, tmp_path: Path) -> None:

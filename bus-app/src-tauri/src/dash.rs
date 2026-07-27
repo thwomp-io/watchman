@@ -59,6 +59,13 @@ pub struct Widget {
     /// parameterized widgets: selectable values substituted into the source args as {symbol}
     #[serde(default)]
     pub symbols: Vec<String>,
+    /// Dynamic symbol source: "portfolio" = the chip list resolves from the
+    /// portfolio seed at refresh (`hn finance symbols --json`), so the widget tracks the real
+    /// book lock-step instead of drifting as a static snapshot. `symbols` stays as the offline/
+    /// error fallback. Option<> so configs from before the dynamic-symbols change deserialize unchanged (the two-parsers
+    /// rule: this field exists in dash.rs + types.ts + passes through the python door's dicts).
+    #[serde(default)]
+    pub symbols_from: Option<String>,
     /// table widgets: explicit column subset/order (else first-8 auto-derived). Keeps the
     /// directional columns (day move, distance) in view instead of static fields past the cap.
     #[serde(default)]
@@ -148,6 +155,7 @@ fn w(
         signed: None,
         title_path: None,
         symbols: Vec::new(),
+        symbols_from: None,
         columns: Vec::new(),
         rows: 1,
         layout: None,
@@ -203,9 +211,11 @@ fn default_finance() -> Dashboard {
               hn_cmd(&["finance", "watch", "--no-mark", "--json"]), "market10m", 2,
               Some("prints"), None, None),
             Widget {
-                // Neutral, liquid market examples — the compiled default is the no-pack fallback,
-                // where the portfolio seed is a neutral template; a user's real symbols come from
-                // their pack/corpus dashboards, never this list (generalize-first).
+                // Dynamic by default: the chip list derives from the portfolio
+                // seed at refresh — lock-step with the user's real book. The neutral liquid
+                // examples below are the FALLBACK (no-pack fresh install with an empty template
+                // seed, or a failed resolve) — never a personal list (generalize-first).
+                symbols_from: Some("portfolio".into()),
                 symbols: ["SPY", "QQQ", "AAPL", "MSFT", "NVDA"]
                     .iter().map(|s| s.to_string()).collect(),
                 ..w("chart", "Position chart — bars + support levels", "viz",
@@ -286,38 +296,68 @@ fn default_landscape() -> Dashboard {
 }
 
 /// CONDITIONS — the live environmental senses + the agent-written conditions-watchman narrative.
-/// Home-base weather + local air/smoke (the wildfire-season check) as deterministic tables, beside the
-/// `conditions/reports/` doc_series (the determinism-contract narrative panel, off disk). A
-/// `weather-strip` viz twin is a filed fast-follow.
+/// A stat-tile row off ONE `hn travel pulse --json` (its flat `tiles` contract tier C —
+/// the in-flight dedupe collapses the row to a single subprocess run), then home-base weather +
+/// local air/smoke tables, beside the `conditions/reports/` doc_series (the determinism-contract
+/// narrative panel, off disk). A `weather-strip` viz twin is a filed fast-follow.
 fn default_conditions() -> Dashboard {
+    let pulse = || hn_cmd(&["travel", "pulse", "--json"]);
     Dashboard {
         lane: "travel-conditions".into(),
         title: "Conditions".into(),
         group: "Travel".into(),
         owner: default_owner(),
         widgets: vec![
+            // The at-a-glance row: now/feels/UV/gusts/AQI/sunset/window. All magnitudes, not
+            // deltas → signed OFF; string tiles (sunset "19:30", window "07:00–12:00") render
+            // via the stat body's non-numeric passthrough.
+            Widget { signed: Some(false),
+                ..w("now", "Now", "stat", pulse(), "local30m", 1,
+                    Some("tiles.now_temp"), None, Some("°")) },
+            Widget { signed: Some(false),
+                ..w("feels", "Feels", "stat", pulse(), "local30m", 1,
+                    Some("tiles.feels"), None, Some("°")) },
+            Widget { signed: Some(false),
+                ..w("uv", "UV index", "stat", pulse(), "local30m", 1,
+                    Some("tiles.uv"), None, None) },
+            Widget { signed: Some(false),
+                ..w("gusts", "Gusts", "stat", pulse(), "local30m", 1,
+                    Some("tiles.gusts"), None, Some(" mph")) },
+            Widget { signed: Some(false),
+                ..w("aqi", "AQI (today max)", "stat", pulse(), "local30m", 1,
+                    Some("tiles.aqi"), None, None) },
+            Widget { signed: Some(false),
+                ..w("sunset", "Sunset", "stat", pulse(), "local30m", 1,
+                    Some("tiles.sunset"), None, None) },
+            Widget { signed: Some(false),
+                ..w("window", "Outdoor window", "stat", pulse(), "local30m", 1,
+                    Some("tiles.window"), None, None) },
             // No hardcoded city: `weather` defaults to the active weights' `conditions.home`
             // (pack-aware); `title_path` surfaces the resolved place in the title.
+            // local30m on the network tables (was local60s — provider politeness; 60s belongs
+            // to bus/file sources, and a weather forecast doesn't move minute-to-minute).
             Widget { title_path: Some("location".into()),
                 ..w("weather", "Home-base weather — 7d", "table",
                   hn_cmd(&["travel", "weather", "--from", "{today}", "--to", "{today+6}", "--json"]),
-                  "local60s", 2, Some("days"), None, None) },
+                  "local30m", 4, Some("days"), None, None) },
             Widget { title_path: Some("location".into()),
                 columns: cols(&["date", "us_aqi_max", "pm2_5_max", "category"]),
                 ..w("air", "Air quality / wildfire smoke", "table",
                   hn_cmd(&["travel", "air", "--from", "{today}", "--to", "{today+4}", "--json"]),
-                  "local60s", 2, Some("days"), None, None) },
+                  "local30m", 3, Some("days"), None, None) },
             // the agent-written conditions-watchman reports — newest-first, browsed off disk
             w("reports", "Conditions watchman — reports", "doc_series",
-              WidgetSource::File { path: "travel/conditions/reports".into() }, "local60s", 2,
+              WidgetSource::File { path: "travel/conditions/reports".into() }, "local60s", 7,
               None, None, None),
         ],
     }
 }
 
 /// CALENDAR — the proactive "when to go" almanac: long-weekends + centerpiece home-team games +
-/// recurring key dates + mega-events over the next 180 days (`hn travel reference`). v1 is the almanac
-/// TABLE; the headline `calendar` 12-month grid viz needs an interactive twin (filed fast-follow).
+/// recurring key dates + mega-events over the next 180 days. The headline is the INTERACTIVE
+/// month-grid (`hn travel calendar` merges almanac + live ticketed events into
+/// per-day buckets; hover = glance card, click = the full day, centerpiece days ringed); the
+/// tables below stay as the flat scan/purchase-link surface.
 fn default_calendar() -> Dashboard {
     Dashboard {
         lane: "travel-calendar".into(),
@@ -325,6 +365,10 @@ fn default_calendar() -> Dashboard {
         group: "Travel".into(),
         owner: default_owner(),
         widgets: vec![
+            Widget { rows: 3,
+                ..w("grid", "The 180-day calendar", "viz",
+                  hn_cmd(&["travel", "calendar", "--from", "{today}", "--to", "{today+180}", "--json"]),
+                  "manual", 4, None, None, None) },
             Widget { columns: cols(&["local_date", "name", "segment", "tier"]),
                 ..w("keydates", "Key dates & sports — next 180d", "table",
                   hn_cmd(&["travel", "reference", "--from", "{today}", "--to", "{today+180}", "--json"]),
@@ -336,6 +380,27 @@ fn default_calendar() -> Dashboard {
                   hn_cmd(&["travel", "events", "--from", "{today}", "--to", "{today+45}", "--flat", "--limit", "30", "--json"]),
                   "manual", 4, None, None, None) },
         ],
+    }
+}
+
+/// BIG CALENDAR — the wall-display month board (v2, operator-requested): ONE month
+/// at a time with the event labels IN the cells, month nav + TODAY — sized for a fullscreen
+/// monitor (the served PWA on a satellite is the intended surface; the expand-in-place title
+/// click makes it truly full-bleed). Same emitter as the dense grid, `--variant big` routes the
+/// sniff to the big twin. 365-day window: browsing forward beats re-configuring.
+fn default_calendar_big() -> Dashboard {
+    Dashboard {
+        lane: "travel-calendar-big".into(),
+        title: "Big Calendar".into(),
+        group: "Travel".into(),
+        owner: default_owner(),
+        widgets: vec![Widget {
+            rows: 5,
+            ..w("board", "The month board", "viz",
+                hn_cmd(&["travel", "calendar", "--variant", "big", "--from", "{today}",
+                         "--to", "{today+365}", "--json"]),
+                "manual", 4, None, None, None)
+        }],
     }
 }
 
@@ -618,6 +683,7 @@ fn compiled_defaults() -> Vec<(&'static str, Dashboard)> {
         ("travel-landscape", default_landscape()),
         ("travel-conditions", default_conditions()),
         ("travel-calendar", default_calendar()),
+        ("travel-calendar-big", default_calendar_big()),
         ("travel-visits", default_visits()),
         ("unwind", default_unwind()),
         ("market", default_market()),
@@ -808,6 +874,7 @@ mod tests {
                 "source": {"type": "command", "cmd": "uv", "args": ["run"], "cwd": "~"},
                 "refresh": "market10m", "span": 3, "value_path": "a.b", "prefix": "$",
                 "suffix": "%", "signed": false, "title_path": "c.d", "symbols": ["AAA"],
+                "symbols_from": "portfolio",
                 "columns": ["x"], "rows": 2, "layout": {"x": 1, "y": 2, "w": 3, "h": 4}
             }]
         }"#;
@@ -817,6 +884,8 @@ mod tests {
         assert_eq!(back["owner"], "user", "Dashboard.owner must round-trip");
         let w = &back["widgets"][0];
         assert_eq!(w["signed"], false, "signed must round-trip (the dropped-unknown-key regression)");
+        assert_eq!(w["symbols_from"], "portfolio",
+            "symbols_from must round-trip (the two-parsers rule)");
         assert_eq!(w["layout"]["x"], 1, "layout.x must round-trip");
         assert_eq!(w["layout"]["h"], 4, "layout.h must round-trip");
         assert_eq!(w["rows"], 2);

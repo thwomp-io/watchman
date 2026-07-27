@@ -245,9 +245,11 @@ function fmtClock(hhmm) {
 }
 
 // Availability bands are DATA-DRIVEN so the schedule family is reusable for trips, not just one visit.
-// `d.availability` = { groups:[{key,label,color}], weekday:[{until?,group}], weekend:[{until?,group}] }.
-// Each segment runs from the prior boundary (or dayStart) to its `until` (or dayEnd). Omitted →
-// the default weekday/weekend availability pattern (weekday = limited-until-evening, then full; weekend = all-day).
+// `d.availability` = { groups:[{key,label,color}], weekday:[{until?,group}], weekend:[{until?,group}],
+// dates?:{ "YYYY-MM-DD":[{until?,group}] } }. Each segment runs from the prior boundary (or dayStart)
+// to its `until` (or dayEnd). `dates` is a per-date OVERRIDE beating the weekday/weekend rules — a trip
+// whose base moves cities mid-trip can't be expressed by day-of-week rules.
+// Omitted → the default weekday/weekend availability pattern.
 function buildAvail(d) {
   const a = d.availability;
   if (a && Array.isArray(a.groups) && a.groups.length) {
@@ -257,6 +259,7 @@ function buildAvail(d) {
       groups: a.groups,
       weekday: a.weekday && a.weekday.length ? a.weekday : [{ group: fallback }],
       weekend: a.weekend && a.weekend.length ? a.weekend : [{ group: fallback }],
+      dates: a.dates || {},
       colorOf: (k) => byKey.get(k) || T.strokeDim,
     };
   }
@@ -269,6 +272,7 @@ function buildAvail(d) {
     ],
     weekday: [{ until: eve, group: "solo" }, { group: "all" }],
     weekend: [{ group: "all" }],
+    dates: {},
     colorOf: (k) => dflt[k] || T.strokeDim,
   };
 }
@@ -394,7 +398,7 @@ function paintGrid(svg, d, L) {
     svg.append("rect").attr("x", x + 2).attr("y", plotTop).attr("width", colW - 6)
       .attr("height", plotH).attr("fill", T.panel).attr("stroke", T.stroke).attr("rx", 6);
     let segStart = dayStartMin;
-    (weekend ? avail.weekend : avail.weekday).forEach((seg) => {
+    (avail.dates[d3.timeFormat("%Y-%m-%d")(dt)] || (weekend ? avail.weekend : avail.weekday)).forEach((seg) => {
       const segEnd = seg.until ? toMin(seg.until) : dayEndMin;
       svg.append("rect").attr("x", x + 3).attr("y", yAt(segStart)).attr("width", colW - 8)
         .attr("height", yAt(segEnd) - yAt(segStart)).attr("fill", avail.colorOf(seg.group))

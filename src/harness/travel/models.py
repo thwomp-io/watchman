@@ -253,6 +253,13 @@ class DailyWeather(BaseModel):
     precip_sum: float | None = None  # total precip in the parent's precip unit
     precip_hours: float | None = None  # hours WITH precipitation — the wet-day DURATION signal
     snowfall_sum: float | None = None  # total snowfall in the parent's precip unit (the snow flag)
+    # v1.5 same-call fields (the cutting-room-floor audit; all free on the one fetch):
+    feels_max: float | None = None  # apparent_temperature_max — heat comfort is a FEELS question
+    feels_min: float | None = None  # apparent_temperature_min
+    uv_index_max: float | None = None  # daily max UV index (the uv flag reads this)
+    wind_gusts_max: float | None = None  # daily max 10m gusts, parent's wind unit (the wind flag)
+    sunrise: str = ""  # ISO local "YYYY-MM-DDTHH:MM" ("" when absent)
+    sunset: str = ""
 
 
 class WeatherForecast(BaseModel):
@@ -267,7 +274,58 @@ class WeatherForecast(BaseModel):
     timezone: str = ""
     temperature_unit: str = "°F"
     precipitation_unit: str = "inch"
+    wind_unit: str = "mph"  # gusts unit (mph with imperial, km/h with metric) — v1.5
     days: list[DailyWeather] = Field(default_factory=list)
+
+
+class HourlyWeather(BaseModel):
+    """One forecast hour — the outdoor-windows solver's substrate (tier B).
+
+    Deliberately narrow: the five fields that decide "is this a good hour to be outside" —
+    everything else stays on the daily surface."""
+
+    time: str  # ISO local "YYYY-MM-DDTHH:MM"
+    temp: float | None = None
+    feels: float | None = None  # apparent temperature — the comfort axis
+    precip_prob: int | None = None  # %
+    uv: float | None = None
+    gusts: float | None = None  # 10m gusts, parent's wind unit
+
+
+class CurrentConditions(BaseModel):
+    """The right-now read (Open-Meteo `current=` vars, same endpoint) — the tile row's "now" half.
+
+    Distinct from the daily surface (a day's aggregates) and hourly (the solver's substrate):
+    this is what it's like OUTSIDE THE WINDOW at refresh time."""
+
+    time: str = ""  # ISO local of the provider's current-conditions timestamp
+    temp: float | None = None
+    feels: float | None = None
+    uv: float | None = None
+    gusts: float | None = None
+    weather_code: int = -1
+    condition: str = ""
+
+
+class OutdoorWindow(BaseModel):
+    """A contiguous span of hours sharing a verdict — a good window, or a span to avoid."""
+
+    start: str  # "08:00" (local)
+    end: str  # "11:00" — exclusive (the hour after the span's last hour)
+    hours: int
+    why: str  # good: the conditions range; avoid: the dominant disqualifier ("feels 92°F+")
+
+
+class OutdoorPlan(BaseModel):
+    """The deterministic outdoor-windows read for one day ("best window 8-11am; avoid 2-7pm").
+
+    Solver output, zero model in the loop; thresholds come from the user overlay
+    (`travel.global_settings.outdoor` — generalize-first, personal comfort is config)."""
+
+    date: str
+    windows: list[OutdoorWindow] = Field(default_factory=list)
+    avoid: list[OutdoorWindow] = Field(default_factory=list)
+    note: str = ""  # the one-liner the card/report/tiles render
 
 
 class DailyAirQuality(BaseModel):
@@ -318,8 +376,11 @@ class SeismicReport(BaseModel):
 
 
 class Eatery(BaseModel):
-    """One eatery near a place. Two-tier provenance: `osm` (keyless enumeration — what EXISTS) and
-    `google` (quota ratings layer — what's GOOD); a merged row carries both via `sources`."""
+    """One eatery near a place. Multi-source provenance: `osm` (keyless enumeration — what EXISTS),
+    `google` (quota ratings layer — what's GOOD), `yelp` (quota texture layer — what LOCALS SAY);
+    a merged row carries each contributor via `sources`. Google and Yelp ratings are kept as
+    SEPARATE fields deliberately — cross-source divergence (Google 4.6 vs Yelp 3.9) is itself
+    signal, so neither overwrites the other."""
 
     name: str
     category: str = ""  # restaurant | cafe | bar | pub | fast_food | ice_cream | bakery
@@ -331,6 +392,13 @@ class Eatery(BaseModel):
     reviews: int | None = None
     price: str = ""  # $..$$$$ (live-ratings tier only)
     sources: list[str] = Field(default_factory=list)
+    # Yelp texture layer (opt-in quota search):
+    yelp_rating: float | None = None  # kept separate from the Google rating — divergence is signal
+    yelp_reviews: int | None = None
+    snippet: str = ""  # Yelp review snippet — the "what locals say" one-liner
+    neighborhood: str = ""  # Yelp neighborhoods string (e.g. "Old Town - Chinatown")
+    yelp_url: str = ""  # the Yelp listing (the place's OWN site stays in `website`)
+    yelp_place_id: str = ""  # key for a future yelp_reviews deep call
     # imagery:
     thumbnail: str = ""  # Google local-pack thumbnail — rides the live-ratings search FREE
     data_id: str = ""  # Google Maps place id — the key the google_maps_photos engine wants

@@ -151,6 +151,9 @@ export interface Widget {
   signed?: boolean;
   title_path?: string | null; // dot-path whose value renders accented in the title (e.g. weather city)
   symbols: string[];
+  // Dynamic symbol source: "portfolio" resolves the chip list from the portfolio
+  // seed at refresh (lock-step with the real book); `symbols` is the offline/error fallback.
+  symbols_from?: string;
   columns?: string[]; // table widgets: explicit column subset/order (else first-8 auto-derived)
   rows?: number; // grid-row span — a tall centerpiece panel (default 1)
   // Dashboard Studio: explicit grid placement in grid units (x = col start,

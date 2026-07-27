@@ -119,6 +119,28 @@ def finance_fundamentals(symbol: str, cik: str | None = None, recent: int = 6) -
 
 
 @mcp.tool()
+def finance_filing(
+    symbol: str,
+    form: str = "8-K",
+    cik: str | None = None,
+    accession: str | None = None,
+    doc: str | None = None,
+    list_only: bool = False,
+) -> dict[str, Any]:
+    """Fetch + READ a filing's content from the EDGAR Archives — the earnings-print reader.
+    Defaults to the newest 8-K's EX-99 press-release exhibit (headline numbers, guidance, KPI
+    tables — on EDGAR within minutes of a print). `list_only` returns the filing's document
+    inventory without content; `accession`/`doc` re-aim at older filings / specific exhibits.
+    Requires HARNESS_SEC_CONTACT in the env (SEC fair-access UA; fails loud when unset).
+    Honest boundary: call transcripts + un-filed IR slides are not SEC documents. READ-ONLY."""
+    return (
+        _svc()
+        .filing(symbol.upper(), form=form, cik=cik, accession=accession, doc=doc, list_only=list_only)
+        .model_dump()
+    )
+
+
+@mcp.tool()
 def finance_multiples(symbol: str, cik: str | None = None, recent: int = 8) -> dict[str, Any]:
     """Valuation multiples for a US SEC filer from SEC EDGAR (keyless) + a LIVE Alpaca price:
     EV/EBITDA, P/E (= mktcap / net income TTM), P/S (= mktcap / revenue TTM). Returns the FULL

@@ -416,6 +416,41 @@ class SymbolNews(BaseModel):
     filings_note: str | None = None  # "no CIK (fund/ETF)" honesty, or a fetch error
 
 
+class FilingRef(BaseModel):
+    """One filing reference from the submissions JSON — enough to address its archive directory.
+
+    Distinct from `Filing` (the news rail's display row): a ref carries the accession number,
+    which is the key every Archives fetch needs. The news rail deliberately doesn't."""
+
+    form: str
+    filed: str  # YYYY-MM-DD
+    accession: str  # dashed form as EDGAR reports it (0000000000-26-000000)
+    primary_doc: str = ""  # the filing's primary document filename (often the 8-K body, not the exhibit)
+
+
+class FilingReadout(BaseModel):
+    """A filing's readable content — the earnings-print reader.
+
+    The 80/20 of a print is the 8-K's EX-99 press-release exhibit (headline numbers, guidance,
+    the KPI tables); this model carries the fetched document converted to terminal-readable text
+    plus enough metadata to cite it. `documents` lists everything in the filing's archive dir so
+    a reader can re-aim at a specific exhibit (--doc) when the default pick is wrong."""
+
+    symbol: str
+    cik: str
+    form: str
+    filed: str
+    accession: str
+    doc: str = ""  # the document actually fetched ("" in list-only mode)
+    url: str = ""  # the fetched document's full Archives URL (citable)
+    documents: list[str] = Field(default_factory=list)  # every filename in the filing directory
+    doc_types: dict[str, str] = Field(default_factory=dict)  # filename → SEC type (EX-99.1, 8-K…)
+    #                    from the filing's SGML header — the authoritative exhibit map (empty when
+    #                    the header didn't parse; the filename backstop picked instead).
+    text: str = ""  # the document converted to plain text ("" in list-only mode)
+    notes: list[str] = Field(default_factory=list)
+
+
 class WireDigest(BaseModel):
     """Broad-market news wire — the `feeds.yaml` source feeds (MarketWatch / CNBC / FT / AP /
     Bloomberg + Al Jazeera geopolitics + thesis-topic searches) aggregated NEWEST-FIRST

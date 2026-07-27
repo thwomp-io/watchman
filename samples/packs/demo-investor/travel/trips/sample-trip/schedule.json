@@ -1,0 +1,118 @@
+{
+  "title": "Kona anniversary week — day plan",
+  "subtitle": "illustrative persona data (fictional) · two-resort week, base flips north mid-trip",
+  "start": "2026-10-10",
+  "end": "2026-10-17",
+  "dayStart": "07:00",
+  "dayEnd": "22:00",
+  "availability": {
+    "groups": [
+      { "key": "kailua", "label": "Kailua-Kona base (oceanfront)", "color": "#fcd34d" },
+      { "key": "kohala", "label": "Kohala Coast base (resort)", "color": "#93c5fd" },
+      { "key": "transit", "label": "in transit", "color": "#d1d5db" }
+    ],
+    "weekday": [{ "group": "kailua" }],
+    "weekend": [{ "group": "kailua" }],
+    "dates": {
+      "2026-10-10": [{ "until": "15:00", "group": "transit" }, { "group": "kailua" }],
+      "2026-10-14": [{ "until": "12:00", "group": "kailua" }, { "group": "kohala" }],
+      "2026-10-15": [{ "group": "kohala" }],
+      "2026-10-16": [{ "group": "kohala" }],
+      "2026-10-17": [{ "until": "11:00", "group": "kohala" }, { "group": "transit" }]
+    }
+  },
+  "markerLabel": "what's on",
+  "markerCats": {
+    "town": { "label": "in town", "color": "#f59e0b" },
+    "logistics": { "label": "logistics", "color": "#60a5fa" }
+  },
+  "markers": [
+    { "date": "2026-10-11", "time": "8a", "label": "Kailua open-air market", "cat": "town" },
+    { "date": "2026-10-14", "time": "9:30a", "label": "rental car pickup", "cat": "logistics" },
+    { "date": "2026-10-15", "label": "near-full moon — manta night", "cat": "town" },
+    { "date": "2026-10-17", "time": "2:40p", "label": "flight KOA departs", "cat": "logistics" }
+  ],
+  "items": [
+    {
+      "date": "2026-10-10", "start": "18:30", "end": "20:00",
+      "label": "Welcome dinner — Coral Lanai", "lane": "dining",
+      "note": "easy first night on the seawall, no reservation stress",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Coral+Lanai&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "date": "2026-10-11", "start": "08:00", "end": "11:30",
+      "label": "Reef snorkel sail — Manta Cove Charters", "lane": "water",
+      "note": "small-boat morning sail, deposit paid",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Manta+Cove+Charters+Kailua-Kona+HI" }]
+    },
+    {
+      "date": "2026-10-11", "start": "19:00", "end": "21:00",
+      "label": "Anniversary dinner — Pele Table", "lane": "dining",
+      "note": "the anchor reservation — window table held, sunset seating",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Pele+Table&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "date": "2026-10-12", "start": "09:00", "end": "10:30",
+      "label": "Coffee farm tour — Hoku Grove Estate", "lane": "explore",
+      "note": "upslope in Holualoa; tasting flight included",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Hoku+Grove+Estate+Holualoa+HI" }]
+    },
+    {
+      "date": "2026-10-13", "start": "07:30", "end": "09:00",
+      "label": "Morning outrigger paddle", "lane": "water",
+      "note": "hotel beach hut — sign up the evening before"
+    },
+    {
+      "date": "2026-10-14", "start": "10:00", "end": "12:00",
+      "label": "Checkout + coast drive north", "lane": "logistics",
+      "note": "the base flip — Kailua out, Kohala in; scenic route up the coast"
+    },
+    {
+      "date": "2026-10-14", "start": "15:00", "end": "16:00",
+      "label": "Check-in — Kohala Sands Resort", "lane": "logistics",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Kohala+Sands+Resort+Waimea+HI" }]
+    },
+    {
+      "date": "2026-10-15", "start": "18:00", "end": "20:00",
+      "label": "Manta night snorkel", "lane": "water",
+      "note": "moonlit boat out of the north harbor — the week's second anchor",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=manta+night+snorkel&find_loc=Waikoloa%2C+HI" }]
+    },
+    {
+      "date": "2026-10-16", "start": "16:30", "end": "19:00",
+      "label": "Spa + sunset cabana", "lane": "relax",
+      "note": "couples slot booked with the room package"
+    },
+    {
+      "date": "2026-10-17", "start": "09:00", "end": "10:30",
+      "label": "Farewell brunch — Driftwood Deck", "lane": "dining",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Driftwood+Deck&find_loc=Waikoloa%2C+HI" }]
+    }
+  ],
+  "bankTitle": "Idea bank — swap-ins (not yet scheduled)",
+  "bank": [
+    {
+      "group": "Water", "lane": "water", "label": "Kealoha Cove kayak morning",
+      "note": "the backup if the snorkel sail blows out",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Kealoha+Cove+kayak+Kailua-Kona+HI" }]
+    },
+    {
+      "group": "Land", "lane": "explore", "label": "Kelena Valley overlook drive",
+      "note": "north-tip lookout — pairs with the Kohala days"
+    },
+    {
+      "group": "Land", "lane": "explore", "label": "Lava fields walk — Kaahe trail",
+      "note": "early-morning only; bring water",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Kaahe+trail+Kohala+HI" }]
+    },
+    {
+      "group": "Dining", "lane": "dining", "label": "Tide Shack poke window",
+      "note": "the casual lunch alt near the Kailua pier",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Tide+Shack+poke&find_loc=Kailua-Kona%2C+HI" }]
+    },
+    {
+      "group": "Dining", "lane": "relax", "label": "Second cabana afternoon",
+      "note": "if a sea day gets rained out"
+    }
+  ]
+}

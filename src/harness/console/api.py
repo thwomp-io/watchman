@@ -401,6 +401,23 @@ def _h_list_dashboards(_: dict[str, Any]) -> list[dict[str, Any]]:
     return _dashboards()
 
 
+def _h_list_portfolio_symbols(_: dict[str, Any]) -> list[str]:
+    """The quotable portfolio symbols (`symbols_from: portfolio`) — in-process
+    via the corpus reader (no spawn; the served console runs
+    beside the corpus). Returns the BARE list: the native command returns Vec<String>, and
+    the door must mirror the native shape exactly (the contract-mirror rule) — the first
+    deploy returned a {"symbols": …} wrapper here and the webview silently fell back to the
+    static list (caught by the eye: chips rendered in fallback order)."""
+    from harness.finance.corpus.reader import CorpusReader
+
+    seed = CorpusReader().read_portfolio()
+    basis: dict[str, float] = {}
+    for h in seed.holdings:
+        if h.quotable:
+            basis[h.symbol] = basis.get(h.symbol, 0.0) + (h.cost_basis or 0.0)
+    return sorted(basis, key=lambda s: -basis[s])
+
+
 def _h_run_widget(args: dict[str, Any]) -> str:
     lane, wid = str(args.get("lane") or ""), str(args.get("id") or "")
     symbol = args.get("symbol")
@@ -417,12 +434,20 @@ def _h_run_widget(args: dict[str, Any]) -> str:
     if widget is None:
         raise CommandError(f"unknown widget: {lane}/{wid}")
     # Parameterized widgets: the symbol must be one the CONFIG declares — the client selects from
-    # a closed list, it never injects arguments (the commands.rs rule, ported).
+    # a closed list, it never injects arguments (the commands.rs rule, ported). Widgets that opt
+    # into a DYNAMIC list (`symbols_from: portfolio`) can't enumerate it in config,
+    # so they get a closed GRAMMAR instead: a strict ticker regex that is injection-safe for the
+    # {symbol} substitution (no flags/spaces/paths can pass) while admitting whatever the
+    # portfolio currently holds. Static widgets keep the exact closed-list rule.
     sym: str | None = None
     if symbol is not None:
-        if symbol not in (widget.get("symbols") or []):
+        symbol = str(symbol)
+        if widget.get("symbols_from"):
+            if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", symbol):
+                raise CommandError(f"symbol {symbol} fails the ticker grammar")
+        elif symbol not in (widget.get("symbols") or []):
             raise CommandError(f"symbol {symbol} not in widget config")
-        sym = str(symbol)
+        sym = symbol
     source = widget.get("source") or {}
     kind = source.get("type")
     if kind == "command":
@@ -532,7 +557,7 @@ VIZ_SKIP = {".git", ".obsidian", ".beads", "node_modules", "tmp", "screenshots"}
 VIZ_MAX_DEPTH = 7
 VIZ_SUPPORTED = {
     "sankey", "treemap", "pies", "line", "matrix", "compare", "schedule", "food-bank",
-    "scatter", "rank-bar", "vest-timeline", "ladder", "bead-tree",
+    "scatter", "rank-bar", "vest-timeline", "ladder", "bead-tree", "calendar", "calendar-big",
 }
 
 
@@ -543,6 +568,10 @@ def _sniff(v: Any) -> str:
         return "unknown"
     if "windows" in v and "vests" in v:
         return "vest-timeline"
+    if isinstance(v.get("days"), list) and "from" in v and "to" in v:
+        # per-day buckets + window bounds (days alone would collide with forecasts);
+        # variant="big" routes to the one-month wall-board twin — same shape, one emitter
+        return "calendar-big" if v.get("variant") == "big" else "calendar"
     symbols = v.get("symbols")
     if isinstance(symbols, list) and symbols and isinstance(symbols[0], dict) and "rungs" in symbols[0]:
         return "ladder"
@@ -673,6 +702,7 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "list_surfaces": _h_list_surfaces,
     "run_surface": _h_run_surface,
     "list_dashboards": _h_list_dashboards,
+    "list_portfolio_symbols": _h_list_portfolio_symbols,
     "run_widget": _h_run_widget,
     "list_vault_docs": _h_list_vault_docs,
     "read_doc": _h_read_doc,

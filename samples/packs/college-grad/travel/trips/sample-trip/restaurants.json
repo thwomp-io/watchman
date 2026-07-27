@@ -1,0 +1,76 @@
+{
+  "title": "Denver weekend — food bank",
+  "subtitle": "illustrative persona data (fictional venues) · budget-first, crew of four",
+  "taste": {
+    "loves": ["green chile", "tacos", "big portions", "anything under $15"],
+    "avoid": ["reservations", "dress codes", "splitting a $200 check four ways"],
+    "notes": "First post-grad trip budget: ~$20/head ceiling except the one reunion dinner. Ben is gluten-free-ish."
+  },
+  "groups": [
+    { "key": "locked", "label": "On the schedule" },
+    { "key": "candidates", "label": "Candidates" },
+    { "key": "latenight", "label": "Late night" }
+  ],
+  "restaurants": [
+    {
+      "name": "Union Yard", "group": "locked", "area": "RiNo", "cuisine": "Tacos",
+      "price": "$$", "status": "booked", "meals": ["dinner"],
+      "hostfit": "the reunion dinner — long tables, loud, perfect",
+      "confirm": "big-table request texted to the host, 8 pm Friday",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Union+Yard+tacos&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "name": "Green Chile Garage", "group": "locked", "area": "Federal Blvd", "cuisine": "New Mexican",
+      "price": "$", "status": "booked", "meals": ["lunch"],
+      "hostfit": "post-hike smothered burritos — the whole point of the hike",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Green+Chile+Garage&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "name": "Sunny Side Rail", "group": "locked", "area": "Berkeley", "cuisine": "Brunch",
+      "price": "$$", "status": "booked", "meals": ["brunch"],
+      "note": "Sunday brunch — get there before 10:30 or the wait doubles",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Sunny+Side+Rail+Denver+CO" }]
+    },
+    {
+      "name": "Rhino Ramen", "group": "locked", "area": "Five Points", "cuisine": "Ramen",
+      "price": "$$", "status": "booked", "meals": ["lunch"],
+      "hostfit": "Maya's pick for the last lunch",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Rhino+Ramen&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "name": "Arepa Cart (Larimer)", "group": "candidates", "area": "Larimer St", "cuisine": "Venezuelan",
+      "price": "$", "status": "banked", "meals": ["lunch"],
+      "note": "$8 and enormous — the museum-morning backup",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=arepa+cart+Larimer+Denver+CO" }]
+    },
+    {
+      "name": "Bao Bus", "group": "candidates", "area": "South Broadway", "cuisine": "Taiwanese street food",
+      "price": "$", "status": "new", "meals": ["lunch", "dinner"],
+      "note": "from the group chat — parks outside the thrift block on weekends",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=Bao+Bus&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "name": "Casa Elena", "group": "candidates", "area": "Westwood", "cuisine": "Mexican",
+      "price": "$", "status": "new", "meals": ["dinner"],
+      "note": "Ben swears by the al pastor; cash only",
+      "links": [{ "label": "Maps", "url": "https://www.google.com/maps/search/?api=1&query=Casa+Elena+Westwood+Denver+CO" }]
+    },
+    {
+      "name": "The Waffle Window", "group": "candidates", "area": "Capitol Hill", "cuisine": "Breakfast",
+      "price": "$", "status": "verify", "meals": ["breakfast"],
+      "note": "might be closed Mondays — check before the museum plan",
+      "confirm": "Monday hours unverified"
+    },
+    {
+      "name": "Slice Window (Colfax)", "group": "latenight", "area": "East Colfax", "cuisine": "Pizza",
+      "price": "$", "status": "banked", "meals": ["late night"],
+      "note": "open till 2 — the default after games night",
+      "links": [{ "label": "Yelp", "url": "https://www.yelp.com/search?find_desc=pizza+by+the+slice&find_loc=Denver%2C+CO" }]
+    },
+    {
+      "name": "Conveyor Coffee", "group": "latenight", "area": "RiNo", "cuisine": "Coffee / pastry",
+      "price": "$", "status": "banked", "meals": ["breakfast"],
+      "note": "the morning meet-point when the crew scatters"
+    }
+  ]
+}

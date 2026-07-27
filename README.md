@@ -48,7 +48,7 @@ same seal._
 ![Cycling the theme fleet](docs/assets/themes-cycle.gif)
 
 _Eleven built-in themes — three utilitarian daily drivers and a creative fleet, picked in
-**⚙ Settings → General**._
+**⚙ Settings → General** or the theme menu on the app footer._
 
 **A clip for every lane — the full tour lives in [`docs/EXAMPLES.md`](docs/EXAMPLES.md).**
 
@@ -56,12 +56,15 @@ _Eleven built-in themes — three utilitarian daily drivers and a creative fleet
 
 - **`hn` CLI** — one root binary, four mountable lanes:
   - `hn finance` — read-only market data: quotes · positions · net worth · **market** (regime/breadth) ·
-    fundamentals (SEC EDGAR) · multiples · **correlate** (diversification/beta vs. a factor) · news · wire
+    fundamentals (SEC EDGAR) · **filing** (read an 8-K press-release exhibit straight from EDGAR) ·
+    multiples · **correlate** (diversification/beta vs. a factor) · news · wire
     (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) · screen. **No trading; observation only.**
   - `hn career` — a read-only role-hunt lane: keyless openings scans (Greenhouse/Ashby) with posted comp,
     company profiles, and D3 visuals.
-  - `hn travel` — live-travel research hands: flight ranking · hotels · events · traffic · ferries · weather
-    /air/quake senses · destination viz.
+  - `hn travel` — live-travel research hands: flight ranking · hotels · events + an **events calendar**
+    (almanac + ticketed events as a month grid) · restaurant discovery (optional ratings + reviews
+    tiers) · traffic · ferries · weather/air/quake senses with feels-like-aware alerts + an
+    **outdoor-windows solver** ("when today is it actually nice out") · destination viz.
   - `hn beads` — a read-only board over a [beads](https://github.com/gastownhall/beads) issue tracker's
     export: counts, presence, an honest ready queue, per-issue ticket pages.
 - **Watchman console** — a small resident desktop app (Tauri): domain **dashboards** that self-refresh from

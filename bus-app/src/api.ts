@@ -31,6 +31,9 @@ export const unreadCount = (): Promise<number> => invoke("unread_count");
 export const urgentUnreadCount = (): Promise<number> => invoke("urgent_unread_count");
 export const distinctMeta = (): Promise<DistinctMeta> => invoke("distinct_meta");
 export const appVersion = (): Promise<string> => invoke("app_version");
+// symbols_from resolver: a widget's dynamic chip list off the portfolio seed.
+export const listPortfolioSymbols = (lane: string, id: string): Promise<string[]> =>
+  invoke("list_portfolio_symbols", { lane, id });
 export const getConfig = (): Promise<AppConfig> => invoke("get_config");
 /** Set (url + optional token) or clear (null) the remote bus — native-only (door 403s it served).
     Returns the fresh config so the panel refreshes in one hop. */

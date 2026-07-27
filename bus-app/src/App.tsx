@@ -15,6 +15,7 @@ import PushBell from "./PushBell";
 import Settings from "./Settings";
 import UpdatePill from "./UpdatePill";
 import { NavContext, payloadRef, resolveRef, useNav, type Nav, type Ref } from "./nav";
+import { clearTheme, setTheme, storedTheme, THEMES, useTheme, type Theme } from "./theme";
 import { PUBLISHED } from "./published";
 import type {
   AgentHealth, AppConfig, BusEvent, DistinctMeta, Surface, SurfaceState, WatchmenStatus,
@@ -445,7 +446,34 @@ function navReducer(s: NavState, a: NavAction): NavState {
   }
 }
 
-// (ThemeMenu moved into the Settings modal — de-clutter)
+// The baseplate theme menu — RESTORED 2026-07-19: an earlier chrome de-clutter pass absorbed it
+// into Settings, and the daily driver voted it back ("I switch themes too frequently to hide the
+// menu behind multiple clicks"). Lives in BOTH places now — this menu and the Settings General
+// picker drive the same store (src/theme.ts), so they stay in sync for free via useTheme().
+// In-window dropdown (native menus off the table for this Accessory app; phones get the native picker).
+// AUTO = un-pin and follow the OS; picking a theme pins it.
+function ThemeMenu() {
+  const theme = useTheme();
+  const GLYPHS: Record<string, string> = {
+    dark: "☾", bright: "☀", paper: "▤", phosphor: "▚", redwatch: "◉",
+    fjord: "❆", outrun: "◢", abyss: "≋", dusk: "☽", solar: "✹", mono: "◼",
+  };
+  const glyph = GLYPHS[theme] ?? "☾";
+  return (
+    <label className="theme-menu" title="Theme — AUTO follows the OS; picking one pins it">
+      <span className="glyph">{glyph}</span>
+      <select
+        value={storedTheme() ?? "auto"}
+        onChange={(e) => (e.target.value === "auto" ? clearTheme() : setTheme(e.target.value as Theme))}
+      >
+        <option value="auto">AUTO</option>
+        {THEMES.map((t) => (
+          <option key={t.value} value={t.value}>{t.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 // ————— Shell ——————————————————————————————————————————————————————————————————————————————————
 
@@ -573,6 +601,7 @@ export default function App() {
         <span className="path">{config?.bus_source ?? config?.db_path ?? ""}</span>
         <div className="spacer" />
         <span className="status">{status}</span>
+        <ThemeMenu />
         {/* web-only: the native console notifies through the OS; the bell is the BROWSER's way
             to arm this device (docs/WEB-CONSOLE.md → Push notifications) */}
         {!isTauri() && <PushBell />}

@@ -98,10 +98,14 @@ class DestinationScreen(BaseModel):
 class ConditionsThresholds(BaseModel):
     """The Travel Watchman conditions-watch alert bar. All tunable; quiet days stay quiet."""
 
-    heat_high_f: float = 82.0  # forecast high >= this -> heat flag (a personal comfort threshold)
+    heat_high_f: float = 82.0  # forecast high >= this -> heat flag (a personal comfort threshold).
+    #                            v1.5: FEELS-AWARE — checked against apparent temp when present
+    #                            (heat comfort is a feels question), air temp as the fallback.
     aqi: int = 101  # US AQI >= this -> smoke flag (Unhealthy-for-Sensitive; wildfire season)
     wet_day_hours: float = 6.0  # precip_hours >= this -> wet_day (duration, "most of the day")
     wet_day_sum_in: float = 0.3  # OR precip_sum >= this (inches) -> wet_day (a soaking)
+    uv: float = 8.0  # daily max UV index >= this -> uv flag ("very high" band; v1.5)
+    gusts_mph: float = 30.0  # daily max gusts >= this -> wind flag (secure-the-patio bar; v1.5)
     # snow: ANY snowfall_sum > 0 flags (any snowfall at the home locale is notable) — no threshold field.
 
 
