@@ -3,6 +3,15 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.10.1] - 2026-07-27
+
+Security-patch release: the v0.10.0 tag's CI security scan flagged two HIGH-severity
+dependency vulnerabilities, both fixed upstream.
+
+### Fixed
+- `mcp` 1.27.2 → 1.28.1 (CVE-2026-59950 — WebSocket server transport).
+- `js-yaml` 5.2.1 → 5.2.2 (GHSA-pm4m-ph32-ghv5 — flow-collection parsing DoS).
+
 ## [0.10.0] - 2026-07-26
 
 This release adds an SEC filing reader, a weather/conditions upgrade with an outdoor-windows
@@ -345,6 +354,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.10.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.1
 [0.10.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.0
 [0.9.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.9.0
 [0.8.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.8.0
