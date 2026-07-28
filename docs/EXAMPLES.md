@@ -117,7 +117,8 @@ redwatch, fjord, abyss, dusk, outrun, solar, mono) — one toggle in the footer:
 <img src="assets/phone-tickets.png" alt="An execution ticket on a phone" width="330">
 </p>
 
-_Left: the Finance Core board. Right: a (fictional) execution ticket — swipeable tables._
+_Left: the Finance Core board. Right: a (fictional) execution ticket in the full-width phone reader
+(VAULT is a master-detail flow below 600px — the tree is the page, a doc opens with a ◀ back control)._
 
 
 ### ⚙ Settings — one home for the console's configuration
