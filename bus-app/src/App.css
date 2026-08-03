@@ -2086,7 +2086,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
   .calbig-daynum { font-size: 12px; }
 }
 
-/* ── ScorecardBook — the PRINTS spellbook ─────────────────────────────────
+/* ── ScorecardBook — the Prints scorecard book ─────────────────────────────────
    Grade banners key on the harness GRADES enum (two-surface contract w/ scorecards.py).
    All colors ride the theme tokens — no per-theme overrides needed here. */
 .scorebook { display: flex; flex-direction: column; gap: 10px; height: 100%; }

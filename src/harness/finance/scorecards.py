@@ -16,7 +16,7 @@ from typing import Any
 
 import yaml
 
-# The grade enum — the spellbook's banner colors key on these exactly.
+# The grade enum — the scorecard book's banner colors key on these exactly.
 GRADES = ("GREAT", "GOOD", "OK", "BAD", "DISASTER", "PENDING")
 
 

@@ -422,7 +422,7 @@ fn default_visits() -> Dashboard {
     }
 }
 
-/// The PRINTS spellbook — every graded print as a grade-bannered block, paginated
+/// The Prints scorecard book — every graded print as a grade-bannered block, paginated
 /// newest-first (page-turn chrome); click a block → the full card markdown in DocPopup. Data =
 /// the agent-appended scorecard registry via `hn finance scorecards --json` — deterministic
 /// registry read; the grades were written at print time by the operating loop, never here.

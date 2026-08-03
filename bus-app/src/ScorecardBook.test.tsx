@@ -1,4 +1,4 @@
-// ScorecardBook — the PRINTS spellbook component: grade banners, spellbook
+// ScorecardBook — the Prints scorecard-book component: grade banners,
 // pagination, click→DocPopup. DocPopup's readDoc is mocked at the api layer (the popup itself
 // is exercised enough to prove the click wiring; its full behavior has its own coverage).
 
@@ -62,7 +62,7 @@ describe("ScorecardBook", () => {
     }
   });
 
-  it("paginates 8 per page with spellbook chrome, newest page first", () => {
+  it("paginates 8 per page with page-turn chrome, newest page first", () => {
     const cards = Array.from({ length: 11 }, (_, i) =>
       card({ symbol: `P${String(i).padStart(2, "0")}`, print_date: `2026-07-${28 - i}`, held: false })
     );

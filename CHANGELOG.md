@@ -9,7 +9,7 @@ This release adds an earnings-print scorecard book to the console, an options-po
 gauges verb, and fixes a CSS regression that disabled the disabled-state styling on buttons.
 
 ### Added
-- **Prints spellbook** — a new **Finance ▸ Prints** console tab: your graded earnings-print
+- **Prints scorecard book** — a new **Finance ▸ Prints** console tab: your graded earnings-print
   history as grade-bannered blocks (GREAT → DISASTER, plus PENDING), paginated newest-first;
   click a block to open the full card in the doc popup. Data comes from
   `watchman finance scorecards --json` reading the print-scorecard registry in your corpus —

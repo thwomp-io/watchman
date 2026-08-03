@@ -1695,7 +1695,7 @@ def research(
 def scorecards(
     as_json: bool = typer.Option(False, "--json", help="Emit the PRINTS-tab dashboard contract"),
 ) -> None:
-    """Print-scorecard registry — every graded print, newest first (the spellbook's data feed).
+    """Print-scorecard registry — every graded print, newest first (the scorecard book's data feed).
 
     Reads the agent-appended registry (finance/reference/print-scorecards.yaml; pack-overridable).
     Deterministic load/validate/sort only — the grades themselves were written at print time by

@@ -1,5 +1,5 @@
-// ScorecardBook — the PRINTS spellbook: every graded print as a grade-bannered
-// block, paginated newest-first like a spellbook (page-turn chrome in the footer). Click a block
+// ScorecardBook — the Prints scorecard book: every graded print as a grade-bannered
+// block, paginated newest-first with page-turn chrome in the footer. Click a block
 // → DocPopup renders the full card markdown (the print-prep/grade doc) without leaving the tab —
 // the Ops-tab quick-look pattern applied to the print history.
 //
