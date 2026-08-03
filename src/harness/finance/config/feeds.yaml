@@ -1,4 +1,4 @@
-# Packaged news-wire roster — a GENERIC DEFAULT, not a personal media diet (since 2026-07-16).
+# Packaged news-wire roster — a GENERIC DEFAULT, not a personal media diet.
 #
 # Resolution precedence (Settings.feeds_path, mirroring the portfolio seed):
 #   1. the active weight pack's finance/feeds.yaml (demo scenarios may ship their own);

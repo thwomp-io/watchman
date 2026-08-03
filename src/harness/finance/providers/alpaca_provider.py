@@ -5,12 +5,13 @@ Read-only Market Data API v2 (https://data.alpaca.markets). Free tier: real-time
 seam (`_raw_get`) is monkeypatched in tests so unit tests never hit the network.
 
 Coverage caveat (handled, not hidden): Alpaca covers US-listed equities/ETFs. Mutual funds
-and many OTC/grey-market ADRs (NSRGY/RHHBY/...) are NOT covered -> returned Quote(available=False)
+and many OTC/grey-market ADRs are NOT covered -> returned Quote(available=False)
 with a note, so callers can degrade gracefully (this is exactly why fund-proxy exists).
 """
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any
 
 from harness._http import get_with_retry
@@ -18,6 +19,12 @@ from harness.finance.models import Bar, Quote
 from harness.finance.providers.base import ProviderError
 
 _DATA_BASE = "https://data.alpaca.markets"
+_TRADING_BASE = "https://paper-api.alpaca.markets"  # contracts roster (read-only metadata; no orders)
+_OPTION_PAGE_LIMIT = 1000  # data-API max page size for option snapshots
+_CONTRACT_PAGE_LIMIT = 10000  # trading-API max page size for the contracts roster
+# The contracts endpoint SILENTLY defaults its expiration window to ~1 week out (a multi-year ~900-contract
+# chain comes back as only ~130 near-dated contracts) — an explicit far lte is load-bearing for LEAPS.
+_CONTRACT_LOOKAHEAD_DAYS = 1200
 
 
 class AlpacaProvider:
@@ -111,6 +118,64 @@ class AlpacaProvider:
         if not isinstance(bars_raw, list):
             return []
         return [Bar.model_validate(b) for b in bars_raw if isinstance(b, dict)]
+
+    # --- seam for tests: the trading API (contracts roster) mirrors _raw_get on its own base ---
+    def _raw_get_trading(self, path: str, params: dict[str, str | int]) -> dict[str, Any]:
+        resp = get_with_retry(f"{_TRADING_BASE}{path}", params=params, headers=self._headers())
+        self.request_count += 1
+        data = resp.json()
+        return data if isinstance(data, dict) else {}
+
+    def fetch_option_chain_snapshots(self, symbol: str) -> dict[str, Any]:
+        """Full option-chain snapshots for one underlying → raw {OCC symbol: snapshot}.
+
+        Uses the INDICATIVE feed (the free tier — indicative quotes, not the OPRA consolidated
+        tape; plenty for sentiment gauges). Follows `next_page_token` until the chain is exhausted
+        (a liquid underlying runs well past one 1000-contract page)."""
+        snaps: dict[str, Any] = {}
+        params: dict[str, str | int] = {"feed": "indicative", "limit": _OPTION_PAGE_LIMIT}
+        while True:
+            raw = self._raw_get(f"/v1beta1/options/snapshots/{symbol.upper()}", params)
+            page = raw.get("snapshots")
+            if isinstance(page, dict):
+                snaps.update(page)
+            token = raw.get("next_page_token")
+            if not token or not page:
+                return snaps
+            params = {**params, "page_token": str(token)}
+
+    def fetch_option_open_interest(self, symbol: str) -> tuple[dict[str, int], str | None]:
+        """Open interest per contract from the trading-API roster → ({OCC symbol: OI}, newest
+        OI date).
+
+        Read-only metadata off the paper-trading host (no order capability is touched). The
+        explicit expiration window is load-bearing — without it the endpoint silently truncates to
+        ~1 week of expiries. Contracts with no reported OI yet (fresh listings) are omitted, and OI
+        itself is exchange-reported on a ~1-day lag (the returned date says so)."""
+        today = date.today()
+        oi: dict[str, int] = {}
+        as_of: str | None = None
+        params: dict[str, str | int] = {
+            "underlying_symbols": symbol.upper(),
+            "limit": _CONTRACT_PAGE_LIMIT,
+            "expiration_date_gte": today.isoformat(),
+            "expiration_date_lte": (today + timedelta(days=_CONTRACT_LOOKAHEAD_DAYS)).isoformat(),
+        }
+        while True:
+            raw = self._raw_get_trading("/v2/options/contracts", params)
+            contracts = raw.get("option_contracts") or []
+            if isinstance(contracts, list):
+                for c in contracts:
+                    if not (isinstance(c, dict) and c.get("symbol") and c.get("open_interest")):
+                        continue
+                    oi[str(c["symbol"])] = int(float(c["open_interest"]))
+                    d = c.get("open_interest_date")
+                    if isinstance(d, str) and (as_of is None or d > as_of):
+                        as_of = d
+            token = raw.get("next_page_token")
+            if not token or not contracts:
+                return oi, as_of
+            params = {**params, "page_token": str(token)}
 
 
 def build_alpaca_provider(

@@ -3,6 +3,31 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-08-03
+
+This release adds an earnings-print scorecard book to the console, an options-positioning
+gauges verb, and fixes a CSS regression that disabled the disabled-state styling on buttons.
+
+### Added
+- **Prints spellbook** — a new **Finance ▸ Prints** console tab: your graded earnings-print
+  history as grade-bannered blocks (GREAT → DISASTER, plus PENDING), paginated newest-first;
+  click a block to open the full card in the doc popup. Data comes from
+  `watchman finance scorecards --json` reading the print-scorecard registry in your corpus —
+  the grades are written by your operating loop at print time; no model runs in the render path.
+- **Options-positioning gauges** — `watchman finance gauges SYM`: put/call ratio (session volume
+  and open interest), IV30 (median near-the-money implied volatility, 20-45 days out), HV30
+  (trailing realized volatility, matching the common brokerage 30-day convention), and the
+  IV−HV spread with a braced/neutral/complacent read. The output states its own boundaries:
+  the free indicative feed, per-contract IV coverage, the ~1-day open-interest lag, and that
+  short interest is not available from this provider. Requires Alpaca keys; MCP twin
+  `finance_gauges`.
+
+### Fixed
+- **Disabled-state CSS regression** — 11 `:not(:disabled)` selectors in the console stylesheet
+  had been corrupted to `:not(disabled)` by the release transform, so disabled buttons still
+  lit up on hover and depressed on click. The transform rule is fixed and the selectors ship
+  intact again. Found by the pre-release audit's dev-vs-artifact diff.
+
 ## [0.10.1] - 2026-07-27
 
 Security-patch release: the v0.10.0 tag's CI security scan flagged two HIGH-severity

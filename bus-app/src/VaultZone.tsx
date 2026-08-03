@@ -238,7 +238,7 @@ function VaultZone({ target }: { target?: string }) {
     void listVaultDocs().then((ds) => {
       setDocs(ds);
       if (target) return; // a deep-link target opens via the effect below — don't flash the default first
-      // Phone master-detail: land on the TREE, not a default doc (the 7/21 field report — a
+      // Phone master-detail: land on the TREE, not a default doc (the phone field report — a
       // phone opening straight into a doc buries the browse surface). Desktop keeps the
       // no-empty-stage default-select.
       if (window.innerWidth <= 720) return;

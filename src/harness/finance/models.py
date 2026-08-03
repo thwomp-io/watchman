@@ -181,6 +181,9 @@ class ProxyComponent(BaseModel):
     prev_close: float | None = None
     move_pct: float | None = None
     weight: float | None = None  # the name's % of the FUND (N-PORT), when the basket is weighted
+    # quote lane: "alpaca" (IEX exchange feed) / "yahoo" (OTC ADR via the v8
+    # client) / "flat" (the cash-sweep component — 0% by definition). None = legacy/alpaca.
+    source: str | None = None
 
 
 class ProxyEstimate(BaseModel):
@@ -452,8 +455,8 @@ class FilingReadout(BaseModel):
 
 
 class WireDigest(BaseModel):
-    """Broad-market news wire — the `feeds.yaml` source feeds (MarketWatch / CNBC / FT / AP /
-    Bloomberg + Al Jazeera geopolitics + thesis-topic searches) aggregated NEWEST-FIRST
+    """Broad-market news wire — the `feeds.yaml` source feeds (the configured market wires
+    + geopolitics feeds + thesis-topic searches) aggregated NEWEST-FIRST
     across sources. The `wire` verb's contract.
 
     Deliberately distinct from the other two news surfaces: `news` is per-ticker (Yahoo RSS keyed on
@@ -620,4 +623,37 @@ class CorrelationReport(BaseModel):
     factor_corr: dict[str, float] | None = None  # sym → correlation to the factor
     factor_beta: dict[str, float] | None = None  # sym → beta to the factor (cov/var)
     divergence_days: list[DivergenceDay] | None = None  # focal vs factor, biggest-gap days
+    notes: list[str] = Field(default_factory=list)
+
+
+class OptionGauges(BaseModel):
+    """Options-positioning gauges for one underlying — put/call ratio + IV30 vs HV30 spread
+    (`hn finance gauges`). SENTIMENT THERMOMETERS, never advice: they characterize who
+    is on the other side of the trade (hedged holders vs pressing bears vs nobody-watching), they do
+    not generate entries. Deterministic facts computed in `harness.finance.gauges`; the
+    interpretation is the agent's narrative (the market.build_overview doctrine). Flat scalars by
+    design — `--json` feeds dashboard tiles directly."""
+
+    symbol: str
+    spot: float | None = None  # underlying price (latest trade via the stock snapshot)
+    chain_session: str | None = None  # the option session the volumes are from (newest dailyBar date)
+    n_contracts: int = 0  # snapshots returned for the whole chain
+    n_calls: int = 0
+    n_puts: int = 0
+    call_volume: int = 0  # session volume summed across calls (dailyBar.v)
+    put_volume: int = 0
+    pc_ratio_volume: float | None = None  # put/call by session volume; None on a zero-volume side
+    call_oi: int | None = None  # open interest summed across calls (trading-API contracts roster)
+    put_oi: int | None = None
+    pc_ratio_oi: float | None = None  # put/call by open interest (only when OI is reachable)
+    oi_available: bool = False
+    oi_as_of: str | None = None  # exchange-reported OI date (lags the tape ~1 day)
+    iv30: float | None = None  # median implied vol %, 20-45d contracts within ±10% of spot
+    iv30_n: int = 0  # contracts the IV30 median used
+    iv30_low_confidence: bool = False  # fewer than 4 contracts in the window
+    iv_reported: int = 0  # chain contracts carrying a non-null IV (illiquid strikes come back IV-less)
+    hv30: float | None = None  # trailing realized vol % (31 closes → 30 log returns, sample std, ×√252)
+    hv30_returns: int = 0
+    iv_hv_spread: float | None = None  # IV30 − HV30, points
+    spread_read: str | None = None  # braced / neutral / complacent (±8-point thresholds) — a gauge label
     notes: list[str] = Field(default_factory=list)

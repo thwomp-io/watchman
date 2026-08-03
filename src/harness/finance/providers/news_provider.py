@@ -37,7 +37,7 @@ _CONTENT_ENCODED = "{http://purl.org/rss/1.0/modules/content/}encoded"
 
 def _extract_summary(item: ET.Element) -> str:
     """The RSS item's body text for the reader pane. Prefer <content:encoded> (the
-    fuller article body some feeds carry — e.g. Al Jazeera) over <description> (the short
+    fuller article body some feeds carry) over <description> (the short
     summary). Raw as-published — may contain HTML (capture generously; the consumer sanitizes/renders).
     Returns "" when neither is present (most market feeds are headline-only — degrade gracefully)."""
     return (item.findtext(_CONTENT_ENCODED) or item.findtext("description") or "").strip()

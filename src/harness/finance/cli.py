@@ -262,7 +262,7 @@ def correlate(
     feed: str = typer.Option("iex", "--feed"),
     factor: str = typer.Option(
         None, "--factor", help="Comma-separated symbols → an equal-weight FACTOR basket "
-        "(e.g. an illustrative factor basket 'NVDA,AMD,AVGO') → each name's corr + beta to it + the focal's "
+        "(e.g. 'NVDA,AMD,AVGO') → each name's corr + beta to it + the focal's "
         "divergence days",
     ),
     as_json: bool = typer.Option(False, "--json"),
@@ -325,6 +325,76 @@ def correlate(
         console.print(dt)
     if rep.notes:
         console.print("[dim]  • " + " · ".join(rep.notes) + "[/dim]")
+
+
+@app.command()
+def gauges(
+    symbol: str = typer.Argument(..., help="Underlying ticker (e.g. SPY)"),
+    feed: str = typer.Option(
+        "iex", "--feed", help="Stock feed for spot/bars (options are always indicative)"
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Flat scalars — dashboard-tile ready"),
+) -> None:
+    """Options-positioning gauges — put/call ratio + IV30 vs HV30 with the spread read.
+
+    The broker-card gauges as a deterministic verb: session put/call (plus an open-interest ratio
+    when the contracts roster is reachable), IV30 (median near-the-money implied vol 20-45d out),
+    HV30 (trailing realized vol off the daily tape), and IV−HV with a braced/neutral/complacent
+    label. SENTIMENT THERMOMETERS, never advice — heavy puts can be fear or longs buying insurance;
+    the interpretation is yours. Short interest is NOT here (broker card / FINRA is the source).
+    """
+    try:
+        rep = _svc(feed).gauges(symbol.upper())
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(rep.model_dump_json())
+        return
+
+    spot = f"${rep.spot:,.2f}" if rep.spot is not None else "unquotable"
+    console.print(
+        f"[bold]gauges[/bold] · {rep.symbol} @ {spot} · chain: {rep.n_contracts} contracts "
+        f"({rep.n_calls}C / {rep.n_puts}P) · session {rep.chain_session or '—'}"
+    )
+    t = Table(title="Positioning gauges (sentiment thermometers, not advice)")
+    for col in ("Gauge", "Value", "Detail"):
+        t.add_column(col)
+    t.add_row(
+        "Put/Call (volume)",
+        f"{rep.pc_ratio_volume:.2f}" if rep.pc_ratio_volume is not None else "—",
+        f"{rep.put_volume:,} put / {rep.call_volume:,} call contracts traded",
+    )
+    if rep.oi_available:
+        t.add_row(
+            "Put/Call (open int)",
+            f"{rep.pc_ratio_oi:.2f}" if rep.pc_ratio_oi is not None else "—",
+            f"{rep.put_oi:,} put / {rep.call_oi:,} call open interest · as of {rep.oi_as_of or '?'}",
+        )
+    iv_detail = f"median IV of {rep.iv30_n} contracts 20-45d out, strike ±10% of spot"
+    if rep.iv30_low_confidence:
+        iv_detail += " [yellow](LOW-CONFIDENCE)[/yellow]"
+    t.add_row("IV30", f"{rep.iv30:.1f}%" if rep.iv30 is not None else "—", iv_detail)
+    t.add_row(
+        "HV30",
+        f"{rep.hv30:.1f}%" if rep.hv30 is not None else "—",
+        f"realized: {rep.hv30_returns} daily log returns, annualized",
+    )
+    if rep.iv_hv_spread is not None and rep.spread_read is not None:
+        style = {"braced": "yellow", "complacent": "red", "neutral": "green"}[rep.spread_read]
+        gloss = {
+            "braced": "options pricing notably more movement than the tape delivered",
+            "complacent": "options pricing notably less movement than the tape delivered",
+            "neutral": "options pricing roughly the movement the tape delivered",
+        }[rep.spread_read]
+        t.add_row(
+            "IV − HV spread",
+            f"[{style}]{rep.iv_hv_spread:+.1f} pts · {rep.spread_read}[/{style}]",
+            gloss,
+        )
+    console.print(t)
+    for n in rep.notes:
+        console.print(f"[dim]  • {n}[/dim]")
 
 
 @app.command(name="trap-map")
@@ -1166,7 +1236,7 @@ def multiples(
 
 @app.command()
 def filing(
-    symbol: str = typer.Argument(..., help="Ticker, e.g. NOW (must be a US SEC filer)"),
+    symbol: str = typer.Argument(..., help="Ticker, e.g. AAPL (must be a US SEC filer)"),
     form: str = typer.Option("8-K", "--form", help="Form family to read (8-K also matches 8-K/A)"),
     cik: str | None = typer.Option(None, "--cik", help="Override: use this CIK directly (skip the map)"),
     accession: str | None = typer.Option(
@@ -1429,7 +1499,7 @@ def news(
     are skipped by default (thin ticker feeds — a non-intraday fund's direction is `fund-proxy`); feed errors
     print loud, never as empty results.
 
-    For the BROAD market wire (MarketWatch/CNBC/FT/AP/Bloomberg + geopolitics, not keyed on a
+    For the BROAD market wire (the configured feeds.yaml wires + geopolitics, not keyed on a
     ticker), use `hn finance wire` (config/feeds.yaml). `watch`/`pulse` also fold those broad feeds
     into their fresh-headlines rail, deduped via the seen-cache.
     """
@@ -1455,7 +1525,7 @@ def news(
 @app.command()
 def wire(
     source: str = typer.Option(
-        None, "--source", help="Filter to one feed by name-substring (e.g. 'ft', 'bloomberg', 'aljazeera')"
+        None, "--source", help="Filter to one feed by name-substring (any feeds.yaml name fragment)"
     ),
     limit: int = typer.Option(8, "--limit", help="Headlines per feed"),
     full: bool = typer.Option(False, "--full", help="Show each item's summary/excerpt under its headline"),
@@ -1463,8 +1533,8 @@ def wire(
 ) -> None:
     """Broad-market news WIRE — config/feeds.yaml headlines aggregated NEWEST-FIRST across sources.
 
-    The 'what's the market narrative today?' layer. Sources: MarketWatch / CNBC / FT / AP / Bloomberg
-    (markets) + Al Jazeera (geopolitics) + thesis-topic searches — tune them in
+    The 'what's the market narrative today?' layer. Sources: the configured market wires
+    (markets) + geopolitics feeds + thesis-topic searches — tune them in
     config/feeds.yaml. Distinct from `news` (per-ticker Yahoo, 'what hit AAPL?') and from the
     `watch`/`pulse` fresh-headlines rail (which dedupes the same feeds via the seen-cache): `wire` is
     NEVER seen-filtered, so it returns the FULL wire every run — read it for a `market take`.
@@ -1619,6 +1689,63 @@ def research(
     for n in bundle.notes:
         console.print(f"[dim]  • {n}[/dim]")
     console.print(f"wrote {out}")
+
+
+@app.command()
+def scorecards(
+    as_json: bool = typer.Option(False, "--json", help="Emit the PRINTS-tab dashboard contract"),
+) -> None:
+    """Print-scorecard registry — every graded print, newest first (the spellbook's data feed).
+
+    Reads the agent-appended registry (finance/reference/print-scorecards.yaml; pack-overridable).
+    Deterministic load/validate/sort only — the grades themselves were written at print time by
+    the operating loop, never here (no model in the render path).
+    """
+    import yaml
+
+    from harness.finance.scorecards import ScorecardError, load_scorecards, to_contract
+
+    path = get_settings().scorecards_path
+    if path is None:
+        if as_json:
+            console.print_json(json.dumps({"scorecards": [], "summary": {"total": 0, "by_grade": {}}}))
+        else:
+            console.print(
+                "[yellow]no print-scorecard registry found[/yellow] — expected "
+                "finance/reference/print-scorecards.yaml in the tracker corpus (entries are "
+                "appended by the operating agent at grade time)"
+            )
+        return
+    try:
+        cards = load_scorecards(path)
+    except (OSError, ScorecardError, yaml.YAMLError) as e:
+        _fail(f"scorecard registry unreadable ({path}): {e}")
+        raise typer.Exit(code=1) from e
+    contract = to_contract(cards)
+    if as_json:
+        console.print_json(json.dumps(contract))
+        return
+    grade_style = {
+        "GREAT": "bold green", "GOOD": "green", "OK": "yellow",
+        "BAD": "dark_orange", "DISASTER": "red", "PENDING": "dim",
+    }
+    table = Table(title=f"Print scorecards · {contract['summary']['total']} graded prints")
+    table.add_column("Print", style="bold")
+    table.add_column("Period")
+    table.add_column("Date")
+    table.add_column("Grade")
+    table.add_column("Reaction")
+    table.add_column("Headline", max_width=64)
+    for c in cards:
+        style = grade_style.get(c.grade, "")
+        reaction = "—" if c.price_reaction is None else f"{c.price_reaction:+.1f}%"
+        held = " ·H" if c.held else ""
+        table.add_row(
+            f"{c.symbol}{held}", c.period, c.print_date.isoformat(),
+            f"[{style}]{c.grade}[/{style}]", reaction, c.headline,
+        )
+    console.print(table)
+    console.print("[dim]  • H = held at print · full card: the doc each block opens in Watchman[/dim]")
 
 
 @app.command()

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,6 +36,7 @@ from harness.finance.models import (
     NetWorth,
     NetWorthGroup,
     NewsItem,
+    OptionGauges,
     PortfolioSnapshot,
     Position,
     PrintCountdown,
@@ -330,6 +331,48 @@ class FinanceService:
             rep.notes.append("no bars for: " + ", ".join(missing))
         return rep
 
+    # ---- gauges (options positioning: put/call + IV30 vs HV30) ----
+    def gauges(self, symbol: str) -> OptionGauges:
+        """Options-positioning gauges for one underlying: gather the option-chain snapshots, the
+        spot quote, and ~3 months of daily closes, then the pure `build_gauges` math.
+
+        The chain endpoints are Alpaca-specific (option snapshots + the trading-API contracts
+        roster), so this requires the real Alpaca provider — the static/demo provider has no
+        option chain and fails with a clear message. The OI roster is OPTIONAL by design: if the
+        trading API is unreachable, the verb degrades to volume-only put/call and says so."""
+        from datetime import timedelta
+
+        from harness.finance.gauges import build_gauges
+        from harness.finance.providers.alpaca_provider import AlpacaProvider
+
+        provider = self._provider()
+        if not isinstance(provider, AlpacaProvider):
+            raise ProviderError(
+                "gauges needs the Alpaca options feed — set ALPACA_API_KEY_ID / "
+                "ALPACA_API_SECRET_KEY (the static/demo provider has no option chain)"
+            )
+        sym = symbol.upper()
+        snapshots = provider.fetch_option_chain_snapshots(sym)
+        quote = provider.get_quotes([sym])[0]
+        start = (date.today() - timedelta(days=70)).isoformat()  # ≥31 trading closes for HV30
+        closes = [b.c for b in provider.get_bars(sym, start=start)]
+        oi: dict[str, int] | None = None
+        oi_as_of: str | None = None
+        oi_error = ""
+        try:
+            oi, oi_as_of = provider.fetch_option_open_interest(sym)
+        except Exception as e:  # noqa: BLE001 — OI is a bonus layer; its outage never sinks the verb
+            oi, oi_error = None, str(e)
+        return build_gauges(
+            sym,
+            snapshots,
+            spot=quote.price,
+            closes=closes,
+            open_interest=oi,
+            oi_as_of=oi_as_of,
+            oi_error=oi_error,
+        )
+
     # ---- positions: the full asset table — live quotes + last-known NAV + static balances ----
     def positions(self) -> PortfolioSnapshot:
         seed = self.reader.read_portfolio()
@@ -541,7 +584,21 @@ class FinanceService:
     def fund_proxy(self) -> ProxyEstimate:
         basket = self.reader.read_portfolio().proxy
         weighted = bool(basket.weights)
-        quotes = self.quote(basket.symbols)
+        # Two quote lanes: exchange-listed names ride the Alpaca IEX feed (the
+        # original path); OTC ADRs — invisible to IEX, the reason the original equal-weight basket silently
+        # died — ride the keyless Yahoo v8 client the global verb already owns. The lane is
+        # config-declared per name (source: yahoo), never guessed.
+        alpaca_syms = [sym for sym in basket.symbols if basket.sources.get(sym, "alpaca") != "yahoo"]
+        yahoo_syms = [sym for sym in basket.symbols if basket.sources.get(sym) == "yahoo"]
+        quotes = self.quote(alpaca_syms) if alpaca_syms else []
+        yahoo_quotes: dict[str, Any] = {}
+        if yahoo_syms:
+            try:
+                from harness.finance.providers.global_provider import fetch_global_quotes
+
+                yahoo_quotes = fetch_global_quotes(yahoo_syms)
+            except Exception:
+                yahoo_quotes = {}  # lane-level outage degrades honestly to per-name missing below
         components: list[ProxyComponent] = []
         avail: list[tuple[float, float]] = []  # (move_pct, weight) — weight=1.0 in equal-weight mode
         missing: list[str] = []
@@ -556,16 +613,52 @@ class FinanceService:
                         prev_close=q.prev_close,
                         move_pct=q.day_change_pct,
                         weight=w,
+                        source="alpaca",
                     )
                 )
                 avail.append((q.day_change_pct, w if (weighted and w is not None) else 1.0))
             else:
-                components.append(ProxyComponent(symbol=q.symbol, available=False, weight=w))
+                components.append(ProxyComponent(symbol=q.symbol, available=False, weight=w, source="alpaca"))
                 missing.append(q.symbol)
+        for sym in yahoo_syms:
+            w = basket.weights.get(sym) if weighted else None
+            gq = yahoo_quotes.get(sym)
+            if gq is not None and gq.change_pct is not None:
+                prev = (
+                    round(gq.price - gq.change, 4)
+                    if (gq.price is not None and gq.change is not None)
+                    else None
+                )
+                components.append(
+                    ProxyComponent(
+                        symbol=sym,
+                        available=True,
+                        price=gq.price,
+                        prev_close=prev,
+                        move_pct=gq.change_pct,
+                        weight=w,
+                        source="yahoo",
+                    )
+                )
+                avail.append((gq.change_pct, w if (weighted and w is not None) else 1.0))
+            else:
+                # thin OTC names miss prints some sessions — drop from the day's coverage, say so
+                components.append(ProxyComponent(symbol=sym, available=False, weight=w, source="yahoo"))
+                missing.append(sym)
+        if weighted and basket.cash_weight > 0:
+            # the fund's cash sweep: a real slice of the book that moves 0% by definition —
+            # including it dampens the estimate exactly the way the fund's own cash does.
+            components.append(
+                ProxyComponent(
+                    symbol="CASH", available=True, move_pct=0.0,
+                    weight=basket.cash_weight, source="flat",
+                )
+            )
+            avail.append((0.0, basket.cash_weight))
 
         weight_sum = sum(w for _, w in avail)
         estimate = sum(m * w for m, w in avail) / weight_sum if avail and weight_sum else None
-        coverage = round(sum(basket.weights.values()), 2) if weighted else None
+        coverage = round(sum(basket.weights.values()) + basket.cash_weight, 2) if weighted else None
         live_coverage = round(sum(w for _, w in avail), 2) if weighted else None
         notes = [basket.note] if basket.note else []
         if missing:
@@ -748,8 +841,8 @@ class FinanceService:
         inherits their already-debugged behavior; the only new logic is aggregate + sort + filter.
         Crucially it does NOT touch the seen-cache (unlike `news`/`watch`, which dedupe), so it
         returns the FULL wire on every call — read the whole market narrative, not just the delta.
-        `source` filters to one feed by case-insensitive substring of its name (e.g. 'ft',
-        'bloomberg', 'aljazeera'). Per-feed failures degrade to `notes` (one dead feed is never a dead
+        `source` filters to one feed by case-insensitive substring of its name (e.g. 'ap',
+        'bloomberg', 'reuters'). Per-feed failures degrade to `notes` (one dead feed is never a dead
         run — the standing-agent doctrine the RSS path already enforces). Read-only."""
         from harness.finance.providers.news_provider import fetch_rss
 

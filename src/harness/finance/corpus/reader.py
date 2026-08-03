@@ -71,6 +71,13 @@ class ProxyBasket:
     # symbol -> % of the FUND (N-PORT weight). Populated by the `basket:` config form;
     # empty for the legacy `symbols:` form, which stays equal-weight.
     weights: dict[str, float] = field(default_factory=dict)
+    # symbol -> quote lane (the OTC longtail): "alpaca" (default — exchange-listed,
+    # IEX feed) or "yahoo" (OTC ADRs the IEX feed can't see — quoted via the global verb's v8
+    # client). Only non-default lanes are stored; absent symbol = alpaca.
+    sources: dict[str, str] = field(default_factory=dict)
+    # the fund's cash sweep as a flat component (% of fund, 0% day-move by definition) — dampens
+    # the estimate the way the fund's own cash does (the roster's cash-sweep lines).
+    cash_weight: float = 0.0
 
 
 @dataclass
@@ -242,14 +249,22 @@ class CorpusReader:
                 for r in basket_rows
                 if r.get("symbol") and r.get("weight") is not None
             }
+            proxy_sources = {
+                str(r["symbol"]): str(r["source"]).lower()
+                for r in basket_rows
+                if r.get("symbol") and r.get("source")
+            }
         else:
             proxy_symbols = [str(s) for s in proxy_raw.get("symbols", [])]
             proxy_weights = {}
+            proxy_sources = {}
         proxy = ProxyBasket(
             fund=str(proxy_raw.get("fund", "")),
             symbols=proxy_symbols,
             note=str(proxy_raw.get("note", "")).strip(),
             weights=proxy_weights,
+            sources=proxy_sources,
+            cash_weight=float(proxy_raw.get("cash_weight", 0.0) or 0.0),
         )
 
         screen_raw = data.get("values_screen", {}) or {}

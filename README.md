@@ -57,8 +57,10 @@ _Eleven built-in themes — three utilitarian daily drivers and a creative fleet
 - **`hn` CLI** — one root binary, four mountable lanes:
   - `hn finance` — read-only market data: quotes · positions · net worth · **market** (regime/breadth) ·
     fundamentals (SEC EDGAR) · **filing** (read an 8-K press-release exhibit straight from EDGAR) ·
-    multiples · **correlate** (diversification/beta vs. a factor) · news · wire
-    (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) · screen. **No trading; observation only.**
+    multiples · **correlate** (diversification/beta vs. a factor) · **gauges** (options-positioning
+    read: put/call, IV30 vs HV30, the braced/neutral/complacent spread) · news · wire
+    (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) ·
+    **scorecards** (your graded earnings-print history as a browsable registry) · screen. **No trading; observation only.**
   - `hn career` — a read-only role-hunt lane: keyless openings scans (Greenhouse/Ashby) with posted comp,
     company profiles, and D3 visuals.
   - `hn travel` — live-travel research hands: flight ranking · hotels · events + an **events calendar**

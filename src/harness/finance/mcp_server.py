@@ -75,8 +75,8 @@ def finance_networth() -> dict[str, Any]:
     """Full-picture net worth across institutions (live brokerage + last-known mutual-fund NAV +
     static retirement/cash balances), grouped by account with per-group valuation basis + as-of.
     Static / last-known balances are manually synced — stale until refreshed from a current broker
-    screenshot (do that at the start of finance work). Excludes assets not in the corpus (real
-    estate, vehicle). READ-ONLY observation, not a recommendation."""
+    screenshot (do that at the start of finance work). Excludes assets not in the corpus (e.g. real
+    estate, vehicles). READ-ONLY observation, not a recommendation."""
     return _svc().networth().model_dump()
 
 
@@ -180,8 +180,8 @@ def finance_news(symbols: list[str] | None = None, limit: int = 5) -> list[dict[
 
 @mcp.tool()
 def finance_wire(source: str | None = None, limit: int = 8) -> dict[str, Any]:
-    """Broad-market news WIRE — config/feeds.yaml headlines (MarketWatch/CNBC/FT/AP/Bloomberg markets
-    + Al Jazeera geopolitics + thesis topics) aggregated NEWEST-FIRST across sources. The
+    """Broad-market news WIRE — config/feeds.yaml headlines (the configured feeds.yaml sources — market wires
+    + geopolitics feeds + thesis-topic searches) aggregated NEWEST-FIRST across sources. The
     'what's the market narrative today?' layer for a market take. Distinct from finance_news
     (per-ticker Yahoo) and finance_watch (which dedupes the same feeds via the seen-cache): the wire
     is NEVER seen-filtered, so it returns the FULL wire every call. READ-ONLY; per-feed failures land
@@ -212,6 +212,20 @@ def finance_watch(mark_seen: bool = True, news_limit: int = 4) -> dict[str, Any]
     + days-to-print estimates + ONLY-new headlines via the local seen-cache. READ-ONLY observation;
     set mark_seen=False to peek without consuming the news delta."""
     return _svc().watch(mark_seen=mark_seen, news_limit=news_limit).model_dump()
+
+
+@mcp.tool()
+def finance_gauges(symbol: str) -> dict[str, Any]:
+    """Options-positioning gauges for one underlying — the broker-card read as data: put/call ratio
+    (session volume + an open-interest ratio when the contracts roster is reachable), IV30 (median
+    near-the-money implied vol, 20-45d contracts within ±10% of spot), HV30 (trailing realized vol,
+    31 closes, sample std, annualized), and the IV−HV spread with a braced/neutral/complacent label (±8-pt
+    thresholds). SENTIMENT THERMOMETERS, never advice — heavy puts can be fear or longs buying
+    insurance; the tape can't distinguish, so the interpretation stays the agent's. Honest
+    boundaries in `notes`: indicative (free) options feed; IV missing on illiquid strikes (coverage
+    reported); short interest NOT available via Alpaca — broker card / FINRA is the source.
+    READ-ONLY."""
+    return _svc().gauges(symbol.upper()).model_dump()
 
 
 @mcp.tool()

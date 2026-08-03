@@ -1,4 +1,4 @@
-# Packaged travel weights — a NEUTRAL TEMPLATE, not real data (since 2026-07-16).
+# Packaged travel weights — a NEUTRAL TEMPLATE, not real data.
 #
 # Resolution precedence (Settings.weights_path):
 #   1. the active weight pack's travel/weights.yaml (demo scenarios ship their own);

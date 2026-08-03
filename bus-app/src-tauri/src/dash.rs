@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub enum WidgetSource {
     /// A JSON-emitting read-only command (the surfaces engine).
     Command { cmd: String, args: Vec<String>, cwd: String },
-    /// A vault file (tracker-relative; containment-checked on read).
+    /// A vault file (corpus-relative; containment-checked on read).
     File { path: String },
     /// Bus events query — resolved webview-side through list_events.
     Bus {
@@ -226,7 +226,7 @@ fn default_finance() -> Dashboard {
     }
 }
 
-// ─── The Travel group — 5 subtabs (tracker facelift) ────────────────────────────────────────────
+// ─── The Travel group — subtabs (dashboard facelift) ────────────────────────────────────────────
 // Parity with Finance/Career: the old single flat "Command-center" becomes a grouped console.
 // Subtab + group order both follow load_all()'s lane-alphabetical sort (there's no order field), so
 // the lanes are deliberately prefixed `travel-*`: that keeps the Travel GROUP in its existing slot
@@ -296,7 +296,7 @@ fn default_landscape() -> Dashboard {
 }
 
 /// CONDITIONS — the live environmental senses + the agent-written conditions-watchman narrative.
-/// A stat-tile row off ONE `hn travel pulse --json` (its flat `tiles` contract tier C —
+/// A stat-tile row off ONE `hn travel pulse --json` (its flat `tiles` contract —
 /// the in-flight dedupe collapses the row to a single subprocess run), then home-base weather +
 /// local air/smoke tables, beside the `conditions/reports/` doc_series (the determinism-contract
 /// narrative panel, off disk). A `weather-strip` viz twin is a filed fast-follow.
@@ -419,6 +419,30 @@ fn default_visits() -> Dashboard {
                   hn_cmd(&["travel", "trips", "--kind", "visit", "--json"]), "local60s", 4,
                   Some("trips"), None, None) },
         ],
+    }
+}
+
+/// The PRINTS spellbook — every graded print as a grade-bannered block, paginated
+/// newest-first (page-turn chrome); click a block → the full card markdown in DocPopup. Data =
+/// the agent-appended scorecard registry via `hn finance scorecards --json` — deterministic
+/// registry read; the grades were written at print time by the operating loop, never here.
+fn default_prints() -> Dashboard {
+    Dashboard {
+        lane: "finance-prints".into(),
+        title: "Prints".into(),
+        group: "Finance".into(),
+        owner: default_owner(),
+        widgets: vec![w(
+            "scorebook",
+            "Print scorecards — the grade book",
+            "scorecards",
+            hn_cmd(&["finance", "scorecards", "--json"]),
+            "market10m",
+            4,
+            None,
+            None,
+            None,
+        )],
     }
 }
 
@@ -637,7 +661,7 @@ fn default_career() -> Dashboard {
 
 /// The BACKLOG dashboard — the beads coordination bus made browsable: counts, the
 /// P1 band, the presence board (in_progress = which agent is on what), an honest ready queue, and
-/// shipped-this-week. Read-only over the tracker's `.beads/issues.jsonl` PASSIVE export — the
+/// shipped-this-week. Read-only over the corpus repo's `.beads/issues.jsonl` PASSIVE export — the
 /// export's age rides the Open tile's title (liveness≠freshness: the board must never perform
 /// more currency than its file has). State changes stay with `bd`; this is the operator's glance
 /// surface (the ask: browse bead details without asking an agent — full descriptions ride RAW).
@@ -679,6 +703,7 @@ fn compiled_defaults() -> Vec<(&'static str, Dashboard)> {
     vec![
         ("backlog", default_backlog()),
         ("finance", default_finance()),
+        ("finance-prints", default_prints()),
         ("travel", default_travel()),
         ("travel-landscape", default_landscape()),
         ("travel-conditions", default_conditions()),

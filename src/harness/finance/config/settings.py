@@ -82,6 +82,18 @@ class Settings(BaseToolkitSettings):
         return bool(self.fmp_api_key)
 
     @property
+    def scorecards_path(self) -> Path | None:
+        """The print-scorecard registry (`finance/reference/print-scorecards.yaml`), pack-first
+        then tracker-resident. Appended by the operating agent at grade time; the PRINTS
+        spellbook tab renders from it via `hn finance scorecards --json`. None if absent —
+        the verb degrades to an honest empty state, never an invented card."""
+        pack = self.pack_file("finance", "print-scorecards.yaml")
+        if pack and pack.is_file():
+            return pack
+        tr = self.tracker_path / "finance" / "reference" / "print-scorecards.yaml"
+        return tr if tr.is_file() else None
+
+    @property
     def quotes_path(self) -> Path | None:
         """Offline static-quote fixture (`finance/quotes.json`), resolved pack-first then
         tracker-resident. When present AND Alpaca keys are absent, the finance lane renders from it

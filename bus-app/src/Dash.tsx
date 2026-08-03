@@ -13,6 +13,7 @@ import {
   listPortfolioSymbols, listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard, runWidget, saveDashboard } from "./api";
 import ErrorBoundary from "./ErrorBoundary";
 import JsonView from "./JsonView";
+import ScorecardBook, { type ScorecardData } from "./ScorecardBook";
 import type { BusEvent, Dashboard, DirDoc, NewsItem, SurfaceState, Widget, WireDigest } from "./types";
 import { fmtNum } from "./viz/common";
 import BarChart from "./viz/BarChart";
@@ -100,7 +101,7 @@ function sniffViz(v: Record<string, unknown>): string {
   if (v.windows && v.vests) return "vest-timeline";
   // calendar grid: per-day buckets + the window bounds (days alone would collide with forecasts);
   // variant="big" routes to the one-month wall-board twin — same shape, one emitter
-  if (Array.isArray(v.days) && v.from && v.to) return v.variant === "big" ? "calendar-big" : "calendar";  // the vest-timeline sell-planning calendar
+  if (Array.isArray(v.days) && v.from && v.to) return v.variant === "big" ? "calendar-big" : "calendar";
   // trap-map ladders: top-level symbols[] whose entries carry rungs (disjoint from every other shape)
   if (Array.isArray(v.symbols) && (v.symbols[0] as { rungs?: unknown } | undefined)?.rungs) return "ladder";
   // bead family tree: `beads` + `edges` (deliberately NOT nodes/links, so sankey can't claim it)
@@ -132,7 +133,7 @@ function StatBody({ data, widget }: { data: unknown; widget: Widget }) {
   // Sign-formatting (the +/− day-change convention) defaults ON for "%" tiles, opt-out via
   // `signed: false` — magnitude reads (e.g. unwind %-complete) aren't deltas; "+" there is noise.
   // `signed: true` opts IN for non-% tiles ($ deltas like the full-book day-G/L tile). The sign
-  // renders BEFORE the prefix ("-$374", never "$-374") — format the magnitude, place the sign.
+  // renders BEFORE the prefix ("-$100", never "$-100") — format the magnitude, place the sign.
   const signed = widget.signed === true || (widget.signed !== false && widget.suffix === "%");
   const text = Number.isFinite(num) ? fmtNum(Math.abs(num)) : String(v ?? "—");
   const sign = !Number.isFinite(num) ? "" : num < 0 ? "-" : num > 0 && signed ? "+" : "";
@@ -192,7 +193,7 @@ function relTime(published: string): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-// The Finance ▸ News master-detail reader (+ v2): filter chips (All / My book /
+// The Finance ▸ News master-detail reader (v2): filter chips (All / My book /
 // category) + keyword search over a scan list (relevance-badged) → the selected item's summary. j/k+arrows
 // nav the list. Pure display off the wire JSON (no model in the loop); the determinism contract DASH holds.
 function NewsReader({ data }: { data: WireDigest }) {
@@ -454,6 +455,9 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
           )}
           {widget.kind === "feed" && <FeedBody events={state.data as BusEvent[]} />}
           {widget.kind === "news" && <NewsReader data={state.data as WireDigest} />}
+          {widget.kind === "scorecards" && (
+            <ScorecardBook data={pluck(state.data, widget.value_path) as ScorecardData} />
+          )}
           {widget.kind === "viz" && (() => {
             // viz widgets honor value_path like stat/table do — so one rich source (e.g.
             // unwind --json) can feed many viz widgets, each pulling its own sub-shape.
@@ -918,7 +922,9 @@ export function migrateLegacyLayouts(d: Dashboard, cols: number): Dashboard {
   const widgets = d.widgets.map((wg) => {
     if (wg.layout) { claim(wg.layout.x, wg.layout.y, wg.layout.w, wg.layout.h); return wg; }
     const w = Math.max(1, Math.min(wg.span || 2, cols));
-    const h = wg.kind === "stat" ? 1 : wg.kind === "doc_series" ? 6 : 3 * (wg.rows ?? 1);
+    const h = wg.kind === "stat" ? 1
+      : wg.kind === "doc_series" || wg.kind === "scorecards" ? 6
+      : 3 * (wg.rows ?? 1);
     let px = 0, py = 0;
     placed: for (py = 0; ; py++) {
       for (px = 0; px <= cols - w; px++) if (fits(px, py, w, h)) break placed;

@@ -64,6 +64,16 @@ knowing from the shell:
   the filing's document table (filename backstop when untyped). `--list` shows the filing's
   document inventory with types; `--accession` re-aims at an older filing; `--doc` reads a
   specific document from it. Requires `HARNESS_SEC_CONTACT` (above).
+- **`hn finance gauges SYM [--json]`** — options-positioning gauges from the Alpaca Options API
+  (free indicative feed): put/call ratio (session volume + open interest), IV30 (median implied
+  vol, 20-45d out, near-the-money), HV30 (trailing realized vol, broker-card convention), and the
+  IV−HV spread with a braced/neutral/complacent read. Sentiment thermometers, not signals — the
+  output names its own boundaries (IV coverage, OI lag, and that short interest isn't available
+  from this provider). Requires Alpaca keys.
+- **`hn finance scorecards [--json]`** — the graded earnings-print registry
+  (`finance/reference/print-scorecards.yaml` in your corpus): every print you've graded as a
+  grade-bannered, newest-first list; the data behind the console's Finance ▸ Prints tab. The
+  registry is appended by your operating loop at grade time — the verb (and the tab) only read it.
 - **`hn travel calendar --from YYYY-MM-DD --to YYYY-MM-DD [--city C] [--variant grid|big]
   [--json]`** — the reference almanac + live ticketed events merged into per-day buckets; the data
   behind the console's Calendar tab and the static `calendar` SVG. Live events use
