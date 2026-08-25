@@ -3,6 +3,14 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.12.1] - 2026-08-25
+
+### Security
+- Dependency bumps for two HIGH advisories the release CI's Trivy scan caught on the v0.12.0 tag
+  run: `aiohttp` 3.14.1 → 3.14.3 (CVE-2026-69244, denial of service via malformed HTTP responses)
+  and `cryptography` 49.0.0 → 50.0.0 (CVE-2026-69247). No code change. The v0.12.0 installers are
+  unaffected by the scan result; the container image for 0.12.0 was not published — pull `0.12.1`.
+
 ## [0.12.0] - 2026-08-25
 
 This release adds three Finance console tabs (Projections, Holdings, Plans) and the verbs behind
@@ -441,6 +449,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.12.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.12.1
 [0.12.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.12.0
 [0.11.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.11.0
 [0.10.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.1
