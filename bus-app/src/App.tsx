@@ -446,7 +446,7 @@ function navReducer(s: NavState, a: NavAction): NavState {
   }
 }
 
-// The baseplate theme menu — RESTORED 2026-07-19: an earlier chrome de-clutter pass absorbed it
+// The baseplate theme menu — RESTORED: an earlier chrome de-clutter pass absorbed it
 // into Settings, and the daily driver voted it back ("I switch themes too frequently to hide the
 // menu behind multiple clicks"). Lives in BOTH places now — this menu and the Settings General
 // picker drive the same store (src/theme.ts), so they stay in sync for free via useTheme().

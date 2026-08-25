@@ -38,6 +38,10 @@ PRICE_MAP: dict[str, float] = {
     "V": 312.9, "JPM": 248.1, "UNH": 512.3, "WMT": 92.4, "CRM": 338.7,
     # concentrated single-stock positions used in the demo "unwind" stories
     "CRWD": 381.6, "ORCL": 192.4, "IBM": 274.8, "DDOG": 138.9,
+    # income / bond / credit-rail names the personas hold or watch — priced in their real-world
+    # ballpark so a bond ETF never reads like a growth stock (the deterministic fallback did)
+    "O": 56.4, "VICI": 31.9, "ABBV": 245.48, "TLT": 88.4, "VNQ": 84.2, "XOM": 108.6,
+    "HYG": 79.6, "LQD": 108.9, "IEF": 95.3,
 }
 
 # Per-symbol day-move spread (deterministic): prev_close = price / (1 + move), so day_change_pct ≈ move.

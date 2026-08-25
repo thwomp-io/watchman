@@ -5,7 +5,7 @@
 #
 # ⚠ Trigger is CI-completion-on-a-tag, NOT `release: released` — our publish flow creates the
 # release page BEFORE the tag run attaches installers, so a released-event trigger would fire
-# into an assetless release every time (the ordering bug, caught 2026-07-14 pre-flight).
+# into an assetless release every time (a released-event trigger fires before the assets attach).
 name: winget
 on:
   workflow_run:

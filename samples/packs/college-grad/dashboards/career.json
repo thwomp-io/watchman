@@ -2,6 +2,7 @@
   "lane": "career",
   "title": "Board",
   "group": "Career",
+  "owner": "default",
   "widgets": [
     {
       "id": "openings",
@@ -24,10 +25,13 @@
       "value_path": "summary.total",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "leadership",
@@ -50,10 +54,13 @@
       "value_path": "summary.leadership",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "ic_infra",
@@ -76,10 +83,13 @@
       "value_path": "summary.ic_infra",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "shortlist",
@@ -102,8 +112,10 @@
       "value_path": "roles",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "company",
         "tier",
@@ -112,7 +124,8 @@
         "salary",
         "url"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "shape_bar",
@@ -135,10 +148,13 @@
       "value_path": "shape_bar",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "pipeline",
@@ -161,8 +177,10 @@
       "value_path": "applications",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "company",
         "role",
@@ -170,7 +188,8 @@
         "next_step",
         "updated"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "scans",
@@ -185,10 +204,13 @@
       "value_path": null,
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "matrix",
@@ -211,10 +233,13 @@
       "value_path": "matrix",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 3
+      "rows": 3,
+      "layout": null
     }
   ]
 }

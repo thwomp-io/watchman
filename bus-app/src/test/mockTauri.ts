@@ -85,7 +85,7 @@ export function oneWidgetDash(lane: string, group: string, title: string, widget
 export function realFixture(): Dashboard[] {
   return [
     dashboard("finance", "Finance", "Core"),
-    dashboard("unwind", "Finance", "Unwind"),
+    dashboard("plans", "Finance", "Plans"),
     dashboard("market", "Finance", "Market"),
     dashboard("tickets", "Finance", "Tickets"),
     dashboard("compare", "Finance", "Compare"),

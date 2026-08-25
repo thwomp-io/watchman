@@ -94,6 +94,19 @@ class Settings(BaseToolkitSettings):
         return tr if tr.is_file() else None
 
     @property
+    def projections_path(self) -> Path | None:
+        """The scenario-projection params registry (`finance/reference/projection-params.yaml`),
+        pack-first then tracker-resident. Authored by the operating agent at research/grade time
+        (forward EPS + growth band + multiple band per name, with provenance); the PROJECTIONS
+        tab renders from it via `hn finance projections --json`. None if absent — the verb
+        degrades to an honest empty state, never an invented grid."""
+        pack = self.pack_file("finance", "projection-params.yaml")
+        if pack and pack.is_file():
+            return pack
+        tr = self.tracker_path / "finance" / "reference" / "projection-params.yaml"
+        return tr if tr.is_file() else None
+
+    @property
     def quotes_path(self) -> Path | None:
         """Offline static-quote fixture (`finance/quotes.json`), resolved pack-first then
         tracker-resident. When present AND Alpaca keys are absent, the finance lane renders from it

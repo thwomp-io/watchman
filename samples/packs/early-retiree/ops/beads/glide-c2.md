@@ -20,7 +20,7 @@ tags: [bead, finance, tax]
 
 ## Description
 
-Dividends from the income sleeve plus the realized gain from the Q2 IBM tranche are the base; the conversion sits on top. Project the full-year number first.
+Dividends from the income sleeve plus the staged IBM tranche's projected gain are the base; the conversion sits on top. Project the full-year number first.
 
 ## Linked issues
 
@@ -29,10 +29,10 @@ Dividends from the income sleeve plus the realized gain from the Q2 IBM tranche 
 
 ## Resolution
 
-Projection posted: sleeve dividends plus the Q2 IBM tranche gain put full-year income at ~$74k before any conversion. There is real headroom, but the subsidy math (glide-c3) decides how much of it is actually usable.
+Projection posted: sleeve dividends plus the staged IBM tranche's projected gain put full-year income at ~$74k before any conversion. There is real headroom, but the subsidy math (glide-c3) decides how much of it is actually usable.
 
 ## Comments (1)
 
 **steward** · 2026-07-12 11:00
 
-> Cross-checked the IBM gain against the June execution ticket — the 2020 lot, long-term treatment confirmed. The 2024 loss lot stays untouched as harvest inventory.
+> Cross-checked the projected IBM gain against the June execution ticket — the 2012 lot, long-term treatment confirmed; staged, not yet filled. The 2024 loss lot stays untouched as harvest inventory.

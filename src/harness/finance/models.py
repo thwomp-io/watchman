@@ -107,7 +107,7 @@ class TrapMap(BaseModel):
 
     as_of: str
     symbols: list[SymbolLadder] = Field(default_factory=list)
-    committed: float = 0.0  # Σ buy-rung value — powder reserved by the resting slate
+    committed: float = 0.0  # Σ buy-rung value — cash committed by the resting buy rungs
     notes: list[str] = Field(default_factory=list)
 
 
@@ -480,6 +480,31 @@ class PrintCountdown(BaseModel):
     confirmed: bool = False  # True = announcement-sourced (nasdaq analyst API), not cadence-derived
 
 
+class GateItem(BaseModel):
+    """One upcoming binary on the plan's calendar — a held-name print or a macro event.
+
+    The structured twin of what pulse's print_soon/macro_soon flags carry as prose: the
+    gates board renders these as countdown bars, so every
+    field a bar needs is first-class here instead of parsed out of a message string."""
+
+    kind: str  # "print" | "macro"
+    symbol: str | None = None  # held-name prints only; macro rows carry label alone
+    label: str  # the display line ("ACME Q2 print AC" / the macro_events label)
+    date: str | None = None  # ISO date when known; None = unresolvable estimate
+    days: int | None = None  # days out from today (0 = today); None mirrors date
+    confirmed: bool = False  # prints: announcement-sourced vs cadence-estimated; macro: always True
+
+
+class GatesBoard(BaseModel):
+    """The plan-gates contract — upcoming prints + macro events inside the horizon, sorted
+    imminent-first. `gates` is the viz sniff signature (disjoint from every other shape)."""
+
+    as_of: str
+    horizon_days: int
+    gates: list[GateItem] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class EarningsDate(BaseModel):
     """Next earnings date from the Nasdaq analyst API (Zacks-fed). `confirmed=False` means the
     date is Zacks' algorithm-derived estimate — the provider parses the distinction out of the
@@ -560,6 +585,10 @@ class MarketBreadth(BaseModel):
     megacap_avg_pct: float | None = None
     megacap_spread_pct: float | None = None  # max − min across the Mag7 (dispersion)
     semis_avg_pct: float | None = None
+    hyg_pct: float | None = None  # HYG% — high-yield credit's day move
+    credit_hy_minus_tsy_pct: float | None = None  # HYG% − IEF% — day-scale spread-widening proxy:
+    # negative = credit underperforming duration (spreads widening / risk-off in credit); a FACT,
+    # never a verdict — same doctrine as the equity breadth tells above.
 
 
 class MarketOverview(BaseModel):
@@ -572,6 +601,7 @@ class MarketOverview(BaseModel):
     sectors: list[MarketQuote] = Field(default_factory=list)
     semis: list[MarketQuote] = Field(default_factory=list)
     megacap: list[MarketQuote] = Field(default_factory=list)
+    credit: list[MarketQuote] = Field(default_factory=list)  # HYG/LQD/IEF — the credit-stress rail
     leaders: list[MarketMover] = Field(default_factory=list)
     laggards: list[MarketMover] = Field(default_factory=list)
     breadth: MarketBreadth = Field(default_factory=MarketBreadth)

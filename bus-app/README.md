@@ -1,8 +1,8 @@
 # Watchman (bus-app)
 
-Menu-bar-resident desktop app for the **harness message bus** — the human delivery layer for
-standing agents. Tray badge + native notifications + an inbox window
-over `~/.local/state/harness/bus.db`. Producer contract: [`../docs/BUS.md`](../docs/BUS.md).
+The Watchman desktop console — the lane dashboards, the viz rail, the corpus vault, and the inbox
+over the **harness message bus** (the human delivery layer for standing agents, ):
+tray badge + native notifications + the console window over `~/.local/state/harness/bus.db`. Producer contract: [`../docs/BUS.md`](../docs/BUS.md).
 
 **Stack**: Tauri v2 shell (Rust: rusqlite + tray + notification/autostart/single-instance
 plugins) + React/Vite/TS inbox. ~12MB installed; zero model anywhere in the loop.
@@ -28,7 +28,7 @@ plugins) + React/Vite/TS inbox. ~12MB installed; zero model anywhere in the loop
 ```bash
 cd bus-app
 npm install
-npm run tauri dev # needs Rust (rustup) + Xcode CLT
+npm run tauri dev     # needs Rust (rustup) + Xcode CLT
 ```
 
 Dev-mode notifications post under **the launching terminal's identity** (a dev binary isn't a
@@ -42,7 +42,7 @@ whitelisting). Don't judge notification identity/styling until the installed bun
 ## Install
 
 ```bash
-npm run tauri build # → src-tauri/target/release/bundle/macos/Watchman.app
+npm run tauri build   # → src-tauri/target/release/bundle/macos/Watchman.app
 ```
 
 Copy to `/Applications`, launch, then the **one-time macOS step**:
@@ -71,7 +71,7 @@ Autostart-at-login is enabled from the app (tauri-plugin-autostart, LaunchAgent 
 `db_path` (or the `HARNESS_BUS_DB` env var) relocates the bus; default
 `~/.local/state/harness/bus.db` matches the Python side.
 
-### Remote bus — `bus_url` mode (0.5.0)
+### Remote bus — `bus_url` mode
 
 A watchman on any device can read a served bus (`hn bus serve` on the always-on node —
 docs/BUS.md "Serving the bus over HTTP") instead of a local file. **The way to connect is

@@ -27,4 +27,4 @@ Next-oldest lot, long-term as of this February. Same playbook as tranche 1: a li
 - [[scale-u1]] — CRWD unwind — staged diversification of the vested employer RSUs · open
 
 **Blocked by** (1)
-- [[scale-u3]] — Confirm the trading window stays open for the tranche-2 sale · in_progress
+- [[scale-u3]] — Confirm the trading window stays open for the staged tranche sales · in_progress

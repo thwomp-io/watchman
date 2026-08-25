@@ -20,4 +20,4 @@ tags: [bead, finance, rsu]
 
 ## Description
 
-The next RSU vest lands September 15. Same playbook as June: sell the vested lot, roll the proceeds into VTI, keep the employer concentration flat. Nothing to do until the vest window nears.
+The next RSU vest lands September 15. Same playbook the June ticket drafted (never executed — superseded by the sell-at-vest ruling): sell the vested lot, roll the proceeds into VTI, keep the employer concentration flat. Nothing to do until the vest window nears.

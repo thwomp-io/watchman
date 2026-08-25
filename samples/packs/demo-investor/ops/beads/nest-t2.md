@@ -13,8 +13,8 @@ tags: [bead, travel]
 | field | value |
 | --- | --- |
 | Created | 2026-06-25 · Jordan Avery |
-| Updated | 2026-07-11 |
-| Closed | 2026-07-11 |
+| Updated | 2026-08-12 |
+| Closed | 2026-08-12 |
 | Labels | travel |
 | Owner | jordan@example.com |
 

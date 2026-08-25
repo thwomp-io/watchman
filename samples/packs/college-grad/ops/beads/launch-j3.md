@@ -20,7 +20,7 @@ tags: [bead, career, job-hunt]
 
 ## Description
 
-Virtual onsite the week of July 20: one systems-design session, one deeper coding round, one behavioral. Plan: two mock design sessions (URL shortener, log pipeline) and five STAR stories drawn from the internship and the current Datadog project work.
+Virtual onsite the week of September 8: one systems-design session, one deeper coding round, one behavioral. Plan: two mock design sessions (URL shortener, log pipeline) and five STAR stories drawn from the internship and the current Datadog project work.
 
 ## Linked issues
 

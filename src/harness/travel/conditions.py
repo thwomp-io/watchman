@@ -54,8 +54,8 @@ class ConditionsReport(BaseModel):
     weather: WeatherForecast | None = None
     air: AirQualityReport | None = None
     armed_trips: list[str] = Field(default_factory=list)  # human labels of finalized trips under watch
-    outdoor: OutdoorPlan | None = None  # today's outdoor-windows read (v1.5 tier B; None = hourly down)
-    now: CurrentConditions | None = None  # the right-now read (v1.5 tier C; None = current down)
+    outdoor: OutdoorPlan | None = None  # today's outdoor-windows read (None = hourly down)
+    now: CurrentConditions | None = None  # the right-now read (None = current down)
     tiles: dict[str, float | str | None] = Field(default_factory=dict)  # the FLAT dashboard-tile
     #                    contract (tier C) — stable keys the Conditions-subtab stat row plucks
     #                    (now_temp/feels/uv/gusts/aqi/sunset/window). Derived by conditions_tiles().
@@ -85,7 +85,7 @@ def compute_flags(
     tunit = weather.temperature_unit[-1]  # "F" / "C"
     punit = weather.precipitation_unit[0]  # "i" / "m"
     for d in weather.days:
-        # Heat is FEELS-AWARE (v1.5): apparent temp when the provider carries it, air temp as the
+        # Heat is FEELS-AWARE: apparent temp when the provider carries it, air temp as the
         # fallback — a 84° humid day that feels 91° should flag; a dry 84° that feels 80° shouldn't.
         heat_val = d.feels_max if d.feels_max is not None else d.temp_max
         if heat_val is not None and heat_val >= th.heat_high_f:
@@ -138,7 +138,7 @@ def compute_flags(
     return flags
 
 
-# ── the outdoor-windows solver (v1.5 tier B) ────────────────────────────────
+# ── the outdoor-windows solver ────────────────────────────────
 
 
 class OutdoorPrefs(BaseModel):
@@ -260,7 +260,7 @@ def conditions_tiles(rep: ConditionsReport) -> dict[str, float | str | None]:
     best = max(rep.outdoor.windows, key=lambda w: w.hours) if rep.outdoor and rep.outdoor.windows else None
 
     def r0(v: float | None) -> float | None:
-        # Tile-display rounding (whole degrees/mph — "71°", never "71.20°"; eye-caught polish).
+        # Tile-display rounding (whole degrees/mph — "71°", never "71.20°").
         return round(v) if v is not None else None
 
     uv = rep.now.uv if rep.now and rep.now.uv is not None else (d0.uv_index_max if d0 else None)

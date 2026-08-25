@@ -8,12 +8,12 @@
 // Usage:
 //   node scripts/console-tour.mjs <url> <out.webm> [--viewport WxH] [--token-file PATH]
 //                                  [--theme dark|light] [--steps "wait:3000,group:Finance,
-//                                   sub:Unwind,wait:2500,sub:Market,wait:2500,zone:INBOX,wait:3000"]
+//                                   sub:Plans,wait:2500,sub:Market,wait:2500,zone:INBOX,wait:3000"]
 //
 // Step language (comma-separated):
 //   zone:NAME   — click a top-level zone tab (DASH/INBOX/VIZ/VAULT/SURFACES)
 //   group:NAME  — click a DASH group in the .strip (Finance/Travel/Career/...)
-//   sub:NAME    — click a DASH subtab in the .substrip (Core/Unwind/Market/Tickets/...)
+//   sub:NAME    — click a DASH subtab in the .substrip (Core/Plans/Market/Tickets/...)
 //   wait:MS     — dwell (readability pause; becomes GIF hold time)
 //   settle      — bounded wait for ACQUIRING widgets to clear
 //

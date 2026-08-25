@@ -186,6 +186,35 @@ def find_events(
 
 
 @mcp.tool()
+def travel_active_decision() -> dict[str, Any]:
+    """The active trip decision's compare-radar data: the soonest live trip/visit whose folder
+    carries visuals/compare-data.json, passed through with the resolved slug as `trip` (the
+    Planning radar's dynamic source — corpus-driven, follows trips as they open/close). An honest
+    empty shape (axes/candidates []) when no live trip has a compare file."""
+    return _svc().active_decision()
+
+
+@mcp.tool()
+def travel_nudge(
+    weeks: int = 26, top: int = 5, live: bool = True, include_taken: bool = False
+) -> dict[str, Any]:
+    """Proactive trip nudges: enumerate upcoming weekends/long-weekends
+    over `weeks`, score them against every destination in the corpus nudge registry (season /
+    calendar / feasibility / standing fit / almanac events), live-enrich the top pairs (Ticketmaster
+    events + real forecast for windows inside ~16 days), and return the top nudge lines — each with
+    its full component breakdown (explainable). Spends no paid quota. `live=False` = corpus-only."""
+    svc = _svc()
+    result = svc.nudge(
+        date.today(), horizon_days=weeks * 7, top=top, live=live, include_taken=include_taken
+    )
+    return {
+        "nudges": [n.model_dump(mode="json") | {"line": n.line} for n in result["nudges"]],
+        "skipped": result["skipped"],
+        "note": result["note"],
+    }
+
+
+@mcp.tool()
 def find_trip_events(trip_slug: str, category: str | None = None) -> list[dict[str, Any]]:
     """Trip-scoped events: scan every candidate-destination city of a trip (from the corpus) for the
     trip window. Returns one {city, events:[...]} entry per mappable candidate, each event carrying
@@ -360,7 +389,7 @@ def get_traffic(
     alerts_only: bool = False,
 ) -> dict[str, Any]:
     """Live WA traffic from WSDOT (keyed-free): travel-time congestion deltas (Current vs Average
-    minutes on instrumented corridors in your region) + highway alerts
+    minutes on WSDOT's instrumented corridors, Washington state) + highway alerts
     (construction / closure / incident / maintenance). Filter with `near` (case-insensitive substring,
     e.g. a town name), `road` ('I-5' / '405' / 'US-2', normalized to WSDOT's code), `category`
     ('Construction' / 'Incident' / 'Lane Closure'). `congested_only` keeps routes delayed >= 5 min.
@@ -425,7 +454,7 @@ def make_diagram(
     (e.g. 'trips/2027-01-sample-trip'); the SVG lands at {dest}/visuals/{name}.svg.
 
     For diagram_type='map-annotate': `data` carries an `image` (path under the tracker corpus, e.g.
-    'screenshots/SCR-….png') + fractional `pins`/`route`/`notes`/`title`/`subtitle`/`legendTitle`
+    'screenshots/map.png') + fractional `pins`/`route`/`notes`/`title`/`subtitle`/`legendTitle`
     (coords are 0–1 of image w/h). Pins auto-number in order; `star:true` rings one. `grid=true`
     overlays a 0.1 coordinate grid so you can read off pin fractions, then re-render without it.
     Returns {path, embed}."""

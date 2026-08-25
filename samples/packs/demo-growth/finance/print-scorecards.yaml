@@ -1,0 +1,54 @@
+# Print scorecards — the machine registry behind the Finance ▸ Prints tab (FICTIONAL sample data
+# for the demo-growth persona; illustrative only, not advice).
+# grade enum: GREAT | GOOD | OK | BAD | DISASTER | PENDING · price_reaction = print-day move %.
+
+scorecards:
+  - symbol: AMZN
+    period: Q2 2026
+    print_date: 2026-07-30
+    grade: GOOD
+    price_reaction: 3.2
+    held: true
+    headline: "GOOD — cloud growth steady, retail margin up again; the guide bracketed consensus instead of beating it"
+    key_facts:
+      - "Cloud segment growth held in the high teens for a fourth quarter — no re-acceleration, no slip"
+      - "North America retail operating margin at a new high on logistics density"
+      - "Q3 guide bracketed consensus; the capex line went up without a matching commentary on returns"
+    card_doc: finance/research/prints/AMZN-2026-07-30.md
+  - symbol: CRWD
+    period: Q1 FY2027
+    print_date: 2026-06-03
+    grade: OK
+    price_reaction: -4.5
+    held: true
+    headline: "OK — net new recurring revenue in-line, the guide in-line; at this multiple in-line sells off, and the employer position sold off"
+    key_facts:
+      - "Net new annual recurring revenue matched the guide exactly — no beat"
+      - "Operating margin a point ahead; free cash flow margin unchanged"
+      - "The vest-cycle plan doesn't care about the grade: the next tranche sells on the vest date either way"
+    card_doc: finance/research/prints/CRWD-2026-06-03.md
+  - symbol: NVDA
+    period: Q1 FY2027
+    print_date: 2026-05-28
+    grade: GREAT
+    price_reaction: 5.9
+    held: true
+    headline: "GREAT — data-center revenue above the high end with a guide that stepped up again; supply, not demand, is still the constraint"
+    key_facts:
+      - "Data-center revenue above the top of the guided range"
+      - "Next-quarter guide up double digits sequentially"
+      - "Gross margin held in the mid-70s despite the product transition"
+    card_doc: finance/research/prints/NVDA-2026-05-28.md
+    take_doc: finance/market/takes/2026-06-19-take.md
+  - symbol: AVGO
+    period: Q2 FY2026
+    print_date: 2026-06-12
+    grade: GREAT
+    price_reaction: 7.7
+    held: false
+    headline: "GREAT — custom-silicon revenue guide raised for the third quarter running; the watchlist name earned a research card, not a chase"
+    key_facts:
+      - "AI semiconductor revenue guide raised again; the software segment margin expanded"
+      - "Free cash flow margin at a record for the company"
+      - "Standing rule: post-print entries, never pre-print — the starter waits for a pullback shelf"
+    card_doc: finance/research/prints/AVGO-2026-06-12.md

@@ -1,0 +1,303 @@
+{
+  "lane": "travel-conditions",
+  "title": "Conditions",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "now",
+      "title": "Now",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.now_temp",
+      "prefix": null,
+      "suffix": "°",
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "feels",
+      "title": "Feels",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.feels",
+      "prefix": null,
+      "suffix": "°",
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "uv",
+      "title": "UV index",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.uv",
+      "prefix": null,
+      "suffix": null,
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "gusts",
+      "title": "Gusts",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.gusts",
+      "prefix": null,
+      "suffix": " mph",
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "aqi",
+      "title": "AQI (today max)",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.aqi",
+      "prefix": null,
+      "suffix": null,
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "sunset",
+      "title": "Sunset",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.sunset",
+      "prefix": null,
+      "suffix": null,
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "window",
+      "title": "Outdoor window",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 1,
+      "value_path": "tiles.window",
+      "prefix": null,
+      "suffix": null,
+      "signed": false,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "weather",
+      "title": "Home-base weather — 7d",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "weather",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+6}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": "days",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": "location",
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "air",
+      "title": "Air quality / wildfire smoke",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "air",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+4}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 3,
+      "value_path": "days",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": "location",
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "date",
+        "us_aqi_max",
+        "pm2_5_max",
+        "category"
+      ],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "reports",
+      "title": "Conditions watchman — reports",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "travel/conditions/reports"
+      },
+      "refresh": "local60s",
+      "span": 7,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

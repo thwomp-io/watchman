@@ -14,11 +14,11 @@ configuration, and so you can see the load/unload-a-scenario flow before buildin
 ```
 samples/packs/
   <pack-name>/
-    pack.yaml # manifest: name, title, description, lanes, default
-    finance/ # per-lane data; present only for the lanes this pack provides
+    pack.yaml          # manifest: name, title, description, lanes, default
+    finance/           # per-lane data; present only for the lanes this pack provides
       portfolio.yaml
-    travel/ # (e.g.) weights.yaml, preferences.md, destinations/…
-    career/ # (e.g.) watchlist.yml, …
+    travel/            # (e.g.) weights.yaml, preferences.md, destinations/…
+    career/            # (e.g.) watchlist.yml, …
 ```
 
 - **`pack.yaml`** declares the pack's identity, the `lanes` it provides, and whether it's the `default`.
@@ -42,10 +42,10 @@ Load one, then swap to the other, to watch the whole console re-render (the `--p
 natural end of any lane command):
 
 ```sh
-hn finance networth --pack samples/packs/demo-investor # the ~$1M household
-hn finance networth --pack samples/packs/demo-growth # the aggressive early-career book (the swap)
-hn career shortlist --pack samples/packs/demo-growth # the active role search (offline)
-hn travel trips --pack samples/packs/demo-investor # the premium trip horizon (keyless)
+hn finance networth   --pack samples/packs/demo-investor   # the ~$1M household
+hn finance networth   --pack samples/packs/demo-growth     # the aggressive early-career book (the swap)
+hn career  shortlist  --pack samples/packs/demo-growth     # the active role search (offline)
+hn travel  trips      --pack samples/packs/demo-investor   # the premium trip horizon (keyless)
 ```
 
 > Each lane ships sample data; any private lane data is never published. Build your own persona to

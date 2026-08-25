@@ -1,0 +1,37 @@
+{
+  "lane": "finance-prints",
+  "title": "Prints",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "scorebook",
+      "title": "Print scorecards — the grade book",
+      "kind": "scorecards",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "scorecards",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

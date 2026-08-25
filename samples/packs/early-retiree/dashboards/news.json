@@ -2,6 +2,7 @@
   "lane": "news",
   "title": "News",
   "group": "Finance",
+  "owner": "default",
   "widgets": [
     {
       "id": "reader",
@@ -24,10 +25,13 @@
       "value_path": null,
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 3
+      "rows": 3,
+      "layout": null
     }
   ]
 }

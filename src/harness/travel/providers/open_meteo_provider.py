@@ -27,7 +27,7 @@ _UA = "harness/0.1 (personal travel-planning harness)"
 # Daily fields requested (parallel columnar arrays in the response).
 # precipitation_hours + snowfall_sum ride the same call (free) — the conditions-watch wet_day
 # (rain by DURATION, not probability) + snow flags read them.
-# v1.5 (the cutting-room-floor audit): apparent temps (heat is a FEELS question),
+# The cutting-room-floor audit: apparent temps (heat is a FEELS question),
 # UV max, gust max, sunrise/sunset — all same-call, zero extra quota.
 _DAILY = (
     "weather_code,temperature_2m_max,temperature_2m_min,"

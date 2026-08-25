@@ -24,7 +24,7 @@ tags: [bead, finance, equity]
 ## Linked issues
 
 **Children** (4)
-- [[scale-u2]] — Tranche 1 — sell the 2024-08 deep-gain lot (60 sh, limit 378) · closed
-- [[scale-u3]] — Confirm the trading window stays open for the tranche-2 sale · in_progress
+- [[scale-u2]] — Tranche 1 — sell the 2024-08 deep-gain lot (60 sh, limit 395) · open
+- [[scale-u3]] — Confirm the trading window stays open for the staged tranche sales · in_progress
 - [[scale-u4]] — Place the tranche-2 limit sale — the 2025-02 lot (55 sh) · open
 - [[scale-u6]] — Harvest the 2026-02 loss lot before the vest poisons the window · open

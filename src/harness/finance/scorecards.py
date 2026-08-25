@@ -89,7 +89,11 @@ def _parse_entry(raw: dict[str, Any], idx: int) -> Scorecard:
         print_date=print_date,
         grade=grade,
         headline=str(need("headline")),
-        card_doc=str(need("card_doc")),
+        # card_doc is the DocPopup click target but a print can legitimately have NO prep card
+        # (e.g. a spin-off stub graded straight off the 8-K); fall back to
+        # take_doc so the block still clicks through to the narrative record. At least one of
+        # the two must exist (a scorecard with no doc at all has no record to point at).
+        card_doc=str(raw.get("card_doc") or raw.get("take_doc") or need("card_doc")),
         price_reaction=float(reaction) if reaction is not None else None,
         held=bool(raw.get("held", False)),
         key_facts=[str(f) for f in facts],

@@ -2,12 +2,12 @@
 date: 2026-06-15
 tags: [finance, execution, ticket, sample, fictional]
 ---
-# Ticket — Q2 IBM unwind tranche → bonds
+# Ticket — IBM unwind tranche → bonds
 
 *FICTIONAL sample ticket. Read-only planning; you place every order.*
 
 ## Do now
-- [ ] SELL 120 IBM — the 2020-11-01 long-term-gain lot
+- [ ] SELL 120 IBM — the 2012-04-01 long-term-gain lot (oldest first)
 - [ ] BUY ~$33k BND — move the proceeds toward the target bond weight
 
 ## Why

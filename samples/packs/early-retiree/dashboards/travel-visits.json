@@ -1,0 +1,47 @@
+{
+  "lane": "travel-visits",
+  "title": "Visits",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "inbound",
+      "title": "Inbound visits — who's coming",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "trips",
+          "--kind",
+          "visit",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "trips",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "when",
+        "date",
+        "status",
+        "destination",
+        "anchor",
+        "who",
+        "doc"
+      ],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

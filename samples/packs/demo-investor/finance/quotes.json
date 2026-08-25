@@ -1,7 +1,7 @@
 {
   "VTI": {
     "price": 296.7,
-    "prev_close": 304.27
+    "prev_close": 297.29
   },
   "VXUS": {
     "price": 65.3,
@@ -38,6 +38,26 @@
   "SCHD": {
     "price": 27.8,
     "prev_close": 27.59
+  },
+  "VNQ": {
+    "price": 84.2,
+    "prev_close": 84.93
+  },
+  "JPM": {
+    "price": 248.1,
+    "prev_close": 250.53
+  },
+  "UNH": {
+    "price": 512.3,
+    "prev_close": 503.96
+  },
+  "XOM": {
+    "price": 108.6,
+    "prev_close": 109.65
+  },
+  "TLT": {
+    "price": 88.4,
+    "prev_close": 87.42
   },
   "SPY": {
     "price": 601.4,
@@ -126,5 +146,17 @@
   "TSLA": {
     "price": 347.9,
     "prev_close": 343.17
+  },
+  "HYG": {
+    "price": 79.6,
+    "prev_close": 78.24
+  },
+  "LQD": {
+    "price": 108.9,
+    "prev_close": 110.77
+  },
+  "IEF": {
+    "price": 95.3,
+    "prev_close": 96.93
   }
 }

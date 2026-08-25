@@ -44,3 +44,8 @@ events:
 destination_airports: {}
 destination_cities: {}
 destination_screens: {}
+
+# The proactive-nudge registry (slug -> best_windows/drive_hours/flight_hours/base_fit/nudge_hooks)
+# is corpus data too — authored judgment the deterministic `travel nudge` engine reads. Component
+# weights are tunable under a `nudge:` block (see NudgeWeights); defaults apply when omitted.
+destination_nudge: {}

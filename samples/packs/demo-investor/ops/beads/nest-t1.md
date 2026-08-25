@@ -19,7 +19,7 @@ tags: [bead, travel]
 
 ## Description
 
-October window, 9 nights, premium-cabin flights on points if the award space exists. Shortlist is Kona / Barcelona / Denver; decision gate is the award-seat scan.
+October window, 7 nights, premium-cabin flights on points if the award space exists. Shortlist is Kona / Barcelona / Denver; decision gate is the award-seat scan.
 
 ## Linked issues
 

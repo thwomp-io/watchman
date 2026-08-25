@@ -2,7 +2,7 @@
 tags: [bead, career]
 ---
 
-# nest-c1 — Quarterly review of the senior-PM watchlist
+# nest-c1 — Quarterly review of the senior-role watchlist
 
 **Status:** in_progress · **Priority:** P2 · **Type:** task · **Assignee:** scout
 

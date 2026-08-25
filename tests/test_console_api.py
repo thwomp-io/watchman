@@ -329,7 +329,7 @@ def test_list_portfolio_symbols_reads_the_seed(client: TestClient) -> None:
     r = invoke(client, "list_portfolio_symbols", headers=AUTH)
     assert r.status_code == 200
     # the BARE list — the door mirrors the native Vec<String> shape exactly (a {"symbols": …}
-    # wrapper here made the webview silently fall back to the static list; eye-caught)
+    # wrapper here made the webview silently fall back to the static list)
     assert isinstance(r.json(), list)
 
 

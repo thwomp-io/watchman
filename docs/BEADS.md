@@ -18,7 +18,7 @@ load a pack and open **DASH ▸ Ops ▸ Backlog**.
 export** at `.beads/issues.jsonl`. The console reads only that file:
 
 ```
-bd (the source of truth) → .beads/issues.jsonl → hn beads board --json → the console
+bd (the source of truth)  →  .beads/issues.jsonl  →  hn beads board --json  →  the console
 ```
 
 Point the engine at any directory containing a `.beads/` export (the corpus root — the same
@@ -27,9 +27,9 @@ is passive — it lags live `bd` operations until the next export — the board 
 **age** next to the Open count. The board never performs more freshness than its source has.
 
 ```sh
-hn beads board # the board in your terminal
-hn beads board --json # the console's data contract
-hn beads tickets # render per-issue ticket pages into the vault
+hn beads board            # the board in your terminal
+hn beads board --json     # the console's data contract
+hn beads tickets          # render per-issue ticket pages into the vault
 ```
 
 ## The Backlog tab

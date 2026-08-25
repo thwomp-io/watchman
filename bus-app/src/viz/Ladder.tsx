@@ -82,7 +82,7 @@ function OneLadder({ lad, maxValue, accent }: { lad: SymbolLadder; maxValue: num
             const share = maxValue > 0 ? r.value / maxValue : 0;
             const w = (FILL_FLOOR + (1 - FILL_FLOOR) * share) * 100;
             // hot = ≤2% to fill — INCLUDING in-the-money rungs (negative distance = fills at
-            // the next open; the hottest state on the board, eye-caught v3b)
+            // the next open; the hottest state on the board)
             const hot = r.distance_pct != null && r.distance_pct <= HOT_PCT;
             const title = `${r.side.toUpperCase()} ${r.qty} @ $${fmtNum(r.limit)} · $${fmtNum(r.value)} committed`
               + (r.distance_pct != null ? ` · ${r.distance_pct.toFixed(1)}% to fill` : "")

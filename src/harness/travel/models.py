@@ -253,7 +253,7 @@ class DailyWeather(BaseModel):
     precip_sum: float | None = None  # total precip in the parent's precip unit
     precip_hours: float | None = None  # hours WITH precipitation — the wet-day DURATION signal
     snowfall_sum: float | None = None  # total snowfall in the parent's precip unit (the snow flag)
-    # v1.5 same-call fields (the cutting-room-floor audit; all free on the one fetch):
+    # Same-call fields (the cutting-room-floor audit; all free on the one fetch):
     feels_max: float | None = None  # apparent_temperature_max — heat comfort is a FEELS question
     feels_min: float | None = None  # apparent_temperature_min
     uv_index_max: float | None = None  # daily max UV index (the uv flag reads this)
@@ -274,7 +274,7 @@ class WeatherForecast(BaseModel):
     timezone: str = ""
     temperature_unit: str = "°F"
     precipitation_unit: str = "inch"
-    wind_unit: str = "mph"  # gusts unit (mph with imperial, km/h with metric) — v1.5
+    wind_unit: str = "mph"  # gusts unit (mph with imperial, km/h with metric)
     days: list[DailyWeather] = Field(default_factory=list)
 
 

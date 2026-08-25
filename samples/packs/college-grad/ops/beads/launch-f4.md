@@ -19,7 +19,7 @@ tags: [bead, finance]
 
 ## Description
 
-Buffer first, market second: the auto-invest starts the month the HYSA crosses $9k. Keep the taxable core boring — the money goes to VTI, and the two-fund index core stays the whole strategy.
+Buffer first, market second: the auto-invest starts the month the HYSA crosses $9k (the plan's T1). Keep the taxable core boring — the money goes to VTI, and the two-fund index core stays the whole strategy.
 
 ## Linked issues
 

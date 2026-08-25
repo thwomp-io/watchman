@@ -1,0 +1,18 @@
+{
+  "title": "Destination characteristics — the whole corpus",
+  "subtitle": "8 destinations × what each offers · 1–5, more = more of that quality · NOT a goodness ranking — weight the axes per trip",
+  "axes": ["Food", "Nature", "Culture", "Nightlife", "Walkable", "Value"],
+  "max": 5,
+  "reachLabel": "Reach from Austin (effort, not a demerit)",
+  "note": "more of this quality →  ·  reach = effort, not a demerit (a long flight is a bigger trip, not a worse place)",
+  "rows": [
+    {"group": "US · City", "label": "New Orleans", "values": [5, 2, 5, 5, 5, 4], "reach": "AUS-direct ~1.5h / drive ~8h"},
+    {"group": "US · City", "label": "Nashville", "values": [4, 2, 4, 5, 4, 4], "reach": "AUS-direct ~2h"},
+    {"group": "International", "label": "Mexico City", "values": [5, 2, 5, 4, 4, 5], "reach": "AUS-direct ~2.5h"},
+    {"group": "Mountains", "label": "Denver", "values": [4, 5, 3, 3, 4, 3], "reach": "AUS-direct ~2h"},
+    {"group": "US · Park", "label": "Big Bend", "values": [1, 5, 1, 1, 1, 5], "reach": "drive ~7h"},
+    {"group": "US · City", "label": "Chicago", "values": [5, 2, 5, 4, 5, 3], "reach": "AUS-direct ~2.5h"},
+    {"group": "US · Coast", "label": "Miami", "values": [4, 3, 3, 5, 3, 2], "reach": "AUS-direct ~3h"},
+    {"group": "International", "label": "Puerto Vallarta", "values": [4, 4, 3, 3, 4, 4], "reach": "one connection, ~5h"}
+  ]
+}

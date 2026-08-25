@@ -50,8 +50,8 @@ holdings:
     name: CrowdStrike Holdings (employer RSUs)
     account: taxable
     shares: 210
-    avg_cost: 339.40
-    cost_basis: 71274.00
+    avg_cost: 333.10
+    cost_basis: 69950.00
     type: stock
     lots:
       - {acquired: "2024-08-15", qty: 60, unit_cost: 210.00}   # deep gain lot
@@ -94,7 +94,7 @@ open_orders:
   - symbol: NVDA
     side: buy
     qty: 15
-    limit: 150.00
+    limit: 125.00
     placed: 2026-06-19
     expires: 2026-12-19
     note: example resting add below a prior swing-low shelf
@@ -142,7 +142,7 @@ watchlist:
 # pie in `hn finance allocation`; the Current pie is derived live from holdings. Values ~$k; the pie
 # self-normalizes to 100%.
 allocation_target:
-  caption: "~$120k taxable pool · illustrative growth-tilted target"
+  caption: "~$200k taxable pool · illustrative growth-tilted target"
   slices:
     - {label: "Core index (QQQ/SMH)", value: 70}
     - {label: "Single-stock convictions", value: 35}
@@ -153,8 +153,8 @@ tax_events:
   - {date: 2026-09-15, label: "1040-ES Q3 estimated tax due (illustrative)"}
   - {date: 2027-01-15, label: "1040-ES Q4 estimated tax due (illustrative)"}
 
-# Employer-RSU vest calendar (the concentrated CRWD position above) — upcoming vests continuing the
-# ~quarterly grant schedule. Drives the Unwind-tab vest timeline + the wash-sale windows in `watch`
+# Employer-RSU vest calendar (the concentrated CRWD position above) — the ~quarterly grant schedule;
+# the 8/15 tranche was sold at the vest per the plan, 11/15 and 2/15 are upcoming. Drives the vest-timeline viz + the wash-sale windows in `watch`
 # (each vest poisons a loss-sale of the same stock ±30 days). units = shares vesting.
 vest_calendar:
   - {date: "2026-08-15", units: 45}

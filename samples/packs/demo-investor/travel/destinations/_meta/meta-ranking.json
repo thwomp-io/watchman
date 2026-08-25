@@ -1,0 +1,18 @@
+{
+  "title": "Destination characteristics — the whole corpus",
+  "subtitle": "8 destinations × what each offers · 1–5, more = more of that quality · NOT a goodness ranking — weight the axes per trip",
+  "axes": ["Food", "Nature", "Culture", "Water", "Walkable", "Value"],
+  "max": 5,
+  "reachLabel": "Reach from Minneapolis (effort, not a demerit)",
+  "note": "more of this quality →  ·  reach = effort, not a demerit (a long flight is a bigger trip, not a worse place)",
+  "rows": [
+    {"group": "Islands", "label": "Kona, Hawaii", "values": [4, 5, 3, 5, 2, 2], "reach": "one connection, ~9h"},
+    {"group": "Europe", "label": "Barcelona", "values": [5, 3, 5, 4, 5, 3], "reach": "one connection, ~11h"},
+    {"group": "US · City", "label": "Chicago", "values": [5, 2, 5, 3, 5, 4], "reach": "MSP-direct ~1.5h"},
+    {"group": "US · City", "label": "New York", "values": [5, 2, 5, 2, 5, 2], "reach": "MSP-direct ~3h"},
+    {"group": "US · Lake", "label": "Door County", "values": [3, 5, 2, 5, 3, 4], "reach": "drive ~6h"},
+    {"group": "US · Desert", "label": "Scottsdale", "values": [4, 4, 2, 2, 2, 3], "reach": "MSP-direct ~3.5h"},
+    {"group": "Mountains", "label": "Banff", "values": [3, 5, 2, 4, 3, 3], "reach": "one connection, ~6h"},
+    {"group": "US · Wine", "label": "Napa", "values": [5, 4, 3, 1, 2, 2], "reach": "MSP-direct to SFO ~4h + drive"}
+  ]
+}

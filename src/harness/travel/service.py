@@ -9,7 +9,7 @@ from typing import Any
 
 from harness.travel.conditions import ConditionsReport, compute_flags
 from harness.travel.config.settings import get_settings
-from harness.travel.corpus.reader import CorpusReader, PreferencesDigest, TripPlan
+from harness.travel.corpus.reader import CorpusReader, PreferencesDigest, TripPlan, _resolve_folder_note
 from harness.travel.corpus.reference import read_reference
 from harness.travel.media import build_contact_sheet, dest_dir_parts, store_image
 from harness.travel.models import (
@@ -351,7 +351,7 @@ class TravelService:
         }
         if variant == "big":
             # The sniff marker for the BIG month-board twin (one month at a time, wall-display
-            # cells) — same shape otherwise, so both twins ride one emitter (v2).
+            # cells) — same shape otherwise, so both twins ride one emitter.
             out["variant"] = "big"
         return out
 
@@ -423,6 +423,162 @@ class TravelService:
                 continue
             out.append(e)
         return sorted(out, key=lambda e: e.local_date)
+
+    # ---- proactive nudge ----
+    def nudge(
+        self,
+        today: date,
+        *,
+        horizon_days: int = 182,
+        top: int = 5,
+        live: bool = True,
+        include_taken: bool = False,
+    ) -> dict[str, Any]:
+        """Windows × destinations → the top proactive nudges ("You could be in X on Y because Z").
+
+        Deterministic two-phase: STATIC scores every enumerated window ×
+        every nudge-registry destination from corpus + the free reference almanac; the top pairs then
+        earn the live ENRICH (Ticketmaster events per distinct city×window — free-tier; Open-Meteo
+        weather for windows inside the ~16-day forecast horizon). `live=False` skips the enrich
+        (offline/deterministic-only). Windows already occupied by a live trip are skipped (a booked
+        weekend needs no nudge) unless `include_taken`. Returns {nudges, windows, skipped, note} —
+        every nudge carries its full component breakdown (explainable by construction)."""
+        from harness.travel import nudge as _n
+
+        reference = read_reference(self.reader._root, self.weights.events.followed_teams)
+        windows = _n.enumerate_windows(reference, today, horizon_days=horizon_days)
+
+        # A window a live trip already occupies is taken — nudging it would nag a done decision.
+        active = [
+            t
+            for t in self.reader.scan_trips()
+            if t.status not in ("completed", "cancelled") and t.start and t.end
+        ]
+        skipped: list[str] = []
+        if not include_taken:
+            open_windows = []
+            for w in windows:
+                hit = next(
+                    (t for t in active if t.start and t.end and t.start <= w.end and w.start <= t.end),
+                    None,
+                )
+                if hit is None:
+                    open_windows.append(w)
+                else:
+                    skipped.append(f"{w.label} — {hit.slug} already on the calendar")
+            windows = open_windows
+
+        slugs = list(self.weights.destination_nudge) or list(self.weights.destination_airports)
+        pairs = [_n.score_static(slug, w, self.weights, reference) for w in windows for slug in slugs]
+        pairs.sort(key=lambda c: c.score, reverse=True)
+
+        note = ""
+        if live:
+            enrich = pairs[: max(top * 3, 12)]
+            note = self._nudge_enrich(enrich, today)
+            pairs.sort(key=lambda c: c.score, reverse=True)
+
+        # One nudge per destination AND per window keeps the digest varied (top pairs otherwise
+        # collapse into one strong destination × every window it wins).
+        out: list[_n.NudgeCandidate] = []
+        seen_slug: set[str] = set()
+        seen_window: set[str] = set()
+        dest_root = self.reader._root / "destinations"
+        for cand in pairs:
+            wkey = cand.window.start.isoformat()
+            if cand.slug in seen_slug or wkey in seen_window:
+                continue
+            _n.assemble_reason(cand, self.weights)
+            # the console's vault deep-link: the destination folder-note, vault-relative
+            doc_path = _resolve_folder_note(dest_root, cand.slug)
+            if doc_path.exists():
+                cand.doc = f"travel/destinations/{doc_path.relative_to(dest_root)}"
+            out.append(cand)
+            seen_slug.add(cand.slug)
+            seen_window.add(wkey)
+            if len(out) >= top:
+                break
+        return {
+            "nudges": out,
+            "windows": windows,
+            "skipped": skipped,
+            "note": note,
+        }
+
+    def _nudge_enrich(self, cands: list[Any], today: date) -> str:
+        """Live enrich for the static top pairs: TM events per DISTINCT (city, window) + weather for
+        in-horizon windows. Best-effort — a missing TM key or transient provider error degrades to
+        the static result with an honest note, never an exception (the almanac already carried the
+        free layer)."""
+        from harness.travel import nudge as _n
+
+        notes: list[str] = []
+        # events: one scan per distinct (city, window-start) — the top-pairs cap bounds the calls
+        ev_cache: dict[tuple[str, str], list[EventResult]] = {}
+        try:
+            for cand in cands:
+                if not cand.city:
+                    continue
+                key = (cand.city, cand.window.start.isoformat())
+                if key not in ev_cache:
+                    found = self.scan_events([cand.city], cand.window.start, cand.window.end)
+                    ev_cache[key] = found[0].events if found else []
+                live_events = [e for e in ev_cache[key] if e not in cand.events]
+                if live_events:
+                    cand.events = cand.events + live_events
+                    _n._apply_event_components(cand, self.weights)
+                    cand.score = round(sum(c.points for c in cand.components), 1)
+        except ProviderError as err:
+            notes.append(f"live events unavailable ({err}) — almanac-only")
+
+        wx_cache: dict[str, list[Any]] = {}
+        for cand in cands:
+            if not cand.city or (cand.window.start - today).days > _n.WEATHER_HORIZON_DAYS:
+                continue
+            try:
+                if cand.city not in wx_cache:
+                    wx_cache[cand.city] = self.get_weather(cand.city, cand.window.start, cand.window.end).days
+                _n.apply_weather(cand, wx_cache[cand.city], self.weights)
+            except ProviderError:
+                continue  # forecast horizon / geocode miss — season already carries the judgment
+        return "; ".join(notes)
+
+    def active_decision(self) -> dict[str, Any]:
+        """The Planning radar's DYNAMIC source: resolve the soonest LIVE trip/visit
+        whose folder carries a compare radar (`visuals/compare-data.json` beside the folder-note)
+        and pass its JSON through, stamping the resolved slug in as `trip`.
+
+        Kills the hardcoded-trip-path staleness class: the compiled default calls THIS verb, so the
+        widget follows the corpus as trips open/close instead of freezing a slug into config
+        (a config value that names a trip is stale by construction).
+        Honest empty radar shape when no live trip has a compare file."""
+        import json as _json
+
+        done = {"completed", "cancelled"}
+        live = sorted(
+            (t for t in self.reader.scan_trips() if t.status not in done), key=lambda t: t.sort_date
+        )
+        vault_root = self.reader._root.parent
+        for t in live:
+            doc = vault_root / t.doc
+            # folder-note trips only — a flat trip's parent is trips/ itself, where a stray
+            # visuals/ dir would false-hit for every flat trip at once
+            if doc.parent.name != t.slug:
+                continue
+            data_path = doc.parent / "visuals" / "compare-data.json"
+            if not data_path.is_file():
+                continue
+            data = _json.loads(data_path.read_text())
+            if isinstance(data, dict):
+                data.setdefault("trip", t.slug)
+                return data
+        return {
+            "title": "Active decision — no live trip carries a compare radar yet",
+            "axes": [],
+            "candidates": [],
+            "max": 5,
+            "trip": "",
+        }
 
     # ---- trip pipeline (the command-center spine) ----
     def trip_pipeline(self, today: date, *, include_past: bool = False) -> list[dict[str, str]]:
@@ -600,7 +756,7 @@ class TravelService:
             air = None  # air sense down -> weather flags still fire (graceful degradation)
         flags = compute_flags(scope="home", place=cfg.home, weather=weather, air=air, th=cfg.thresholds)
 
-        # v1.5 tiers B+C: today's outdoor-windows read + the current-conditions "now" half
+        # today's outdoor-windows read + the current-conditions "now" half
         # (ONE hourly+current fetch + the pure solver; overlay prefs). Best-effort — a down
         # hourly endpoint degrades to outdoor=None/now=None, never kills the pulse.
         outdoor = None
@@ -645,7 +801,7 @@ class TravelService:
             as_of=day0.isoformat(), home=cfg.home, quiet=not flags,
             flags=flags, weather=weather, air=air, armed_trips=armed, outdoor=outdoor, now=now,
         )
-        rep.tiles = conditions_tiles(rep)  # the flat dashboard contract (tier C) — derived last
+        rep.tiles = conditions_tiles(rep)  # the flat dashboard contract — derived last
         return rep
 
     def get_earthquakes(

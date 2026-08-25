@@ -20,9 +20,9 @@ Issues, ideas, and focused PRs are welcome.
 ## Dev setup
 
 ```bash
-uv sync # Python env + deps
-cd viz && npm install && cd .. # the D3 SVG renderer (needs Node)
-cd bus-app && npm install # the desktop console (needs Rust + platform build tools)
+uv sync                          # Python env + deps
+cd viz && npm install && cd ..   # the D3 SVG renderer (needs Node)
+cd bus-app && npm install        # the desktop console (needs Rust + platform build tools)
 ```
 
 Run a lane against a bundled persona to sanity-check:
@@ -44,13 +44,12 @@ uv run pytest
 The desktop console (`bus-app/`):
 
 ```bash
-npm run build # tsc typecheck + vite production build
-npx vitest run # the frontend test suite
+npm run build      # tsc typecheck + vite production build
+npx vitest run     # the frontend test suite
 ```
 
 Behavior changes need a test. Mirror the existing style — small, focused, and assert the behavior, not the
-implementation. (The pack-swap fixes, for example, ship with regression tests proven to go red without the
-fix.)
+implementation. (A regression test should go red without the fix.)
 
 ## Extending it
 

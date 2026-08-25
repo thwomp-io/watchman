@@ -74,7 +74,7 @@ def test_finance_feeds_path_falls_back_to_packaged_default(tmp_path: Path) -> No
 
 
 def test_finance_feeds_path_prefers_tracker_resident(tmp_path: Path) -> None:
-    # The v0.96.0 tier: a corpus-resident feeds roster wins over the packaged generic wire.
+    # Precedence: a corpus-resident feeds roster wins over the packaged generic wire.
     resident = tmp_path / "finance" / "config" / "feeds.yaml"
     resident.parent.mkdir(parents=True)
     resident.write_text("feeds: []\n")
@@ -100,7 +100,7 @@ def test_travel_weights_path_falls_back_to_packaged_default(tmp_path: Path) -> N
 
 
 def test_travel_weights_path_prefers_tracker_resident(tmp_path: Path) -> None:
-    # The v0.96.0 tier: a corpus-resident travel/config/weights.yaml wins over the packaged
+    # Precedence: a corpus-resident travel/config/weights.yaml wins over the packaged
     # template when no pack is loaded (the portfolio-seed precedence, third instance).
     resident = tmp_path / "travel" / "config" / "weights.yaml"
     resident.parent.mkdir(parents=True)

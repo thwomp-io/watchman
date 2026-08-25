@@ -2,7 +2,7 @@
 tags: [bead, travel, budget]
 ---
 
-# launch-s2 — Price flights for the August Denver weekend
+# launch-s2 — Price flights for the Labor Day Denver weekend
 
 **Status:** open · **Priority:** P3 · **Type:** task
 
@@ -19,4 +19,4 @@ tags: [bead, travel, budget]
 
 ## Description
 
-AUS–DEN, August 14–17, visiting college friends and crashing on a couch — the flight is the entire trip budget. Anything under $150 round trip is a book-it price.
+AUS–DEN, September 4–7 (Labor Day), visiting college friends and crashing on a couch — the flight is the entire trip budget. Anything under $150 round trip is a book-it price.

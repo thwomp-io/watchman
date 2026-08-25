@@ -58,7 +58,7 @@ class NportDiff(BaseModel):
 
 
 def _sec_contact_headers() -> dict[str, str]:
-    # Resolved via Settings since (env var > .env file — pydantic-settings precedence):
+    # Resolved via Settings (env var > .env file — pydantic-settings precedence):
     # a bare os.environ read only ever saw a shell-exported value, despite this module documenting
     # the .env as the var's home. Same resolver as the filing reader — one behavior, two labels.
     from harness.finance.config.settings import get_settings

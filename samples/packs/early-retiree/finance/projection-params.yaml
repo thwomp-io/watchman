@@ -1,0 +1,91 @@
+# Scenario-projection params — behind `hn finance projections` + the Projections / Holdings tabs.
+# FICTIONAL sample data for the early-retiree persona; illustrative only, not advice.
+# Authored at research/grade time from a named artifact (provenance); eps_basis names the accounting
+# basis; bands are judgment calls; as_of drives the staleness flag. The verb only does the arithmetic.
+
+projections:
+  - symbol: JNJ
+    fwd_eps: 11.20
+    eps_basis: "Adjusted diluted, next twelve months — the raised full-year guide"
+    growth_pct_low: 4
+    growth_pct_high: 7
+    mult_low: 13
+    mult_mid: 15
+    mult_high: 17
+    ref_price: 152.40
+    as_of: 2026-08-12
+    provenance: finance/research/prints/JNJ-2026-07-15.md
+    notes: >-
+      An income holding modeled honestly: single-digit growth, a mid-teens multiple. The grid's job
+      here is to show that the return is the dividend plus a little, not to find upside.
+  - symbol: PG
+    fwd_eps: 7.30
+    eps_basis: "Core diluted, next twelve months — the FY27 guide midpoint"
+    growth_pct_low: 4
+    growth_pct_high: 7
+    mult_low: 21
+    mult_mid: 24
+    mult_high: 27
+    ref_price: 169.80
+    as_of: 2026-08-12
+    provenance: finance/research/prints/PG-2026-07-29.md
+    notes: >-
+      Priced for its stability. Modeled upside is thin; the position earns its seat on the dividend
+      streak and the low correlation to the growth names the sleeve doesn't hold.
+  - symbol: KO
+    fwd_eps: 3.05
+    eps_basis: "Comparable diluted, next twelve months — trailing plus mid-single-digit growth"
+    growth_pct_low: 4
+    growth_pct_high: 7
+    mult_low: 19
+    mult_mid: 22
+    mult_high: 25
+    ref_price: 62.70
+    as_of: 2026-08-12
+    provenance: finance/research/compares/2026-06-16-income-sleeve.md
+    notes: >-
+      The most defensive name in the book. The band exists so the Holdings tab can appraise the
+      entry; nobody is buying this for the modeled 12-month return.
+  - symbol: JPM
+    fwd_eps: 21.40
+    eps_basis: "GAAP diluted, next twelve months — the raised net-interest-income guide flowed through"
+    growth_pct_low: 3
+    growth_pct_high: 9
+    mult_low: 10
+    mult_mid: 12
+    mult_high: 14
+    ref_price: 248.10
+    as_of: 2026-08-12
+    provenance: finance/research/prints/JPM-2026-07-14.md
+    notes: >-
+      The income sleeve's one cyclical. The multiple band is deliberately tight — banks re-rate on
+      the credit cycle, not on earnings beats, and the plan sizes the position for that.
+  - symbol: IBM
+    fwd_eps: 11.60
+    eps_basis: "Operating (non-GAAP) diluted, next twelve months — the reiterated full-year guide"
+    growth_pct_low: 2
+    growth_pct_high: 8
+    mult_low: 18
+    mult_mid: 22
+    mult_high: 26
+    ref_price: 274.80
+    as_of: 2026-08-12
+    provenance: finance/research/prints/IBM-2026-07-22.md
+    notes: >-
+      The career-accumulated position being unwound into bonds on a schedule. The BAD Q2 print
+      pulled the growth band down; the entry-level appraisal on the Holdings tab shows why the
+      oldest lots are still deep gains regardless.
+  - symbol: ABBV
+    fwd_eps: 13.40
+    eps_basis: "Adjusted diluted, next twelve months — consensus-class, unverified against the next print"
+    growth_pct_low: 6
+    growth_pct_high: 12
+    mult_low: 15
+    mult_mid: 18
+    mult_high: 21
+    ref_price: 245.48
+    as_of: 2026-08-12
+    provenance: watchlist note — no filed print card yet; re-anchor at the first graded print
+    notes: >-
+      Watchlist candidate for the income sleeve; the immunology franchise transition is the debate.
+      Re-anchor from a filed print before any entry decision.

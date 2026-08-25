@@ -52,12 +52,22 @@ MEGACAP: list[tuple[str, str]] = [
     ("META", "Meta"),
     ("TSLA", "Tesla"),
 ]
+# Credit-stress rail: equity tells alone miss the layer where a financing-cycle
+# stress shows FIRST. HYG vs IEF (same-duration-ish risk-free leg) gives a deterministic day-scale
+# spread-widening proxy; LQD locates whether stress is HY-specific or credit-wide. All plain-ETF
+# Alpaca symbols — no new data lane.
+CREDIT: list[tuple[str, str]] = [
+    ("HYG", "High-yield credit"),
+    ("LQD", "IG credit"),
+    ("IEF", "Treasuries 7-10y"),
+]
 
 _GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ("indices", INDICES),
     ("sectors", SECTORS),
     ("semis", SEMIS),
     ("megacap", MEGACAP),
+    ("credit", CREDIT),
 ]
 
 
@@ -108,11 +118,12 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         key: [_to_market_quote(by_sym.get(sym), sym, label, key) for sym, label in members]
         for key, members in _GROUPS
     }
-    indices, sectors, semis, megacap = (
+    indices, sectors, semis, megacap, credit = (
         grouped["indices"],
         grouped["sectors"],
         grouped["semis"],
         grouped["megacap"],
+        grouped["credit"],
     )
 
     # --- breadth facts ---
@@ -122,6 +133,8 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
     ew_minus_cap = round(rsp - spy, 2) if (spy is not None and rsp is not None) else None
     mc_pcts = [r.day_change_pct for r in megacap if r.day_change_pct is not None]
     semis_pcts = [r.day_change_pct for r in semis if r.day_change_pct is not None]
+    hyg, ief = _pct(credit, "HYG"), _pct(credit, "IEF")
+    hy_minus_tsy = round(hyg - ief, 2) if (hyg is not None and ief is not None) else None
     breadth = MarketBreadth(
         sectors_advancing=sectors_adv,
         sectors_declining=sectors_dec,
@@ -131,9 +144,12 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         megacap_avg_pct=_mean(mc_pcts),
         megacap_spread_pct=round(max(mc_pcts) - min(mc_pcts), 2) if mc_pcts else None,
         semis_avg_pct=_mean(semis_pcts),
+        hyg_pct=hyg,
+        credit_hy_minus_tsy_pct=hy_minus_tsy,
     )
 
-    # --- movers: rotation universe (sectors + semis + mega-caps; not the broad indices) ---
+    # --- movers: rotation universe (sectors + semis + mega-caps; not the broad indices, and not
+    #     credit — sub-1% ETF drifts would pollute the rotation ranks without meaning rotation) ---
     pool = [r for r in (sectors + semis + megacap) if r.day_change_pct is not None]
     ranked = sorted(pool, key=lambda r: r.day_change_pct or 0.0, reverse=True)
 
@@ -158,6 +174,7 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         sectors=sectors,
         semis=semis,
         megacap=megacap,
+        credit=credit,
         leaders=leaders,
         laggards=laggards,
         breadth=breadth,

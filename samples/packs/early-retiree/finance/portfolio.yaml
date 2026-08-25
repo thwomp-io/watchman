@@ -29,8 +29,8 @@ holdings:
     name: IBM (career-accumulated company stock)
     account: taxable
     shares: 600
-    avg_cost: 142.30
-    cost_basis: 85380.00
+    avg_cost: 133.55
+    cost_basis: 80130.00
     type: stock
     lots:
       - {acquired: "2012-04-01", qty: 250, unit_cost: 98.40}    # deep long-term gain
@@ -69,6 +69,7 @@ index_watch: [SPY, QQQ]
 macro_events:
   - {date: 2026-07-29, label: "FOMC decision (Jul meeting — approx)"}
   - {date: 2026-08-13, label: "CPI (Jul data — approx)"}
+  - {date: 2026-09-04, label: "Jobs report (Aug — approx)"}
   - {date: 2026-09-16, label: "FOMC decision (Sep meeting — approx)"}
   - {date: 2026-10-14, label: "CPI (Sep data — approx)"}
   - {date: 2026-10-28, label: "FOMC decision (Oct meeting — approx)"}

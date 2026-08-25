@@ -262,7 +262,7 @@ def correlate(
     feed: str = typer.Option("iex", "--feed"),
     factor: str = typer.Option(
         None, "--factor", help="Comma-separated symbols → an equal-weight FACTOR basket "
-        "(e.g. 'NVDA,AMD,AVGO') → each name's corr + beta to it + the focal's "
+        "(e.g. 'NVDA,AMD,MSFT') → each name's corr + beta to it + the focal's "
         "divergence days",
     ),
     as_json: bool = typer.Option(False, "--json"),
@@ -394,6 +394,45 @@ def gauges(
         )
     console.print(t)
     for n in rep.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+
+
+@app.command(name="gates")
+def gates(
+    horizon: int = typer.Option(30, "--horizon", help="Days ahead to include"),
+    feed: str = typer.Option("iex", "--feed"),
+    as_json: bool = typer.Option(
+        False, "--json", help="Emit the gates contract — the Plans-tab board's source"
+    ),
+) -> None:
+    """The plan gates — upcoming held-name prints + macro-calendar events inside the horizon,
+    imminent-first. The fast structured twin of pulse's print_soon/macro_soon flags (no quotes,
+    no wire): the Plans tab's countdown board reads this; the terminal render is the same
+    calendar at a glance. Confirmed print dates say so; estimates are labeled (est)."""
+    try:
+        board = _svc(feed).gates(horizon_days=horizon)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+
+    if as_json:
+        console.print_json(board.model_dump_json())
+        return
+
+    if not board.gates:
+        console.print(f"[dim]no gates inside {board.horizon_days}d — clear runway[/dim]")
+        return
+    t = Table(title=f"Plan gates — next {board.horizon_days}d (as of {board.as_of})")
+    t.add_column("in", justify="right")
+    t.add_column("date")
+    t.add_column("kind")
+    t.add_column("gate")
+    for g in board.gates:
+        when = "TODAY" if g.days == 0 else f"{g.days}d"
+        mark = "" if g.confirmed else " [dim](est)[/dim]"
+        t.add_row(when, g.date or "—", g.kind, f"{g.label}{mark}")
+    console.print(t)
+    for n in board.notes:
         console.print(f"[dim]  • {n}[/dim]")
 
 
@@ -643,6 +682,7 @@ def market(
     console.print(_grp("Sectors", ov.sectors, by_move=True))
     console.print(_grp("Semis", ov.semis, by_move=True))
     console.print(_grp("Mega-cap (Mag7)", ov.megacap, by_move=True))
+    console.print(_grp("Credit", ov.credit))  # fixed order (HYG/LQD/IEF) — a rail, not a race
 
     b = ov.breadth
     spread = f"{b.megacap_spread_pct:.2f}pp" if b.megacap_spread_pct is not None else "—"
@@ -650,7 +690,8 @@ def market(
         f"\n[bold]Breadth[/bold]  sectors {b.sectors_advancing}▲/{b.sectors_declining}▼  ·  "
         f"equal-wt − cap (RSP−SPY) {_signed(b.equal_weight_minus_cap_pct)}  ·  "
         f"Mag7 avg {_signed(b.megacap_avg_pct)} (spread {spread})  ·  "
-        f"semis avg {_signed(b.semis_avg_pct)}"
+        f"semis avg {_signed(b.semis_avg_pct)}  ·  "
+        f"credit HY−Tsy {_signed(b.credit_hy_minus_tsy_pct)}"
     )
 
     def _movers(ms: list[MarketMover]) -> str:
@@ -1746,6 +1787,191 @@ def scorecards(
         )
     console.print(table)
     console.print("[dim]  • H = held at print · full card: the doc each block opens in Watchman[/dim]")
+
+
+@app.command()
+def projections(
+    as_json: bool = typer.Option(False, "--json", help="Emit the PROJECTIONS-tab dashboard contract"),
+    feed: str = typer.Option("iex", "--feed", help="Alpaca data feed (iex free / sip paid)"),
+) -> None:
+    """Scenario-grid projections — per-name risk/reward bands per horizon (the projections tab's feed).
+
+    Reads the agent-authored params registry (finance/reference/projection-params.yaml;
+    pack-overridable): forward EPS + a growth band + a multiple band per name, with provenance.
+    Deterministic arithmetic only (price = EPS × multiple, compounded per horizon) against the live
+    quote (ref_price fallback, source named) — scenarios to reason against, never forecasts; the
+    bands themselves were authored at research time by the operating loop, never here. Each name
+    also carries an item_level (the 12-month mid-scenario return %) and a rarity tier (legendary /
+    epic / rare / common / poor, bucketed on that number) for at-a-glance scanning.
+    """
+    import yaml
+
+    from harness.finance.projections import ProjectionError, build_contract, load_params
+
+    path = get_settings().projections_path
+    empty = {"projections": [], "summary": {"total": 0, "held": 0, "stale": 0}}
+    if path is None:
+        if as_json:
+            console.print_json(json.dumps(empty))
+        else:
+            console.print(
+                "[yellow]no projection-params registry found[/yellow] — expected "
+                "finance/reference/projection-params.yaml in the tracker corpus (entries are "
+                "authored by the operating agent at research/grade time)"
+            )
+        return
+    try:
+        params = load_params(path)
+    except (OSError, ProjectionError, yaml.YAMLError) as e:
+        _fail(f"projection registry unreadable ({path}): {e}")
+        raise typer.Exit(code=1) from e
+    # Live prices (best-effort — offline/keyless degrades per-name to ref_price, source named)
+    quotes: dict[str, float] = {}
+    try:
+        for q in _svc(feed).quote([p.symbol for p in params]):
+            if q.available and q.price is not None:
+                quotes[q.symbol] = q.price
+    except Exception:  # noqa: BLE001 — a dead provider is a degradation, never a dead verb
+        pass
+    holdings: dict[str, float] = {}
+    try:
+        for h in _svc(feed).reader.read_portfolio().holdings:
+            if h.avg_cost:
+                holdings[h.symbol] = float(h.avg_cost)
+    except Exception:  # noqa: BLE001 — projections must render even with no/broken corpus seed
+        pass
+    contract = build_contract(params, quotes, holdings)
+    if as_json:
+        console.print_json(json.dumps(contract))
+        return
+    for entry in contract["projections"]:
+        held = " ·H" if entry["held"] else ""
+        stale = " [dark_orange](params stale)[/dark_orange]" if entry["stale"] else ""
+        src = "" if entry["price_source"] == "live" else " [dim](ref price)[/dim]"
+        console.print(
+            f"\n[bold]{entry['symbol']}{held}[/bold] @ ${entry['price']:,.2f}{src} · "
+            f"fwd {entry['fwd_multiple_now']}x on ${entry['fwd_eps']}/sh · "
+            f"growth {entry['growth_pct_low']:g}–{entry['growth_pct_high']:g}%/yr · "
+            f"mult {entry['mult_low']:g}/{entry['mult_mid']:g}/{entry['mult_high']:g}x{stale}"
+        )
+        table = Table(show_edge=False, pad_edge=False)
+        table.add_column("Horizon")
+        table.add_column("Tier", style="dim")
+        table.add_column("Low", justify="right")
+        table.add_column("Mid", justify="right")
+        table.add_column("High", justify="right")
+        for row in entry["grid"]:
+            rets = row["return_pct"]
+
+            def fmt(v: float) -> str:
+                color = "green" if v >= 0 else "red"
+                return f"[{color}]{v:+.1f}%[/{color}]"
+
+            table.add_row(row["horizon"], row["tier"], fmt(rets["low"]), fmt(rets["mid"]), fmt(rets["high"]))
+        console.print(table)
+        console.print(f"[dim]  {entry['eps_basis']} · {entry['provenance']} · as of {entry['as_of']}[/dim]")
+    console.print(f"\n[dim]{contract['disclaimer']}[/dim]")
+
+
+@app.command()
+def holdings(
+    as_json: bool = typer.Option(False, "--json", help="Emit the HOLDINGS-tab dashboard contract"),
+    feed: str = typer.Option("iex", "--feed", help="Alpaca data feed (iex free / sip paid)"),
+) -> None:
+    """Holdings appraisal — the held book through the projections lens (the Holdings tab's feed).
+
+    The inventory to the projections verb's shop: every held instrument, valued from the
+    positions snapshot and appraised against the params registry — item level (the modeled
+    12-month mid-scenario return %, tiered legendary / epic / rare / common / poor exactly as the
+    projections verb scores it) from the LIVE price plus entry_item_level from the AVERAGE COST
+    (how good was the buy, against the current model). Names without a registry entry render
+    unappraised, reason named.
+    Deterministic join; the appraisal is a lens, never a verdict.
+    """
+    from harness.finance.holdings import build_holdings_contract
+    from harness.finance.projections import ProjectionError, load_params
+
+    path = get_settings().projections_path
+    params = []
+    if path is not None:
+        try:
+            params = load_params(path)
+        except (OSError, ProjectionError) as e:
+            _fail(f"projection registry unreadable ({path}): {e}")
+            raise typer.Exit(code=1) from e
+    try:
+        snap = _svc(feed).positions()
+    except Exception as e:  # noqa: BLE001 — no corpus seed = nothing to appraise; fail loud
+        _fail(f"positions unavailable: {e}")
+        raise typer.Exit(code=1) from e
+    rows = [
+        {
+            "symbol": pos.symbol,
+            "name": pos.name,
+            "account": pos.account,
+            "valuation": pos.valuation,
+            "shares": pos.shares,
+            "avg_cost": pos.avg_cost,
+            "cost_basis": pos.cost_basis,
+            "price": pos.price,
+            "market_value": pos.market_value,
+        }
+        # Instruments only — static balances (retirement / cash sweeps) aren't holdings to
+        # appraise; they stay on the networth/positions surfaces.
+        for pos in snap.positions
+        if pos.valuation in ("live", "last_known") and pos.shares > 0
+    ]
+    contract = build_holdings_contract(params, rows)
+    if as_json:
+        console.print_json(json.dumps(contract))
+        return
+    table = Table(title="Holdings — appraised against the projection params")
+    table.add_column("Symbol")
+    table.add_column("Value", justify="right")
+    table.add_column("Weight %", justify="right")
+    table.add_column("G/L %", justify="right")
+    table.add_column("item lvl", justify="right")
+    table.add_column("entry lvl", justify="right")
+    table.add_column("Edge", justify="right")
+    table.add_column("Rarity")
+    for h in contract["holdings"]:
+        gl = h.get("unrealized_gl_pct")
+        gl_s = f"[{'green' if gl >= 0 else 'red'}]{gl:+.1f}%[/]" if gl is not None else "—"
+        if h["appraised"]:
+            flags = " [dark_orange](stale)[/dark_orange]" if h["stale"] else ""
+            table.add_row(
+                h["symbol"],
+                f"${h['value']:,.0f}",
+                f"{h['weight_pct']:.1f}%",
+                gl_s,
+                str(h["item_level"]),
+                str(h["entry_item_level"]),
+                f"{h['entry_edge']:+d}",
+                f"{h['rarity']}{flags}",
+            )
+        else:
+            table.add_row(
+                h["symbol"],
+                f"${h['value']:,.0f}",
+                f"{h['weight_pct']:.1f}%",
+                gl_s,
+                "—",
+                "—",
+                "—",
+                f"[dim]{h['unappraised_reason']}[/dim]",
+            )
+    console.print(table)
+    s = contract["summary"]
+    line = (
+        f"[dim]{s['appraised']}/{s['count']} appraised · invested ${s['invested_total']:,.0f}"
+    )
+    if "best_entry" in s:
+        line += (
+            f" · best entry {s['best_entry']['symbol']} ({s['best_entry']['entry_item_level']:+d})"
+            f" · weakest {s['weakest_entry']['symbol']} ({s['weakest_entry']['entry_item_level']:+d})"
+        )
+    console.print(line + "[/dim]")
+    console.print(f"[dim]{contract['disclaimer']}[/dim]")
 
 
 @app.command()

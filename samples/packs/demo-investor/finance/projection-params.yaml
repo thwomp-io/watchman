@@ -1,0 +1,83 @@
+# Scenario-projection params — the thin machine layer behind `hn finance projections` and the
+# Finance ▸ Projections / Holdings tabs (FICTIONAL sample data for the demo-investor persona;
+# illustrative only, not advice).
+#
+# Every entry is authored at research/grade time from a named research artifact (provenance) and
+# carries its own honesty: eps_basis names the accounting basis, the growth and multiple bands are
+# deliberate judgment calls, as_of drives the staleness flag. The verb runs the arithmetic
+# (price = EPS × (1+growth)^h × multiple) against the live quote; it never forecasts.
+
+projections:
+  - symbol: AAPL
+    fwd_eps: 7.40
+    eps_basis: "GAAP diluted, next twelve months — trailing four quarters plus mid-single-digit growth"
+    growth_pct_low: 5
+    growth_pct_high: 10
+    mult_low: 26
+    mult_mid: 30
+    mult_high: 34
+    ref_price: 229.80
+    as_of: 2026-08-14
+    provenance: finance/research/prints/AAPL-2026-07-30.md
+    notes: >-
+      Premium-quality slow grower: the band assumes services mix keeps lifting margin while
+      hardware stays flat. The multiple band is what the market has paid across the last two
+      years, nothing more generous. Re-anchor at the fiscal Q4 print in late October.
+  - symbol: MSFT
+    fwd_eps: 14.90
+    eps_basis: "GAAP diluted, next twelve months — the raised FY27 guide annualized"
+    growth_pct_low: 12
+    growth_pct_high: 18
+    mult_low: 27
+    mult_mid: 31
+    mult_high: 35
+    ref_price: 451.20
+    as_of: 2026-08-14
+    provenance: finance/research/prints/MSFT-2026-07-29.md
+    notes: >-
+      The best-anchored entry in the book: guide-driven growth band, the multiple band bracketing
+      the last eight quarters. The risk is the capex cycle's return, not the current numbers.
+  - symbol: COST
+    fwd_eps: 19.60
+    eps_basis: "GAAP diluted, next twelve months — trailing plus high-single-digit growth"
+    growth_pct_low: 7
+    growth_pct_high: 11
+    mult_low: 42
+    mult_mid: 48
+    mult_high: 54
+    ref_price: 982.30
+    as_of: 2026-08-14
+    provenance: finance/research/prints/COST-2026-05-28.md
+    notes: >-
+      The multiple is the whole story — a wonderful business at a price that already assumes it.
+      Modeled upside from here is thin by construction; the position is a hold, not an add.
+  - symbol: ORCL
+    fwd_eps: 7.80
+    eps_basis: "Non-GAAP diluted, next twelve months — company guide, cloud-infrastructure ramp included"
+    growth_pct_low: 14
+    growth_pct_high: 24
+    mult_low: 20
+    mult_mid: 25
+    mult_high: 30
+    ref_price: 192.40
+    as_of: 2026-08-14
+    provenance: finance/research/prints/ORCL-2026-06-11.md
+    notes: >-
+      The legacy single-stock position. The band is wide on purpose: the backlog says high growth,
+      the history says lumpy conversion. The diversification plan sells on schedule regardless —
+      this entry sizes the opportunity cost of that discipline, it does not argue against it.
+  - symbol: NVDA
+    fwd_eps: 4.60
+    eps_basis: "Non-GAAP diluted, next twelve months — consensus-class estimate, unverified against the next print"
+    growth_pct_low: 15
+    growth_pct_high: 35
+    mult_low: 24
+    mult_mid: 30
+    mult_high: 36
+    ref_price: 138.40
+    as_of: 2026-08-14
+    provenance: finance/research/compares/2026-06-16-megacap-quality.md
+    notes: >-
+      Watchlist name, not held. Widest growth band in the book because the cycle question is
+      genuinely open; the multiple band is deliberately below where the stock has traded so the
+      grid errs conservative. Re-anchor from the filed print, not from headlines.

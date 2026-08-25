@@ -35,7 +35,28 @@ destination_airports:
   kona: KOA
   barcelona: BCN
   denver: DEN
+  chicago: ORD
+  door-county: GRB
+  scottsdale: PHX
 destination_cities:
   kona: "Kailua-Kona, HI"
   barcelona: "Barcelona, ES"
   denver: "Denver, CO"
+  chicago: "Chicago, IL"
+  door-county: "Sturgeon Bay, WI"
+  scottsdale: "Scottsdale, AZ"
+
+# The proactive-nudge registry (the Planning tab's nudge cards): per-destination best months,
+# door-to-door friction, an authored standing fit (0-10, 5 = neutral) and optional hook lines.
+# FICTIONAL sample entries for the demo-investor persona (Minneapolis home base).
+destination_nudge:
+  chicago:   {best_windows: [5,6,9,10,12], flight_hours: 1.5, base_fit: 8,
+              nudge_hooks: [{when: long_weekend, text: "the nearest big city — 90 minutes to a real dinner reservation"}]}
+  door-county: {best_windows: [6,7,8,9,10], drive_hours: 5.5, base_fit: 7,
+              nudge_hooks: [{when: long_weekend, text: "the lake cabin default — fall color peaks the first two weeks of October"}]}
+  scottsdale: {best_windows: [2,3,4,10,11], flight_hours: 3.5, base_fit: 7,
+              nudge_hooks: [{when: long_weekend, text: "the winter escape hatch — a pool in February"}]}
+  kona:      {best_windows: [1,2,3,4,11,12], flight_hours: 9.0, base_fit: 9,
+              nudge_hooks: [{when: long_weekend, text: "the anniversary place; a long window makes the flight worth it"}]}
+  denver:    {best_windows: [6,7,8,9], flight_hours: 2.0, base_fit: 6}
+  barcelona: {best_windows: [4,5,9,10], flight_hours: 11.0, base_fit: 8}

@@ -1,0 +1,37 @@
+{
+  "lane": "finance-projections",
+  "title": "Projections",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "projection-tiles",
+      "title": "Scenario projections — risk/reward per horizon",
+      "kind": "projections",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "projections",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 tags: [bead, finance, withdrawal]
 ---
 
-# glide-w4 — Set the August withdrawal transfer + top up the checking buffer
+# glide-w4 — Set the October withdrawal transfer + top up the checking buffer
 
 **Status:** open · **Priority:** P2 · **Type:** task
 
@@ -19,7 +19,7 @@ tags: [bead, finance, withdrawal]
 
 ## Description
 
-Once the refill rule is chosen, set the August transfer from the runway to checking and schedule it. Blocked on the model — the transfer size is its output, not an input.
+Once the refill rule is chosen, set the October transfer from the runway to checking and schedule it. Blocked on the model — the transfer size is its output, not an input.
 
 ## Linked issues
 

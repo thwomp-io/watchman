@@ -1,6 +1,6 @@
 # The Harness Message Bus — producer contract (v1)
 
-> The durable **human-event layer** between standing agents (OS-scheduled `hn` commands (cron/launchd/Task Scheduler)) and
+> The durable **human-event layer** between standing agents (OS-scheduled `hn` commands — cron / launchd / Task Scheduler) and
 > delivery surfaces (the Harness Bus tray app; future transports like self-hosted ntfy). Built to make
 > standing-agent signals durable: transient native OS banners get missed, sleep coalesces OS-scheduled
 > runs, and logs have no human surface.
@@ -86,7 +86,7 @@ button. Shape (the app's universal `Ref` descriptor):
 Publish is `INSERT … ON CONFLICT(idempotency_key) DO NOTHING` → result `published | duplicate`.
 **Key convention**: `producer:kind:subject:YYYY-MM-DD` (local date) — derived automatically when a
 draft's key is blank. This gives every producer once-per-(kind,subject)-per-day semantics by
-default (the producer-side dedup the bus now supersedes). Producers needing different windows compose their own keys — the bus only enforces
+default. Producers needing different windows compose their own keys — the bus only enforces
 uniqueness.
 
 ## `delivered_via` — transport markers
@@ -185,14 +185,14 @@ services (which only ever see ciphertext: the Web Push protocol encrypts payload
   contact claim (defaults to a non-address placeholder).
 - **Payload is minimal**: title, one-line summary, lane/kind/subject/severity — never the full
   `payload_json`.
-- **Subscribing**: the web console's baseplate bell (◇ PUSH) — see
+- **Subscribing**: the web console's footer bell (◇ PUSH) — see
   [`WEB-CONSOLE.md`](WEB-CONSOLE.md) → Push notifications. `POST /api/push/test` (or the bell's TEST
   button) verifies the pipeline end to end.
 
 ### The watchman in remote mode — connect via ⚙ Settings
 
 **⚙ Settings → Connection → Online bus** is the way to flip a watchman from the local file to a
-served bus (via the ⚙ Settings connection form): paste the served URL + the server's bearer token, **Test** (a live
+served bus: paste the served URL + the server's bearer token, **Test** (a live
 probe against the served stats endpoint), **Connect**. The flow **auto-clears any active demo
 pack** — the first-run footgun below can't happen on this path. **Disconnect** returns to local
 mode and drops the stored token.

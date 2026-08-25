@@ -25,5 +25,5 @@ The annual drift check came in hot: US equity crept to 76% on the VTI run. Walk 
 
 **Children** (3)
 - [[nest-r2]] — Route new 401k contributions to international until VXUS hits 20% · closed
-- [[nest-r3]] — Harvest the VXUS lot bought at the March high · in_progress
+- [[nest-r3]] — Check the March VXUS add for a harvest · in_progress
 - [[nest-r4]] — Confirm no VXUS purchases inside the ±30d wash window · open

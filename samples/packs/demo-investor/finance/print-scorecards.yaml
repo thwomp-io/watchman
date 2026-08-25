@@ -1,0 +1,57 @@
+# Print scorecards — the machine registry behind the Finance ▸ Prints tab (FICTIONAL sample data
+# for the demo-investor persona; illustrative only, not advice).
+#
+# CONTRACT: one entry per earnings print the operating loop graded. The agent APPENDS an entry at
+# grade time; the full narrative record stays in the card markdown (card_doc = the click-through).
+# grade enum: GREAT | GOOD | OK | BAD | DISASTER | PENDING
+# price_reaction: print-day move % (PENDING = null). Read by `hn finance scorecards`.
+
+scorecards:
+  - symbol: MSFT
+    period: Q4 FY2026
+    print_date: 2026-07-29
+    grade: GREAT
+    price_reaction: 4.8
+    held: true
+    headline: "GREAT — cloud growth re-accelerated against a raised bar; the capex guide came with a matching revenue guide, which is the whole debate"
+    key_facts:
+      - "Cloud segment growth above the high end of the company's own guide for the second straight quarter"
+      - "Next-quarter guide raised on both revenue and operating margin — the 'capex without revenue' fear did not print"
+      - "Reaction +4.8% into a market that was flat on the day: the move was the print, not the tape"
+    card_doc: finance/research/prints/MSFT-2026-07-29.md
+  - symbol: AAPL
+    period: Q3 FY2026
+    print_date: 2026-07-30
+    grade: GOOD
+    price_reaction: 2.1
+    held: true
+    headline: "GOOD — services and the installed base carried a soft hardware quarter; the guide was in-line, which for a slow grower is a pass"
+    key_facts:
+      - "Services growth held double digits; hardware units flat year over year"
+      - "Gross margin at the top of the guided range on mix"
+      - "No change to the capital-return cadence — the buyback is still the EPS engine"
+    card_doc: finance/research/prints/AAPL-2026-07-30.md
+  - symbol: ORCL
+    period: Q4 FY2026
+    print_date: 2026-06-11
+    grade: GREAT
+    price_reaction: 9.4
+    held: true
+    headline: "GREAT — remaining performance obligations jumped on cloud infrastructure bookings; the legacy position's thesis got a second wind the diversification plan has to respect"
+    key_facts:
+      - "Backlog growth well ahead of revenue growth — the leading indicator the card named as the bar"
+      - "Cloud infrastructure revenue growth accelerated for the third straight quarter"
+      - "The plan's response: keep trimming on schedule, but the trim cadence slows while the story is this strong"
+    card_doc: finance/research/prints/ORCL-2026-06-11.md
+  - symbol: COST
+    period: Q3 FY2026
+    print_date: 2026-05-28
+    grade: OK
+    price_reaction: -1.2
+    held: true
+    headline: "OK — comparable sales fine, margins fine, nothing to change the hold; an in-line print at a premium multiple drifts, and it did"
+    key_facts:
+      - "Comparable sales growth in the mid-single digits, consistent with the last four quarters"
+      - "Membership renewal rate unchanged at the usual very-high level — the moat metric"
+      - "The multiple, not the business, is the only knock; no action at this valuation"
+    card_doc: finance/research/prints/COST-2026-05-28.md

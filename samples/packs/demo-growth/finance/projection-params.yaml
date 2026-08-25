@@ -1,0 +1,91 @@
+# Scenario-projection params — behind `hn finance projections` + the Projections / Holdings tabs.
+# FICTIONAL sample data for the demo-growth persona; illustrative only, not advice.
+# Authored at research/grade time from a named artifact (provenance); eps_basis names the accounting
+# basis; bands are judgment calls; as_of drives the staleness flag. The verb only does the arithmetic.
+
+projections:
+  - symbol: NVDA
+    fwd_eps: 4.90
+    eps_basis: "Non-GAAP diluted, next twelve months — the raised guide annualized"
+    growth_pct_low: 20
+    growth_pct_high: 40
+    mult_low: 24
+    mult_mid: 30
+    mult_high: 36
+    ref_price: 138.40
+    as_of: 2026-08-16
+    provenance: finance/research/prints/NVDA-2026-05-28.md
+    notes: >-
+      The book's tentpole. Growth band is wide because the cycle question is open; the multiple band
+      sits below the recent trading range on purpose so the grid errs conservative. Re-anchor from
+      the filed print in late August.
+  - symbol: AMZN
+    fwd_eps: 7.10
+    eps_basis: "GAAP diluted, next twelve months — trailing plus the guided cloud and margin trajectory"
+    growth_pct_low: 14
+    growth_pct_high: 22
+    mult_low: 26
+    mult_mid: 32
+    mult_high: 38
+    ref_price: 222.60
+    as_of: 2026-08-16
+    provenance: finance/research/prints/AMZN-2026-07-30.md
+    notes: >-
+      Margin expansion is the EPS engine, so the growth band is an operating-leverage bet more than
+      a revenue bet. Multiple band bracketing the last two years.
+  - symbol: CRWD
+    fwd_eps: 4.80
+    eps_basis: "Non-GAAP diluted, next twelve months — the FY27 guide"
+    growth_pct_low: 18
+    growth_pct_high: 28
+    mult_low: 55
+    mult_mid: 70
+    mult_high: 85
+    ref_price: 381.60
+    as_of: 2026-08-16
+    provenance: finance/research/prints/CRWD-2026-06-03.md
+    notes: >-
+      The employer concentration. The multiple band is honest about how rich this name trades — the
+      modeled upside from here is thin, which is one more reason the vest-cycle plan sells each
+      tranche on schedule.
+  - symbol: AVGO
+    fwd_eps: 8.60
+    eps_basis: "Non-GAAP diluted, next twelve months — guide-driven"
+    growth_pct_low: 18
+    growth_pct_high: 30
+    mult_low: 26
+    mult_mid: 32
+    mult_high: 38
+    ref_price: 291.04
+    as_of: 2026-08-16
+    provenance: finance/research/prints/AVGO-2026-06-12.md
+    notes: >-
+      Watchlist, not held. The custom-silicon ramp drives the growth band; the software segment's
+      margin drives the multiple floor. Entry waits for a shelf, per the post-print rule.
+  - symbol: PLTR
+    fwd_eps: 0.72
+    eps_basis: "Non-GAAP diluted, next twelve months — consensus-class, unverified against the next print"
+    growth_pct_low: 25
+    growth_pct_high: 45
+    mult_low: 120
+    mult_mid: 160
+    mult_high: 200
+    ref_price: 237.54
+    as_of: 2026-08-16
+    provenance: watchlist note — no filed research yet; re-anchor at the first graded print
+    notes: >-
+      LOW confidence — a watchlist name whose multiple is the entire debate. The bands are so wide
+      the grid is a sketch, and the entry says so. Re-anchor from a filed print before any decision.
+  - symbol: ARM
+    fwd_eps: 2.10
+    eps_basis: "Non-GAAP diluted, next twelve months — consensus-class"
+    growth_pct_low: 20
+    growth_pct_high: 35
+    mult_low: 35
+    mult_mid: 45
+    mult_high: 55
+    ref_price: 89.34
+    as_of: 2026-08-16
+    provenance: finance/research/compares/2026-06-16-growth-semis.md
+    notes: >-
+      Watchlist. Royalty-rate expansion is the thesis; the licensing lumpiness is why the band is wide.

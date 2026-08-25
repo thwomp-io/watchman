@@ -1,0 +1,134 @@
+{
+  "title": "Destination characteristics — the whole corpus",
+  "subtitle": "9 destinations × what each offers · 1–5, more = more of that quality · NOT a goodness ranking — weight the axes per trip",
+  "axes": [
+    "Food",
+    "Nature",
+    "Culture",
+    "Water",
+    "Walkable",
+    "Ease"
+  ],
+  "max": 5,
+  "reachLabel": "Reach from Scottsdale (effort, not a demerit)",
+  "note": "more of this quality →  ·  reach = effort, not a demerit (a long flight is a bigger trip, not a worse place)",
+  "rows": [
+    {
+      "group": "US · Desert",
+      "label": "Sedona",
+      "values": [
+        3,
+        5,
+        3,
+        2,
+        3,
+        5
+      ],
+      "reach": "drive ~2h"
+    },
+    {
+      "group": "US · Coast",
+      "label": "San Diego",
+      "values": [
+        4,
+        4,
+        3,
+        5,
+        4,
+        5
+      ],
+      "reach": "PHX-direct ~1.5h"
+    },
+    {
+      "group": "US · Coast",
+      "label": "Santa Barbara",
+      "values": [
+        5,
+        4,
+        3,
+        5,
+        4,
+        4
+      ],
+      "reach": "PHX-direct ~1.5h"
+    },
+    {
+      "group": "Islands",
+      "label": "Kauai",
+      "values": [
+        3,
+        5,
+        2,
+        5,
+        2,
+        3
+      ],
+      "reach": "PHX-direct ~6.5h"
+    },
+    {
+      "group": "Europe",
+      "label": "Lisbon",
+      "values": [
+        5,
+        3,
+        5,
+        4,
+        5,
+        3
+      ],
+      "reach": "one connection, ~13h"
+    },
+    {
+      "group": "Europe",
+      "label": "Tuscany",
+      "values": [
+        5,
+        5,
+        5,
+        2,
+        3,
+        2
+      ],
+      "reach": "one connection, ~14h + drive"
+    },
+    {
+      "group": "Mountains",
+      "label": "Banff",
+      "values": [
+        3,
+        5,
+        2,
+        4,
+        3,
+        3
+      ],
+      "reach": "PHX-direct to YYC ~3.5h"
+    },
+    {
+      "group": "US · Historic",
+      "label": "Charleston",
+      "values": [
+        5,
+        3,
+        5,
+        3,
+        5,
+        3
+      ],
+      "reach": "PHX-direct ~4h"
+    },
+    {
+      "group": "US · Desert",
+      "label": "Santa Fe",
+      "values": [
+        4,
+        3,
+        5,
+        1,
+        4,
+        4
+      ],
+      "reach": "drive ~7h"
+    }
+  ]
+}

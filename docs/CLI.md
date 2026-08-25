@@ -10,13 +10,13 @@ No personal data required: the repo ships **fictional sample personas** so a fre
 immediately.
 
 ```bash
-uv sync # Python env + deps
-cp .env.example .env # optional — every API key is independently optional
+uv sync                                      # Python env + deps
+cp .env.example .env                         # optional — every API key is independently optional
 
 # a fictional ~$1M household:
 uv run hn finance networth --pack samples/packs/demo-investor
 uv run hn finance positions --pack samples/packs/demo-investor
-uv run hn career openings --pack samples/packs/demo-growth # an early-career job hunter
+uv run hn career openings   --pack samples/packs/demo-growth   # an early-career job hunter
 
 # or set it once for the session:
 export WEIGHTS_PACK=samples/packs/demo-investor
@@ -74,11 +74,30 @@ knowing from the shell:
   (`finance/reference/print-scorecards.yaml` in your corpus): every print you've graded as a
   grade-bannered, newest-first list; the data behind the console's Finance ▸ Prints tab. The
   registry is appended by your operating loop at grade time — the verb (and the tab) only read it.
+- **`hn finance projections [--json]`** — scenario-grid risk/reward bands per name per horizon
+  (6/12/24/36 months) from the params registry you author (`finance/reference/projection-params.yaml`:
+  forward EPS + a growth band + a multiple band + provenance per name) against the live quote. Horizons
+  past a year are marked `sketch`; params older than ~a quarter flag `stale`. The data behind the
+  console's Finance ▸ Projections tab — and a lens, never a forecast (the disclaimer ships in the JSON).
+- **`hn finance holdings [--json]`** — the held book appraised through the same params: for every
+  held name with an entry, the modeled 12-month return at the live price AND at your average cost
+  ("how good was the entry?"). Names without an entry render with the reason named, never dropped.
+  The data behind the Finance ▸ Holdings tab.
+- **`hn finance gates [--horizon N] [--json]`** — upcoming held-name earnings prints (confirmed dates
+  where the analyst calendar has them, filing-cadence estimates labeled `est` otherwise) plus your
+  `macro_events` inside the horizon, imminent-first. No quotes, no wire — the fast calendar read
+  behind the Finance ▸ Plans tab's gates board.
 - **`hn travel calendar --from YYYY-MM-DD --to YYYY-MM-DD [--city C] [--variant grid|big]
   [--json]`** — the reference almanac + live ticketed events merged into per-day buckets; the data
   behind the console's Calendar tab and the static `calendar` SVG. Live events use
   `TICKETMASTER_KEY`; without it the calendar renders almanac-only and the subtitle says so.
   `--variant big` is the one-month wall-board layout.
+- **`hn travel nudge [--weeks N] [--top N] [--no-live] [--include-taken] [--json]`** — proactive
+  trip nudges: scores upcoming weekends × your destinations against the corpus nudge registry
+  (`travel/weights.yaml destination_nudge:`) and surfaces the top pairs with the reason assembled
+  from the scored components. Scoring is corpus + almanac and keyless; `--live` (on by default) adds
+  free-tier Ticketmaster events and the keyless Open-Meteo forecast for in-horizon windows —
+  `--no-live` skips it. The data behind the Planning tab's nudge cards.
 - **Conditions** (`hn travel weather` / `hn travel pulse`) — the forecast carries feels-like, UV,
   gust, and sunrise/sunset fields; pulse heat alerts are feels-like-aware, with `uv` and `wind`
   flag kinds (thresholds `conditions.thresholds.uv` / `.gusts_mph` in `travel/weights.yaml`). The
@@ -86,7 +105,7 @@ knowing from the shell:
   12:00–19:00") using comfort bounds from the user overlay — `travel.global_settings.outdoor`:
   `feels_min_f` / `feels_max_f` / `precip_prob_max` / `gusts_max_mph` / `day_start_hour` /
   `day_end_hour`.
-- **`hn travel food --yelp [--yelp-query LENS]`** — the optional reviews tier: merges Yelp review
+- **`hn travel food --near PLACE --yelp [--yelp-query LENS]`** — the optional reviews tier: merges Yelp review
   snippets, neighborhoods, and Yelp's own rating (kept separate from Google's — divergence is
   signal) onto the eatery list. Needs `SERPAPI_KEY` and spends one search per run (day-cached);
   the keyless OSM tier works without it.
@@ -104,7 +123,7 @@ knowing from the shell:
 
 ```bash
 cd bus-app && npm install
-npm run tauri dev # needs Rust (rustup) + platform build tools
+npm run tauri dev          # needs Rust (rustup) + platform build tools
 ```
 
 **Linux** needs the Tauri v2 system libraries before `npm run tauri dev`/`build`

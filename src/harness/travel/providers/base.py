@@ -116,7 +116,7 @@ class WeatherProvider(Protocol):
         *,
         fahrenheit: bool = True,
     ) -> tuple[list[HourlyWeather], CurrentConditions | None]:
-        """Hourly forecast over the window + the current-conditions read (v1.5 tiers B+C).
+        """Hourly forecast over the window + the current-conditions read.
         Part of the weather contract: a swapped provider must supply hours or raise ProviderError;
         current may be None (best-effort — the tile row degrades, the solver never does)."""
         ...

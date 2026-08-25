@@ -1,0 +1,121 @@
+{
+  "lane": "travel-calendar",
+  "title": "Calendar",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "grid",
+      "title": "The 180-day calendar",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "calendar",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+180}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "keydates",
+      "title": "Key dates & sports — next 180d",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "reference",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+180}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "local_date",
+        "name",
+        "segment",
+        "tier"
+      ],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "whatson",
+      "title": "What's on near home — next 30 ticketed (45d)",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "events",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+45}",
+          "--flat",
+          "--limit",
+          "30",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "local_date",
+        "name",
+        "segment",
+        "venue",
+        "url"
+      ],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

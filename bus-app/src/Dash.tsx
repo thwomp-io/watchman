@@ -14,6 +14,9 @@ import {
 import ErrorBoundary from "./ErrorBoundary";
 import JsonView from "./JsonView";
 import ScorecardBook, { type ScorecardData } from "./ScorecardBook";
+import ProjectionTiles, { type ProjectionData } from "./ProjectionTiles";
+import HoldingsGrid, { type HoldingsData } from "./HoldingsGrid";
+import NudgeCards, { type NudgeData } from "./NudgeCards";
 import type { BusEvent, Dashboard, DirDoc, NewsItem, SurfaceState, Widget, WireDigest } from "./types";
 import { fmtNum } from "./viz/common";
 import BarChart from "./viz/BarChart";
@@ -27,6 +30,7 @@ import FoodBank from "./viz/FoodBank";
 import Treemap from "./viz/Treemap";
 import VestTimeline from "./viz/VestTimeline";
 import Ladder from "./viz/Ladder";
+import GatesBoard from "./viz/GatesBoard";
 import BeadTree from "./viz/BeadTree";
 import Calendar from "./viz/Calendar";
 import { useNav } from "./nav";
@@ -102,6 +106,8 @@ function sniffViz(v: Record<string, unknown>): string {
   // calendar grid: per-day buckets + the window bounds (days alone would collide with forecasts);
   // variant="big" routes to the one-month wall-board twin — same shape, one emitter
   if (Array.isArray(v.days) && v.from && v.to) return v.variant === "big" ? "calendar-big" : "calendar";
+  // plan-gates board: top-level gates[] (disjoint from every other shape)
+  if (Array.isArray(v.gates)) return "gates";
   // trap-map ladders: top-level symbols[] whose entries carry rungs (disjoint from every other shape)
   if (Array.isArray(v.symbols) && (v.symbols[0] as { rungs?: unknown } | undefined)?.rungs) return "ladder";
   // bead family tree: `beads` + `edges` (deliberately NOT nodes/links, so sankey can't claim it)
@@ -123,7 +129,7 @@ function sniffViz(v: Record<string, unknown>): string {
 const VIZ_COMP: Record<string, React.ComponentType<{ data: never }>> = {
   treemap: Treemap, sankey: Sankey, pies: Donuts, line: LineChart, matrix: Matrix,
   compare: Radar, schedule: Schedule, "food-bank": FoodBank, "vest-timeline": VestTimeline,
-  "rank-bar": BarChart, ladder: Ladder, "bead-tree": BeadTree, calendar: Calendar,
+  "rank-bar": BarChart, ladder: Ladder, gates: GatesBoard, "bead-tree": BeadTree, calendar: Calendar,
   "calendar-big": Calendar,  // same component — data.variant drives the wall-board layout
 };
 
@@ -458,6 +464,15 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
           {widget.kind === "scorecards" && (
             <ScorecardBook data={pluck(state.data, widget.value_path) as ScorecardData} />
           )}
+          {widget.kind === "projections" && (
+            <ProjectionTiles data={pluck(state.data, widget.value_path) as ProjectionData} />
+          )}
+          {widget.kind === "holdings" && (
+            <HoldingsGrid data={pluck(state.data, widget.value_path) as HoldingsData} />
+          )}
+          {widget.kind === "nudges" && (
+            <NudgeCards data={pluck(state.data, widget.value_path) as NudgeData} />
+          )}
           {widget.kind === "viz" && (() => {
             // viz widgets honor value_path like stat/table do — so one rich source (e.g.
             // unwind --json) can feed many viz widgets, each pulling its own sub-shape.
@@ -614,7 +629,7 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
   // (v2), so the tab structure itself changes on a pack swap; refetching only widget data would
   // leave a stale layout whose tabs/widgets no longer resolve ("unknown widget"). `preserve` keeps the
   // active group + subtab when they still exist in the new set (sit on Finance, swap personas → stay on
-  // Finance Core), else falls back to the first group/lane (a vanished tab like Unwind → Core).
+  // Finance Core), else falls back to the first group/lane (a vanished tab like Tickets → Core).
   const load = useCallback((preserve: boolean, bump = false) => {
     void listDashboards().then((ds) => {
       setDashboards(ds);
@@ -923,7 +938,8 @@ export function migrateLegacyLayouts(d: Dashboard, cols: number): Dashboard {
     if (wg.layout) { claim(wg.layout.x, wg.layout.y, wg.layout.w, wg.layout.h); return wg; }
     const w = Math.max(1, Math.min(wg.span || 2, cols));
     const h = wg.kind === "stat" ? 1
-      : wg.kind === "doc_series" || wg.kind === "scorecards" ? 6
+      : wg.kind === "doc_series" || wg.kind === "scorecards" || wg.kind === "holdings" ? 6
+      : wg.kind === "nudges" ? 4
       : 3 * (wg.rows ?? 1);
     let px = 0, py = 0;
     placed: for (py = 0; ; py++) {

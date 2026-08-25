@@ -60,7 +60,7 @@ describe("VaultZone — in-doc wikilink navigation (regression)", () => {
   });
 });
 
-describe("VaultZone — phone master-detail (the 7/21 mobile-unusable field report)", () => {
+describe("VaultZone — phone master-detail (the phone field report)", () => {
   beforeEach(() => {
     mockTauri.reset();
     mockTauri.setValue("list_vault_docs", [TRIP, CITY]);

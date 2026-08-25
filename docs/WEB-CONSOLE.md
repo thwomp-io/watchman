@@ -14,7 +14,7 @@ every device you own has the console at one URL — including your phone.
 Build the console once, then hand the built directory to the server:
 
 ```bash
-cd bus-app && npm install && npm run build # → bus-app/dist
+cd bus-app && npm install && npm run build     # → bus-app/dist
 uv run hn bus serve --console --ui bus-app/dist
 ```
 
@@ -53,7 +53,7 @@ swaps to a full-width reader with a **◀ back** control.
 The console can push **alert/warn** bus events to your devices as native notifications — the wire's
 `info` skim-stream and filings deliberately never push (spec: [`BUS.md`](BUS.md) → Web push).
 
-Arm it from the **baseplate bell** (`◇ PUSH`, bottom-right, browser/PWA only): one tap asks for
+Arm it from the **footer bell** (`◇ PUSH`, bottom-right, browser/PWA only): one tap asks for
 notification permission, subscribes the device, and flips to `◆ PUSH ARMED` with a **TEST** button that
 round-trips a real push through the pipeline. Tap again to disarm. `hn bus push-keys` on the serving
 node lists what's subscribed.
@@ -86,7 +86,7 @@ The intended private-mesh deploy (no port-forwarding, nothing public):
    `bus_url` mode) keep their mesh-plain endpoint; the phone gets the secure origin push requires.
 
    ```bash
-   hn bus serve --host 100.64.0.1 --port 8787 --console --ui bus-app/dist & # satellites, unchanged
+   hn bus serve --host 100.64.0.1 --port 8787 --console --ui bus-app/dist &   # satellites, unchanged
    hn bus serve --host 100.64.0.1 --port 8788 --console --ui bus-app/dist \
      --tls-cert /path/to/console.example.crt --tls-key /path/to/console.example.key
    ```

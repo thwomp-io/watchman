@@ -2,6 +2,7 @@
   "lane": "compare",
   "title": "Compare",
   "group": "Finance",
+  "owner": "default",
   "widgets": [
     {
       "id": "comparison",
@@ -16,10 +17,13 @@
       "value_path": null,
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "metrics",
@@ -46,8 +50,10 @@
       "value_path": "rows",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "price",
@@ -58,7 +64,8 @@
         "market_cap",
         "screen"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     }
   ]
 }

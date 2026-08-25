@@ -1,5 +1,5 @@
-// Vest-planning timeline — the one new viz type for the Unwind tab. The
-// `vest_timeline` contract ({today, domain, vests:[{date,units,value,future}], windows:[{start,
+// Vest-planning timeline — renders the `vest_timeline` section of `finance unwind
+// --json` (the VIZ rail's live entry; sniffed by `windows` + `vests`). The contract ({today, domain, vests:[{date,units,value,future}], windows:[{start,
 // end,kind}]}). Months-scale axis with month labels ALONG THE TOP; vests as $-sized lollipop
 // markers with their dates; wash-poison windows shaded amber (no loss-sales), clean windows green
 // (the harvest gaps); a TODAY cursor; a legend. Windows are computed deterministically upstream —

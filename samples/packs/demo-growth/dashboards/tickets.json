@@ -2,6 +2,7 @@
   "lane": "tickets",
   "title": "Tickets",
   "group": "Finance",
+  "owner": "default",
   "widgets": [
     {
       "id": "ticket",
@@ -16,10 +17,13 @@
       "value_path": null,
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "orders",
@@ -42,8 +46,10 @@
       "value_path": "orders",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "side",
@@ -52,12 +58,13 @@
         "price",
         "distance_pct"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
-      "id": "nw",
-      "title": "Net worth",
-      "kind": "stat",
+      "id": "trapmap",
+      "title": "Trap map — GTC ladders",
+      "kind": "viz",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -65,46 +72,23 @@
           "run",
           "hn",
           "finance",
-          "positions",
+          "trap-map",
           "--json"
         ],
         "cwd": "."
       },
       "refresh": "market10m",
-      "span": 1,
-      "value_path": "net_worth",
-      "prefix": "$",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
-    },
-    {
-      "id": "live",
-      "title": "Live value",
-      "kind": "stat",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "finance",
-          "positions",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "market10m",
-      "span": 1,
-      "value_path": "live_value",
-      "prefix": "$",
-      "suffix": null,
-      "title_path": null,
-      "symbols": [],
-      "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "positions",
@@ -127,15 +111,18 @@
       "value_path": "positions",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "market_value",
         "day_change_pct",
         "unrealized_gl_pct"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     }
   ]
 }

@@ -20,4 +20,4 @@ tags: [bead, finance, tax]
 
 ## Description
 
-The Q2 tranche sold the 2020 lot into the bond sleeve per the June ticket; the career-accumulated IBM position is the last real single-name concentration. Q3 candidate is a slice of the 2016 lot — long-term gain, measured size — while the 2024 loss lot stays parked as harvest inventory.
+The Q3 tranche is staged from the 2012 lot — oldest first, long-term gain, measured size — per the June ticket; the career-accumulated IBM position is the last real single-name concentration. The 2024 loss lot stays parked as harvest inventory.

@@ -40,8 +40,9 @@ def _resume_source_md() -> str:
 app = typer.Typer(
     cls=PackGroup,  # every verb accepts a trailing `--pack <dir>` (hn career shortlist --pack …)
     add_completion=False,
-    help="Career / role-hunt lane (the agentic role-hunter). "
-    "Read-only surface: openings scan (Greenhouse/Ashby boards) + D3 renders into role-hunt/.",
+    help="Career / role-hunt lane — keyless ATS board scan, local shortlist + application pipeline, "
+    "résumé renders, D3 diagrams into role-hunt/. "
+    "Read-only: nothing here applies, uploads, or contacts anyone.",
 )
 console = Console()
 

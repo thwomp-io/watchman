@@ -13,4 +13,31 @@ lodging:
 events:
   centerpiece_subgenres: ["NBA"]
   followed_teams: []
-destination_airports: {}
+destination_airports:
+  new-orleans: MSY
+  nashville: BNA
+  mexico-city: MEX
+  denver: DEN
+  big-bend: MAF
+  chicago: ORD
+destination_cities:
+  new-orleans: "New Orleans, LA"
+  nashville: "Nashville, TN"
+  mexico-city: "Mexico City, MX"
+  denver: "Denver, CO"
+  big-bend: "Terlingua, TX"
+  chicago: "Chicago, IL"
+
+# The proactive-nudge registry (the Planning tab's nudge cards). FICTIONAL sample entries for the
+# college-grad persona (Austin home base): cheap, close, and loud.
+destination_nudge:
+  new-orleans: {best_windows: [2,3,4,10,11,12], drive_hours: 8.0, flight_hours: 1.5, base_fit: 9,
+                nudge_hooks: [{when: long_weekend, text: "the cheapest great weekend from here — split a car with friends"}]}
+  nashville:   {best_windows: [4,5,9,10,11], flight_hours: 2.0, base_fit: 7,
+                nudge_hooks: [{when: long_weekend, text: "a bachelor-party town that's also a real music city on a Tuesday"}]}
+  mexico-city: {best_windows: [2,3,4,10,11], flight_hours: 2.5, base_fit: 8,
+                nudge_hooks: [{when: long_weekend, text: "the best food-per-dollar city on a direct flight"}]}
+  denver:      {best_windows: [6,7,8,9,12,1], flight_hours: 2.0, base_fit: 7}
+  big-bend:    {best_windows: [2,3,4,10,11], drive_hours: 7.0, base_fit: 7,
+                nudge_hooks: [{when: long_weekend, text: "the one national park a Texan can drive to — dark skies, no signal"}]}
+  chicago:     {best_windows: [5,6,9,10], flight_hours: 2.5, base_fit: 6}

@@ -281,6 +281,83 @@ def contact_sheet(
 
 
 @app.command()
+def decision(as_json: bool = typer.Option(False, "--json")) -> None:
+    """The active trip decision's compare-radar data — resolves the soonest live trip/visit whose
+    folder carries visuals/compare-data.json (the Planning radar's dynamic source).
+    Corpus-driven: follows trips as they open/close; no frozen slug in any config."""
+    svc = TravelService()
+    data = svc.active_decision()
+    if as_json:
+        console.print_json(json.dumps(data))
+        return
+    if not data.get("candidates"):
+        console.print("[dim]No live trip carries a compare radar yet.[/dim]")
+        return
+    console.print(f"[bold]{data.get('title', 'Active decision')}[/bold]  [dim]({data.get('trip')})[/dim]")
+    for c in data.get("candidates", []):
+        label = c.get("label", "?") if isinstance(c, dict) else str(c)
+        console.print(f"  • {label}")
+
+
+@app.command()
+def nudge(
+    weeks: int = typer.Option(
+        26, "--weeks", help="Horizon in weeks to enumerate weekends over (~6mo default — cross-season reach)"
+    ),
+    top: int = typer.Option(5, "--top", help="Max nudges surfaced (one per destination AND per window)"),
+    live: bool = typer.Option(
+        True,
+        "--live/--no-live",
+        help="Enrich the static top pairs with live events (Ticketmaster, free-tier) + the real "
+        "forecast for in-horizon windows (Open-Meteo, keyless). --no-live = corpus + almanac only.",
+    ),
+    include_taken: bool = typer.Option(
+        False, "--include-taken", help="Also nudge windows a live trip already occupies"
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Proactive trip nudges — windows × destinations, deterministically scored. Surfaces 'You
+    could be in X {window} — because Z' with Z assembled from the dominant scored components
+    (season / calendar / feasibility / events / weather / standing fit).
+    Reads the corpus nudge registry (weights.yaml `destination_nudge:`); spends NO paid quota."""
+    svc = TravelService()
+    if not svc.weights.destination_nudge:
+        # stderr, never stdout: `--json` consumers (the Planning tab's nudges widget) parse stdout
+        # verbatim — an advisory there breaks every corpus without a registry, the exact case the
+        # bare-list fallback exists to serve.
+        Console(stderr=True).print(
+            "[yellow]nudge registry empty — falling back to bare destination list; author "
+            "`destination_nudge:` entries in the travel weights.yaml for real scoring[/yellow]"
+        )
+    result = svc.nudge(date.today(), horizon_days=weeks * 7, top=top, live=live, include_taken=include_taken)
+    nudges = result["nudges"]
+    if as_json:
+        payload = {
+            "nudges": [n.model_dump(mode="json") | {"line": n.line} for n in nudges],
+            "skipped": result["skipped"],
+            "note": result["note"],
+        }
+        console.print_json(json.dumps(payload))
+        return
+    if result["note"]:
+        console.print(f"[yellow]{result['note']}[/yellow]")
+    if not nudges:
+        console.print("[dim]No nudges cleared the bar in this horizon (or every window is taken).[/dim]")
+    for i, n in enumerate(nudges, start=1):
+        console.print(f"\n[bold]{i}. {n.line}[/bold]")
+        comp = " · ".join(f"{c.name} {c.points:+g}" for c in sorted(n.components, key=lambda c: -c.points))
+        console.print(f"   [dim]score {n.score:g}  ·  {comp}[/dim]")
+        for e in n.events[:3]:
+            when = e.local_date + (f" {e.local_time}" if e.local_time else "")
+            venue = f" · {e.venue}" if e.venue else ""
+            console.print(f"   [cyan]•[/cyan] {e.name} [dim]({when}{venue})[/dim]")
+        if n.weather_note:
+            console.print(f"   [blue]☂[/blue] {n.weather_note}")
+    if result["skipped"]:
+        console.print("\n[dim]Taken windows skipped: " + " · ".join(result["skipped"]) + "[/dim]")
+
+
+@app.command()
 def events(
     trip: str | None = typer.Option(
         None, "--trip", help="Trip slug — scan its candidate cities for the trip window"
@@ -572,7 +649,7 @@ def hotels(
             console.print(f"  {o.description}")
         if o.nearby_places:
             near = " · ".join(
-                f"{np.name} ({np.duration} {np.transport})".strip().replace("()", "")
+                f"{np.name} ({np.duration} {np.transport})".strip().replace("( )", "")
                 for np in o.nearby_places[:4]
             )
             console.print(f"  [dim]Nearby:[/dim] {near}")
@@ -624,7 +701,7 @@ def weather(
         console.print("[yellow]No forecast days returned for that window.[/yellow]")
         return
     d0 = fc.days[0]
-    if d0.sunrise and d0.sunset:  # v1.5: the sun window rides the card header (same-call field)
+    if d0.sunrise and d0.sunset:  # the sun window rides the card header (same-call field)
         console.print(f"[dim]sun {d0.sunrise[11:16]}–{d0.sunset[11:16]} ({d0.date})[/dim]")
     table = Table()
     unit = fc.temperature_unit
@@ -783,7 +860,7 @@ def pulse(
         return
 
     console.print(f"\nconditions · {rep.as_of} · [bold]{rep.home}[/bold]")
-    if rep.outdoor and rep.outdoor.note:  # v1.5: the outdoor-windows one-liner rides every render
+    if rep.outdoor and rep.outdoor.note:  # the outdoor-windows one-liner rides every render
         console.print(f"[cyan]{rep.outdoor.note}[/cyan]")
     if rep.quiet:
         console.print(
@@ -1075,7 +1152,8 @@ def traffic(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Live WA traffic (keyed-free WSDOT): travel-time congestion deltas + construction/closure/incident
-    alerts on your corridors. Filter with --near (a town name) / --road (I-5) / --category (Construction)."""
+    alerts on WSDOT-instrumented corridors (Washington state). Filter with --near (a town name) /
+    --road (I-5) / --category (Construction)."""
     try:
         report = TravelService().get_traffic(
             near=near,

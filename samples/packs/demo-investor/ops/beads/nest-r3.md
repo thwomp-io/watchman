@@ -2,7 +2,7 @@
 tags: [bead, finance, tax]
 ---
 
-# nest-r3 — Harvest the VXUS lot bought at the March high
+# nest-r3 — Check the March VXUS add for a harvest
 
 **Status:** in_progress · **Priority:** P2 · **Type:** task · **Assignee:** concierge
 
@@ -20,7 +20,7 @@ tags: [bead, finance, tax]
 
 ## Description
 
-The 40-share March lot sits ~8% under water — a clean tax-loss harvest candidate IF the wash window is clear. Sell, bank the loss, replace with a non-identical intl fund for 31 days.
+If the March VXUS add is under water at the next lot check — a clean tax-loss harvest candidate IF the wash window is clear. Sell, bank the loss, replace with a non-identical intl fund for 31 days.
 
 ## Linked issues
 

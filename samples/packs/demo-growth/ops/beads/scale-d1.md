@@ -19,7 +19,7 @@ tags: [bead, finance, diversification]
 
 ## Description
 
-The book is all growth: a thin cash buffer, no bonds, and one employer name at a third of taxable. This epic builds the floor — an emergency fund at six months, overlap-aware core adds — so the concentrated bets sit on something solid instead of on nerve.
+The book is all growth: a thin cash buffer, no bonds, and one employer name at about 40% of taxable. This epic builds the floor — an emergency fund at six months, overlap-aware core adds — so the concentrated bets sit on something solid instead of on nerve.
 
 ## Linked issues
 

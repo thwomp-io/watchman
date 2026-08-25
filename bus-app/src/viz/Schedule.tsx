@@ -178,7 +178,7 @@ export default function Schedule({ data }: { data: ScheduleData }) {
             {days.map((d) => (markersByDay.get(d) ?? []).map((m, i) => {
               const prefix = m.time ? `${m.time} · ` : "";
               // the column budget covers prefix + label together — an uncounted time prefix
-              // ran Thursday's marker into Friday's column (the eye-run)
+              // ran Thursday's marker into Friday's column (a headless-shot catch)
               const cap = Math.max(6, Math.floor((colW - 16) / 5.6) - prefix.length);
               return (
                 <text key={`${d}m${i}`} x={colX(d) + 8} y={M.top + 10 + i * ROW}

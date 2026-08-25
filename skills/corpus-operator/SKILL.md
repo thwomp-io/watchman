@@ -40,10 +40,10 @@ Both are organized into a portable **weight pack** so the harness can load it:
 
 ```
 <their-pack>/
-  pack.yaml # identity: name, title, description, lanes, default
-  finance/ # narrative docs + the machine weights (e.g. portfolio.yaml, networth-history.json)
-  career/ # their story + the structured state (e.g. watchlist.yml, applications.yaml)
-  travel/ # their preferences in prose + weights.yaml, trips/
+  pack.yaml          # identity: name, title, description, lanes, default
+  finance/           # narrative docs + the machine weights (e.g. portfolio.yaml, networth-history.json)
+  career/            # their story + the structured state (e.g. watchlist.yml, applications.yaml)
+  travel/            # their preferences in prose + weights.yaml, trips/
 ```
 
 A pack only needs subdirs for the lanes the user cares about. Their **real** pack lives **outside** any

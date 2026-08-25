@@ -2,6 +2,7 @@
   "lane": "market",
   "title": "Market",
   "group": "Finance",
+  "owner": "default",
   "widgets": [
     {
       "id": "breadth_ewc",
@@ -24,10 +25,13 @@
       "value_path": "breadth.equal_weight_minus_cap_pct",
       "prefix": null,
       "suffix": "%",
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "mag7_avg",
@@ -50,10 +54,13 @@
       "value_path": "breadth.megacap_avg_pct",
       "prefix": null,
       "suffix": "%",
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "take",
@@ -68,10 +75,13 @@
       "value_path": null,
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "semis_avg",
@@ -94,10 +104,13 @@
       "value_path": "breadth.semis_avg_pct",
       "prefix": null,
       "suffix": "%",
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "sectors_adv",
@@ -120,10 +133,13 @@
       "value_path": "breadth.sectors_advancing",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "indices",
@@ -146,8 +162,10 @@
       "value_path": "indices",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
@@ -155,7 +173,8 @@
         "day_change",
         "price"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "sectors",
@@ -178,15 +197,18 @@
       "value_path": "sectors",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
         "day_change_pct",
         "price"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "megacap",
@@ -209,15 +231,18 @@
       "value_path": "megacap",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
         "day_change_pct",
         "price"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "semis",
@@ -240,15 +265,18 @@
       "value_path": "semis",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
         "day_change_pct",
         "price"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "leaders",
@@ -271,15 +299,18 @@
       "value_path": "leaders",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
         "group",
         "day_change_pct"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     },
     {
       "id": "laggards",
@@ -302,15 +333,18 @@
       "value_path": "laggards",
       "prefix": null,
       "suffix": null,
+      "signed": null,
       "title_path": null,
       "symbols": [],
+      "symbols_from": null,
       "columns": [
         "symbol",
         "label",
         "group",
         "day_change_pct"
       ],
-      "rows": 1
+      "rows": 1,
+      "layout": null
     }
   ]
 }

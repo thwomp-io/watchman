@@ -26,10 +26,10 @@ describe("Dash — pack-described dashboards", () => {
     expect(screen.getByRole("button", { name: "Career" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Travel" })).toBeInTheDocument();
     // Finance is the initial group → its subtabs are exposed.
-    expect(screen.getByRole("button", { name: "Unwind" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Plans" })).toBeInTheDocument();
   });
 
-  // THE REGRESSION (the bug the eyeball caught post-deploy). v2 lets a pack DESCRIBE its dashboards,
+  // THE REGRESSION (the post-deploy pack-swap bug). v2 lets a pack DESCRIBE its dashboards,
   // so a swap changes the LAYOUT, not just the data. Dash must re-fetch list_dashboards on a reloadKey
   // change — refetching only widget data (the pre-fix behavior) left a stale tab-set whose widgets no
   // longer resolved ("unknown widget"). This pins the layout refetch + the preserve-on-swap.
@@ -38,7 +38,7 @@ describe("Dash — pack-described dashboards", () => {
     const { rerender } = render(<Dash reloadKey="real" />);
 
     // The full fixture's extra Finance subtabs are present.
-    expect(await screen.findByRole("button", { name: "Unwind" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Plans" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Market" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tickets" })).toBeInTheDocument();
 
@@ -48,7 +48,7 @@ describe("Dash — pack-described dashboards", () => {
 
     // Layout refetched: the full fixture's extra Finance subtabs are gone...
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Unwind" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: "Plans" })).not.toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: "Market" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Tickets" })).not.toBeInTheDocument();

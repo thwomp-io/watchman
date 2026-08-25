@@ -24,4 +24,4 @@ Quarter-end distributions from the dividend sleeve and the bond fund are sitting
 
 ## Resolution
 
-June distributions from SCHD, VYM, the single names, and BND swept to the high-yield savings. The runway sits restocked ahead of the August transfer decision.
+June distributions from SCHD, VYM, the single names, and BND swept to the high-yield savings. The runway sits restocked ahead of the October transfer decision.

@@ -35,7 +35,9 @@ The harness is one engine behind three surfaces. Know which to reach for:
    - **INBOX** — notifications from the standing agents (day moves, order-fill proximity, scan deltas,
      macro-event proximity, filings), triaged into severity bands; an `info` context-stream skims beneath
      the actionable ones. Each signal can deep-link to the relevant doc / chart / dashboard.
-   - **DASH** — the lane dashboards (grouped tabs). Data widgets self-refresh off `hn <lane> … --json`;
+   - **DASH** — the lane dashboards (grouped tabs: Finance ▸ Core / Market / Tickets / News / Compare /
+     Prints / Projections / Holdings / Plans · Travel ▸ Planning / Landscape / Conditions / Calendar /
+     Big Calendar / Visits · Career · Ops ▸ Backlog). Data widgets self-refresh off `hn <lane> … --json`;
      narrative panels read agent-written docs off disk. No model is ever in the render loop (see the
      determinism discipline below).
    - **VIZ** — interactive D3 over the corpus's own viz-data JSONs (positioning scatters, matrices,
@@ -53,7 +55,12 @@ for the verb that answers the question — you rarely need more than one or two 
 **Finance** — a read-only market + portfolio sounding board (no trading; execution is out of scope):
 - **State of the book:** `networth` (full net worth across accounts), `positions` (holdings table),
   `concentration` / `allocation` (current vs. target), `unwind` (a concentration-diversification /
-  sell-planning surface).
+  sell-planning surface), `holdings` (the held book appraised through the projections lens).
+- **Registries written by the user's loop, read back:** `scorecards` (graded earnings prints — the
+  Prints tab), `projections` (scenario-grid bands from the params registry — the Projections tab),
+  `gates` (upcoming prints + macro events inside a horizon — the Plans tab's countdown board). These
+  are read-only views of judgment the user recorded at grade/research time; never author them from
+  a live feed.
 - **The tape:** `quote <SYM…>`, `market` (bird's-eye regime read — index breadth, sectors, semis,
   mega-cap dispersion), `history` / `bars` (price bars + support levels), `fed` (the latest FOMC
   decision), `fund-proxy` (EOD direction of a non-intraday fund from liquid proxies).
@@ -75,6 +82,7 @@ for the verb that answers the question — you rarely need more than one or two 
 
 **Travel** — a read-only trip-research sounding board (nothing books):
 - `flights` / `hotels` (ranked options), `food` / `events` (things to do), `trips` (the trip pipeline),
+  `nudge` (proactive trip nudges), `calendar` (the events almanac), `decision` (the trip-decision read),
   `reference` (a key-dates almanac), the keyless *senses* — `weather`, `air`, `quakes`, `sun`, `fx`,
   `holidays`, `country`, `traffic`, `ferry` — and `viz`.
 

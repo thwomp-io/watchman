@@ -1,0 +1,18 @@
+{
+  "title": "Destination characteristics — the whole corpus",
+  "subtitle": "8 destinations × what each offers · 1–5, more = more of that quality · NOT a goodness ranking — weight the axes per trip",
+  "axes": ["Food", "Nature", "Culture", "Nightlife", "Walkable", "Value"],
+  "max": 5,
+  "reachLabel": "Reach from Denver (effort, not a demerit)",
+  "note": "more of this quality →  ·  reach = effort, not a demerit (a long flight is a bigger trip, not a worse place)",
+  "rows": [
+    {"group": "US · Desert", "label": "Moab", "values": [2, 5, 1, 1, 2, 4], "reach": "drive ~5.5h"},
+    {"group": "US · Desert", "label": "Santa Fe", "values": [4, 4, 5, 2, 4, 4], "reach": "drive ~6h / DEN-direct ~1.5h"},
+    {"group": "US · City", "label": "Austin", "values": [5, 2, 3, 5, 4, 4], "reach": "DEN-direct ~2h"},
+    {"group": "US · City", "label": "Las Vegas", "values": [4, 2, 2, 5, 4, 3], "reach": "DEN-direct ~2h"},
+    {"group": "Mountains", "label": "Park City", "values": [3, 5, 2, 3, 3, 2], "reach": "DEN-direct to SLC ~1.5h"},
+    {"group": "US · City", "label": "Chicago", "values": [5, 2, 5, 4, 5, 4], "reach": "DEN-direct ~2.5h"},
+    {"group": "US · City", "label": "Portland", "values": [5, 4, 3, 3, 4, 4], "reach": "DEN-direct ~2.5h"},
+    {"group": "International", "label": "Mexico City", "values": [5, 2, 5, 4, 4, 5], "reach": "DEN-direct ~4h"}
+  ]
+}

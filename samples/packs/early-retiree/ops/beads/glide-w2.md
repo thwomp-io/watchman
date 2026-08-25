@@ -32,7 +32,7 @@ Pull the card and checking exports, categorize, and post the trailing-12 number.
 
 ## Resolution
 
-Trailing-12-month spend posted at $86,400 — roughly 3.5% of the June 30 portfolio value, inside the 3.6% line with a little margin. Category detail filed with the review note.
+Trailing-12-month spend posted at $86,400 — roughly 2.9% of the June 30 portfolio value, comfortably inside the 3.6% line. Category detail filed with the review note.
 
 ## Comments (1)
 

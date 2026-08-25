@@ -29,7 +29,7 @@ First real interview of the hunt: a 60-minute screen, likely two coding exercise
 
 ## Resolution
 
-Screen passed — two coding exercises and a systems question on rate limiting. Recruiter confirmed advancement to the final-round virtual onsite the same afternoon; scheduling for the week of July 20.
+Screen passed — two coding exercises and a systems question on rate limiting. Recruiter confirmed advancement to the final-round virtual onsite the same afternoon; scheduling for the week of September 8.
 
 ## Comments (1)
 

@@ -18,24 +18,25 @@ grad building their base):
 
 The Finance group is a set of deterministic dashboards over the CLI's `--json` verbs — no model
 in the render loop, ever. The tour: **Core** (net worth, trend, indexes, allocation) →
-**Unwind** (concentrated-position sell-planning: per-lot gain/loss, the vest calendar) →
-**Market** (regime and breadth) → **Tickets** (execution tickets beside the live GTC ledger):
+**Market** (regime and breadth, plus the credit-stress rail) → **Tickets** (execution tickets
+beside the live GTC ladder) → **Prints** (your graded earnings-print history) → **Projections**
+(scenario-grid bands from params you authored) → **Holdings** (the held book appraised through
+that lens) → **Plans** (the living event plan beside a countdown board of upcoming prints and
+macro dates):
 
 ![Touring the finance dashboards](assets/demo-finance.gif)
 
-The sell-planning view deserves a closer look — lots, wash windows, and the vest timeline in
-one place:
-
-![The unwind tab — concentrated-position sell-planning](assets/unwind-tour.gif)
-
-Two of its visuals, up close. The **trap map** draws every resting GTC buy as a rung on its
-symbol's price ladder — live price, distance to fill, committed dollars, support shelves from
-recent history:
+Two of its visuals, up close. The **trap map** (Tickets) draws every resting GTC buy as a rung
+on its symbol's price ladder — live price, distance to fill, committed dollars, support shelves
+from recent history:
 
 ![The trap map — GTC orders as price ladders](assets/viz-trapmap.png)
 
-And the **vest timeline** — vest events sized by value, wash-sale poison windows in amber,
-clean harvest windows in green:
+The **gates board** (Plans, in the tour above) ranks what's coming — each held name's next print
+and each macro date inside the horizon — as bars whose length is imminence, hot within two days,
+`est` chips on dates the calendar could only estimate. And the **vest timeline** — vest events sized by value,
+wash-sale poison windows in amber, clean harvest windows in green — lives on the VIZ rail as a
+live chart over the concentration-unwind verb:
 
 ![The vest timeline — sell-planning calendar](assets/viz-vest-timeline.png)
 
@@ -103,7 +104,7 @@ redwatch, fjord, abyss, dusk, outrun, solar, mono) — one toggle in the footer:
 
 **Mobile-first below 600px** — rebuilt for a one-column glance surface, not a shrunken desktop:
 
-- Dashboards render in **reading order** (Studio layouts yield on a phone)
+- Dashboards render in **reading order** (custom Dashboard-Studio layouts yield to reading order on a phone)
 - Tables **swipe** at natural column widths — never truncate
 - Charts and viz keep an **honest height** — no collapsing to slivers
 - Chrome compresses to essentials

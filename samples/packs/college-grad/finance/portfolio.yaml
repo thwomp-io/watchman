@@ -44,6 +44,12 @@ pulse:
 
 index_watch: [SPY, QQQ]
 
+# Employer-RSU vest calendar (the DDOG grant) — drives the vest-timeline viz + the wash-sale windows in
+# `watch`. units = shares vesting.
+vest_calendar:
+  - {date: "2026-09-15", units: 18}
+  - {date: "2027-03-15", units: 18}
+
 # Macro calendar — approximate dates; verify against primary sources (federalreserve.gov / bls.gov) as
 # each nears. Drives the `macro_soon` pulse flag + the macro-calendar widget. (An early-career book keeps
 # it simple — no formal allocation target or estimated-tax cadence yet; those tiles stay honestly empty.)
@@ -52,6 +58,7 @@ macro_events:
   - {date: 2026-07-14, label: "CPI (Jun data — approx)"}
   - {date: 2026-07-29, label: "FOMC decision (Jul meeting — approx)"}
   - {date: 2026-08-13, label: "CPI (Jul data — approx)"}
+  - {date: 2026-09-04, label: "Jobs report (Aug — approx)"}
   - {date: 2026-09-16, label: "FOMC decision (Sep meeting — approx)"}
   - {date: 2026-10-28, label: "FOMC decision (Oct meeting — approx)"}
   - {date: 2026-12-09, label: "FOMC decision (Dec meeting — approx)"}

@@ -46,7 +46,7 @@ pub struct Widget {
     #[serde(default)]
     pub suffix: Option<String>,
     /// stat-tile sign formatting opt-out (types.ts `signed?: boolean`): %-suffixed
-    /// stats sign-format by default; `signed: false` = a magnitude read (e.g. UNWIND % COMPLETE).
+    /// stats sign-format by default; `signed: false` = a magnitude read (e.g. a %-complete gauge).
     /// Added after the desktop app DROPPED the key its typed parse didn't know while
     /// the python-served console passed it through — the two-parsers divergence class.
     #[serde(default)]
@@ -114,13 +114,13 @@ pub struct Dashboard {
     pub lane: String,
     pub title: String,
     /// Nav grouping — dashboards sharing a group render as subtabs under it (e.g. Finance ▸
-    /// [Core · Unwind · Market]). Empty = ungrouped top-level. `#[serde(default)]` keeps old
+    /// [Core · Market · News]). Empty = ungrouped top-level. `#[serde(default)]` keeps old
     /// user configs valid (they just land ungrouped until re-seeded).
     #[serde(default)]
     pub group: String,
     /// Ownership metadata (Dashboard Studio): "default" = seeded from a compiled default (safe to
     /// re-seed/migrate); "user" = user-authored or user-edited via the Studio — NEVER overwritten
-    /// by seeding or deploys (the fix). Old configs deserialize as "default".
+    /// by seeding or deploys. Old configs deserialize as "default".
     #[serde(default = "default_owner")]
     pub owner: String,
     pub widgets: Vec<Widget>,
@@ -249,17 +249,26 @@ fn default_travel() -> Dashboard {
             w("active", "Active trips", "stat",
               hn_cmd(&["travel", "trips", "--json"]), "local60s", 1,
               Some("count"), None, None),
-            // The marquee decision viz — the active trip's compare radar, read off disk (shape-sniffs
-            // to a radar from {axes,candidates}). v1 points at a sample trip's decision; a
-            // dynamic active-trip resolver (so it never goes stale — the single-trip-staleness guard)
-            // is the filed fast-follow.
+            // The marquee decision viz — the active trip's compare radar via the dynamic resolver:
+            // `travel decision` finds the soonest live trip carrying a
+            // visuals/compare-data.json and passes it through, so the widget follows the corpus as
+            // trips open/close. Never a frozen trip path in config — the file-source placeholder
+            // regressed on every reseed (a 400 once the sample trip was gone) and hard-coded a trip
+            // slug that config shouldn't carry.
             // span-2 × rows-2 = a square footprint so the radar (square viewBox) fits without the
             // bottom axes clipping (a wide span-3/rows-1 tile cut the lower half off).
             Widget { rows: 2,
                 ..w("decision", "Active decision — candidate radar", "viz",
-                  WidgetSource::File {
-                      path: "travel/trips/sample-trip/visuals/compare-data.json".into(),
-                  }, "local60s", 2, None, None, None) },
+                  hn_cmd(&["travel", "decision", "--json"]), "local60s", 2, None, None, None) },
+            // The proactive-nudge band: the deterministic windows × destinations
+            // scorer's top pairs — the tab's top-of-funnel (nudge → pipeline → signals). Cards
+            // hover/two-tap to the full component breakdown; click deep-links the destination doc.
+            // local30m: the live enrich (Ticketmaster + forecast) is a ~20-40s spawn — too heavy
+            // for local60s, and the underlying windows move daily, not by the minute.
+            Widget { rows: 2,
+                ..w("nudges", "Trip nudges — upcoming windows", "nudges",
+                  hn_cmd(&["travel", "nudge", "--json", "--weeks", "26", "--top", "6"]),
+                  "local30m", 4, None, None, None) },
             // `doc` renders as an "open ↗" VAULT deep-link (the trip's corpus folder-note).
             Widget { columns: cols(&["when", "date", "status", "destination", "anchor", "who", "doc"]),
                 ..w("pipeline", "Trip pipeline — the horizon", "table",
@@ -446,40 +455,53 @@ fn default_prints() -> Dashboard {
     }
 }
 
-/// The concentration-unwind dashboard — sell-down planning for any concentrated
-/// position with grant/vest mechanics (renders from whatever the corpus's `unwind:` lane
-/// configures; sample packs supply fictional personas). Every widget shares ONE source
-/// (`hn finance unwind --json`), so the dashboard's in-flight dedupe collapses the whole tab to a
-/// single subprocess run; each widget just `value_path`s into the contract.
-fn default_unwind() -> Dashboard {
-    let src = || hn_cmd(&["finance", "unwind", "--json"]);
+/// The Holdings tab — the inventory to the Projections tab's shop: every HELD
+/// instrument valued from the positions snapshot and appraised against the params registry.
+/// Two engine reads per card: item_level from the live price + entry_item_level from the average
+/// cost ("how good was the buy, against the current model") with entry_edge the delta the entry
+/// banked. Unappraised names (fund structures / registry gaps) render dim, reason named.
+fn default_holdings() -> Dashboard {
     Dashboard {
-        lane: "unwind".into(),
-        title: "Unwind".into(),
+        lane: "finance-holdings".into(),
+        title: "Holdings".into(),
         group: "Finance".into(),
         owner: default_owner(),
-        widgets: vec![
-            Widget {
-                signed: Some(false),  // % COMPLETE is a magnitude, not a delta — no "+"
-                ..w("unwind_pct", "Unwind complete", "stat", src(), "market10m", 1,
-                    Some("progress.pct_unwound"), None, Some("%"))
-            },
-            w("price", "Price", "stat", src(), "market10m", 1, Some("price"), Some("$"), None),
-            w("day", "Day", "stat", src(), "market10m", 1, Some("day_change_pct"), None, Some("%")),
-            w("gl", "Unrealized G/L", "stat", src(), "market10m", 1,
-              Some("position.unrealized_gl_pct"), None, Some("%")),
-            w("harvest", "Harvestable loss", "stat", src(), "market10m", 1,
-              Some("tlh.harvestable_loss"), Some("$"), None),
-            w("vests", "Vest calendar — sell-planning timeline", "viz", src(), "market10m", 4,
-              Some("vest_timeline"), None, None),
-            w("price_chart", "Price vs cost-basis band", "viz", src(), "market10m", 4,
-              Some("price_chart"), None, None),
-            w("lot_split", "Lots — gain (anytime) vs loss (wash-gated)", "viz", src(), "market10m", 2,
-              Some("lot_split"), None, None),
-            w("tlh_split", "Sellability split", "viz", src(), "market10m", 2,
-              Some("tlh_split"), None, None),
-            w("ladder", "Lot ladder", "table", src(), "market10m", 4, Some("lots"), None, None),
-        ],
+        widgets: vec![w(
+            "holdings-grid",
+            "Holdings — appraised against the projection params",
+            "holdings",
+            hn_cmd(&["finance", "holdings", "--json"]),
+            "market10m",
+            4,
+            None,
+            None,
+            None,
+        )],
+    }
+}
+
+/// The Projections tab — scenario-grid risk/reward tiles per name: hover a tile →
+/// the per-horizon (6/12/24/36mo) return-band grid. Data = the agent-authored params registry via
+/// `hn finance projections --json` — deterministic EPS×multiple arithmetic against live quotes;
+/// the bands were authored at research time by the operating loop, never here. Horizons beyond 1y
+/// render sketch-tier; stale params (>~a quarter) dim their tile — honesty is part of the contract.
+fn default_projections() -> Dashboard {
+    Dashboard {
+        lane: "finance-projections".into(),
+        title: "Projections".into(),
+        group: "Finance".into(),
+        owner: default_owner(),
+        widgets: vec![w(
+            "projection-tiles",
+            "Scenario projections — risk/reward per horizon",
+            "projections",
+            hn_cmd(&["finance", "projections", "--json"]),
+            "market10m",
+            4,
+            None,
+            None,
+            None,
+        )],
     }
 }
 
@@ -548,6 +570,31 @@ fn default_news() -> Dashboard {
                 ..w("reader", "Broad-market wire", "news",
                   hn_cmd(&["finance", "wire", "--json"]), "local30m", 4, None, None, None)
             },
+        ],
+    }
+}
+
+/// The PLANS dashboard — the event-plan lens: the plan-class documents feed the
+/// daily tickets, and this tab is their glass. The doc-series browses `finance/plans` (the living
+/// event plan renders as LATEST); the gates board is the ranked countdown over
+/// `hn finance gates --json` (fast — no quotes, no wire); allocation current→target shows the
+/// deployment's purpose; the committed stat sums the dollars parked in resting GTC orders.
+fn default_plans() -> Dashboard {
+    Dashboard {
+        lane: "plans".into(),
+        title: "Plans".into(),
+        group: "Finance".into(),
+        owner: default_owner(),
+        widgets: vec![
+            w("plan", "Event plan", "doc_series",
+              WidgetSource::File { path: "finance/plans".into() }, "local60s", 2, None, None, None),
+            w("gates", "Plan gates — prints & macro", "viz",
+              hn_cmd(&["finance", "gates", "--json"]), "local30m", 2, None, None, None),
+            w("allocation", "Allocation — current → target", "viz",
+              hn_cmd(&["finance", "allocation", "--json"]), "market10m", 2, None, None, None),
+            w("committed", "Committed by resting rungs", "stat",
+              hn_cmd(&["finance", "trap-map", "--json"]), "market10m", 2,
+              Some("committed"), Some("$"), None),
         ],
     }
 }
@@ -704,15 +751,17 @@ fn compiled_defaults() -> Vec<(&'static str, Dashboard)> {
         ("backlog", default_backlog()),
         ("finance", default_finance()),
         ("finance-prints", default_prints()),
+        ("finance-projections", default_projections()),
+        ("finance-holdings", default_holdings()),
         ("travel", default_travel()),
         ("travel-landscape", default_landscape()),
         ("travel-conditions", default_conditions()),
         ("travel-calendar", default_calendar()),
         ("travel-calendar-big", default_calendar_big()),
         ("travel-visits", default_visits()),
-        ("unwind", default_unwind()),
         ("market", default_market()),
         ("news", default_news()),
+        ("plans", default_plans()),
         ("tickets", default_tickets()),
         ("compare", default_compare()),
         ("career", default_career()),
@@ -848,7 +897,7 @@ fn backup_existing(dir: &Path, lane: &str, path: &Path) {
 /// Load dashboards for the active scenario (pack-DESCRIBED dashboards v2). When a weight
 /// pack is active AND ships a non-empty `dashboards/` dir, those dashboards **fully replace** the
 /// console tab-set — the persona curates its own console (full-set override): a demo pack can drop
-/// tabs a persona doesn't need (e.g. Unwind, Compare) and ship its own chart symbols instead of inheriting the
+/// tabs a persona doesn't need (e.g. Tickets, Compare) and ship its own chart symbols instead of inheriting the
 /// real defaults. Read **transiently** — pack dashboards are NEVER seeded into
 /// `~/.config/harness/dashboards/` (a file there, once written, overrides forever and would poison
 /// the real console — the config-override-forever trap). No pack, a pack without a
@@ -1074,8 +1123,8 @@ mod tests {
              &["AAPL", "MSFT", "COST", "VTI", "VXUS", "BND", "SCHD"],
              &["AAPL", "MSFT", "COST", "NVDA"]),
             ("demo-growth",
-             &["NVDA", "CRWD", "DDOG", "NET", "SHOP", "TTD", "MDB"],
-             &["NVDA", "CRWD", "DDOG", "SHOP"]),
+             &["NVDA", "CRWD", "AVGO", "NET", "ARM", "TTD", "MDB"],
+             &["NVDA", "CRWD", "AVGO", "ARM"]),
             ("early-retiree",
              &["VTI", "SCHD", "VYM", "JNJ", "PG", "KO", "JPM"],
              &["JNJ", "PG", "KO", "JPM"]),

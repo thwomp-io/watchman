@@ -1,0 +1,116 @@
+{
+  "lane": "plans",
+  "title": "Plans",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "plan",
+      "title": "Event plan",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "finance/plans"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "gates",
+      "title": "Plan gates — prints & macro",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "gates",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "allocation",
+      "title": "Allocation — current → target",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "allocation",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "committed",
+      "title": "Committed by resting rungs",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "trap-map",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "committed",
+      "prefix": "$",
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

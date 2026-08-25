@@ -91,13 +91,22 @@ await page.waitForSelector(".widget, .inbox, .vault, .viz-rail", { timeout: 30_0
 if (tab) await page.click(`nav.zones button:has-text("${tab}")`).catch(() => {});
 // DASH is 2-level (group row → lane subtabs) — navigate both when asked, waiting for each
 // row to exist so a fresh config-discovered lane (no rebuild) is reachable the same session.
+// Click a nav button by name, EXACT text first — `has-text` is substring-based, so a lane
+// named "Calendar" would otherwise match "Big Calendar" first (hit live on the
+// Travel group's Calendar / Big Calendar pair). Falls back to substring for partial names.
+async function clickNav(name) {
+  const exact = page.locator("button", { hasText: new RegExp(`^\\s*${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`) }).first();
+  if ((await exact.count()) > 0) return exact.click().catch(() => {});
+  return page.click(`button:has-text("${name}")`).catch(() => {});
+}
+
 if (dashGroup) {
   await page.waitForTimeout(400);
-  await page.click(`button:has-text("${dashGroup}")`).catch(() => {});
+  await clickNav(dashGroup);
 }
 if (dashLane) {
   await page.waitForTimeout(400);
-  await page.click(`button:has-text("${dashLane}")`).catch(() => {});
+  await clickNav(dashLane);
 }
 // VIZ rail is grouped (top toggle → doc → item) — --viz-item selects a rail entry by
 // case-insensitive name, expanding collapsed top groups (chev "▸") first so fresh vault
@@ -107,7 +116,7 @@ if (vizItem) {
   await page.waitForTimeout(600);
   // expand collapsed top groups ONE AT A TIME, re-querying between clicks — each expansion
   // re-renders the rail, so a batch of pre-collected handles goes stale after the first click
-  // (the eye-run: BEADS expanded, TRAVEL/PLANS silently didn't)
+  // (observed: the first group expanded, the rest silently didn't)
   for (let i = 0; i < 12; i++) {
     const t = page.locator('.viz-top-toggle:has-text("▸")').first();
     if ((await t.count()) === 0) break;

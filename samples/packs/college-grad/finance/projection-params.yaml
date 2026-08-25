@@ -1,0 +1,35 @@
+# Scenario-projection params — behind `hn finance projections` + the Projections / Holdings tabs.
+# FICTIONAL sample data for the college-grad persona; illustrative only, not advice.
+# Authored at research/grade time from a named artifact (provenance); eps_basis names the accounting
+# basis; bands are judgment calls; as_of drives the staleness flag. The verb only does the arithmetic.
+
+projections:
+  - symbol: NVDA
+    fwd_eps: 4.90
+    eps_basis: "Non-GAAP diluted, next twelve months — the raised guide annualized"
+    growth_pct_low: 20
+    growth_pct_high: 40
+    mult_low: 24
+    mult_mid: 30
+    mult_high: 36
+    ref_price: 138.40
+    as_of: 2026-08-16
+    provenance: finance/research/prints/NVDA-2026-05-28.md
+    notes: >-
+      The first individual pick. Wide growth band because the cycle question is open; the multiple
+      band sits below the recent range so the grid errs conservative. An 8-share starter stays a
+      starter until the index core is built.
+  - symbol: DDOG
+    fwd_eps: 2.30
+    eps_basis: "Non-GAAP diluted, next twelve months — the raised full-year guide"
+    growth_pct_low: 18
+    growth_pct_high: 28
+    mult_low: 45
+    mult_mid: 60
+    mult_high: 75
+    ref_price: 138.90
+    as_of: 2026-08-16
+    provenance: finance/research/prints/DDOG-2026-08-06.md
+    notes: >-
+      The first-employer RSUs. The multiple band is honest about how rich the name trades; the
+      first-year plan sells each vest into the index core regardless of what this grid says.

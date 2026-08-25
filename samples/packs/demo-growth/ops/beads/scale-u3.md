@@ -2,7 +2,7 @@
 tags: [bead, finance, equity]
 ---
 
-# scale-u3 — Confirm the trading window stays open for the tranche-2 sale
+# scale-u3 — Confirm the trading window stays open for the staged tranche sales
 
 **Status:** in_progress · **Priority:** P2 · **Type:** task · **Assignee:** quant
 
@@ -27,5 +27,6 @@ The employer trading policy and the earnings calendar decide this, not the marke
 **Parent** (1)
 - [[scale-u1]] — CRWD unwind — staged diversification of the vested employer RSUs · open
 
-**Blocks** (1)
+**Blocks** (2)
+- [[scale-u2]] — Tranche 1 — sell the 2024-08 deep-gain lot (60 sh, limit 395) · open
 - [[scale-u4]] — Place the tranche-2 limit sale — the 2025-02 lot (55 sh) · open

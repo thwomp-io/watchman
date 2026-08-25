@@ -34,7 +34,7 @@ def _property_block(o: HotelOffer, photo_embeds: list[str]) -> list[str]:
         out.append(
             "**Nearby**: "
             + " · ".join(
-                f"{np.name} ({np.duration} {np.transport})".strip().replace("()", "")
+                f"{np.name} ({np.duration} {np.transport})".strip().replace("( )", "")
                 for np in o.nearby_places[:5]
             )
         )

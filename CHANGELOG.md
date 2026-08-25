@@ -3,6 +3,68 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-08-25
+
+This release adds three Finance console tabs (Projections, Holdings, Plans) and the verbs behind
+them, a proactive trip-nudge layer on the Travel Planning tab, two market-regime signals (credit
+stress, spot VIX) on the market read, a phone pass over the newer Finance tabs, and retires the
+concentration-unwind tab. Every bundled sample persona now ships data for every console tab.
+
+### Added
+- **Projections** — `hn finance projections`: scenario-grid risk/reward bands per name per
+  horizon (6/12/24/36 months), computed from a params registry you author in your corpus
+  (`finance/reference/projection-params.yaml`: forward EPS with its accounting basis, a growth band,
+  a multiple band, provenance) against the live quote. Horizons past a year are marked `sketch`;
+  params older than about a quarter flag `stale`; the disclaimer ships in the JSON. The
+  **Finance ▸ Projections** tab renders one card per name (price, forward multiple, the 12-month
+  band, a tier bucketed by the modeled return) with the full per-horizon grid on hover. Names your
+  values screen excludes are listed below the rest, and on phones one tap opens the grid and a
+  second follows the link. Values-screen status rides the contract as an optional `screen_note`
+  so screened names render marked, never hidden.
+- **Holdings** — `hn finance holdings`: the held book appraised through the same params —
+  for every held name with an entry, the modeled 12-month return at the live price *and* at your
+  average cost ("how good was the entry?"). Names without an entry render with the reason named,
+  never dropped. The **Finance ▸ Holdings** tab shows holding cards in portfolio order with the
+  same hover appraisal and click-through to the research artifact.
+- **Plans** — `hn finance gates`: every upcoming held-name earnings print (confirmed dates
+  where the analyst calendar has them, filing-cadence estimates labeled `est`) plus your
+  `macro_events` inside a horizon, imminent-first — no quotes, no wire, so a refresh is cheap.
+  The **Finance ▸ Plans** tab pairs your living event-plan documents (`finance/plans/`, newest
+  first) with the gates board (ranked countdown bars, hot within two days), the allocation
+  current→target view, and the dollars committed by resting orders.
+- **Market signals** — `hn finance market` adds a credit-stress rail (HYG / LQD / IEF and a
+  high-yield-minus-Treasury day-spread fact); `hn finance global` carries spot VIX as a level
+  on the US-risk rail.
+- **Trip nudges** — `hn travel nudge`: proactive "you could be in {place} {window}" trip
+  suggestions over the next ~6 months, scored from your corpus's destination registry and the
+  reference almanac (holiday-extended long weekends), then enriched live for the top pairs
+  (ticketed events, forecast inside ~16 days). Every nudge carries its component breakdown. The
+  Travel ▸ Planning tab renders them as cards above the trip pipeline; `hn travel decision`
+  feeds the tab's compare radar from the soonest live trip.
+- **Sample personas ship the full console** — each bundled pack now carries a print-scorecard
+  registry, projection params, an event plan, a ranked destinations registry, and a hosted-visit
+  entry, and its `dashboards/` describes every console tab, so a fresh install demos all of them.
+
+### Changed
+- **Phone pass on the newer Finance tabs** — Prints and Projections render correctly at 390px
+  (subtab strip wraps, scorecards no longer clip, tiles go single-column); the News reader stacks
+  list-over-detail on narrow screens; the Inbox status bar wraps.
+- The console's demo-media and examples tour now cover the current Finance tab set.
+
+### Removed
+- **The Finance ▸ Unwind tab.** Concentration unwinding is a verb, not a standing view: the
+  `hn finance unwind` verb and the vest-timeline chart (on the VIZ rail) remain; only the
+  dedicated tab is gone.
+
+### Fixed
+- `hn finance pulse` no longer crashes on a zero-cost or fully-disposed lot.
+- `hn finance scorecards` accepts an entry with a `take_doc` but no `card_doc` (a print
+  graded straight off the filing) instead of failing the whole registry.
+- `hn travel nudge --json` keeps its advisory output off stdout (the registry-empty notice
+  broke JSON consumers); the reason trim handles a non-breaking-space-padded event-name suffix;
+  Thursday holidays extend windows to the three-night shape.
+- Console-shot navigation matches subtab names exactly before falling back to substring matching.
+
 ## [0.11.0] - 2026-08-03
 
 This release adds an earnings-print scorecard book to the console, an options-positioning
@@ -12,9 +74,9 @@ gauges verb, and fixes a CSS regression that disabled the disabled-state styling
 - **Prints scorecard book** — a new **Finance ▸ Prints** console tab: your graded earnings-print
   history as grade-bannered blocks (GREAT → DISASTER, plus PENDING), paginated newest-first;
   click a block to open the full card in the doc popup. Data comes from
-  `watchman finance scorecards --json` reading the print-scorecard registry in your corpus —
+  `hn finance scorecards --json` reading the print-scorecard registry in your corpus —
   the grades are written by your operating loop at print time; no model runs in the render path.
-- **Options-positioning gauges** — `watchman finance gauges SYM`: put/call ratio (session volume
+- **Options-positioning gauges** — `hn finance gauges SYM`: put/call ratio (session volume
   and open interest), IV30 (median near-the-money implied volatility, 20-45 days out), HV30
   (trailing realized volatility, matching the common brokerage 30-day convention), and the
   IV−HV spread with a braced/neutral/complacent read. The output states its own boundaries:
@@ -26,7 +88,7 @@ gauges verb, and fixes a CSS regression that disabled the disabled-state styling
 - **Disabled-state CSS regression** — 11 `:not(:disabled)` selectors in the console stylesheet
   had been corrupted to `:not(disabled)` by the release transform, so disabled buttons still
   lit up on hover and depressed on click. The transform rule is fixed and the selectors ship
-  intact again. Found by the pre-release audit's dev-vs-artifact diff.
+  intact again.
 
 ## [0.10.1] - 2026-07-27
 
@@ -43,7 +105,7 @@ This release adds an SEC filing reader, a weather/conditions upgrade with an out
 solver, an interactive events calendar, and a second generation of the trip-planning views.
 
 ### Added
-- **Filing reader** — `watchman finance filing SYM` fetches and renders a filing's content from
+- **Filing reader** — `hn finance filing SYM` fetches and renders a filing's content from
   SEC EDGAR: it resolves the newest 8-K's press-release exhibit via the filing's document table
   (filename backstop when untyped) and prints it as text. `--list` shows a filing's document
   table, `--accession`/`--form`/`--doc` select a specific filing or exhibit. Requires the SEC
@@ -52,7 +114,7 @@ solver, an interactive events calendar, and a second generation of the trip-plan
   humidity, precipitation probability), alerts are feels-like-aware, and an hourly
   **outdoor-windows solver** answers "when today is it actually nice out." The Travel dashboard
   gains an at-a-glance conditions tile row.
-- **Events calendar** — `watchman travel calendar` merges the travel almanac and ticketed events
+- **Events calendar** — `hn travel calendar` merges the travel almanac and ticketed events
   into a month grid; the console renders it as an interactive widget and a full wall-board
   dashboard tab.
 - **Trip-planning views, second generation** — the schedule and food-bank views add a
@@ -379,6 +441,8 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.12.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.12.0
+[0.11.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.11.0
 [0.10.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.1
 [0.10.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.10.0
 [0.9.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.9.0

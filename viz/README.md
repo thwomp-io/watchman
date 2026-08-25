@@ -7,7 +7,7 @@ the SVG back. Keeps the JS deps out of the Python (uv) toolchain.
 ## Bootstrap (one-time)
 
 ```sh
-cd viz && npm install # installs d3 + jsdom (node_modules is gitignored)
+cd viz && npm install        # installs d3 + jsdom (node_modules is gitignored)
 ```
 Requires **Node on PATH** (`brew install node`). The Python bridge (`src/harness/viz.py`)
 errors clearly if Node or the renderer is missing.
@@ -21,10 +21,10 @@ node render.js <type> <data.json> <out.svg>
   then serializes `<svg>.outerHTML` to a standalone `.svg` file.
 - **Static SVG by design** — renders as a standalone SVG, version-controlled and diffable. NOT
   interactive HTML. If interactivity is ever wanted, that's a separate artifact — revisit deliberately.
-- Normally invoked via the Python `hn travel viz` CLI / `make_diagram` MCP tool (which preps the data +
+- Normally invoked via the Python `hn <lane> viz` CLI (finance / career / travel) / `make_diagram` MCP tool (which preps the data +
   writes into `{doc}/visuals/`), not by hand.
 
-## Diagram types (the `RENDERERS` map)
+## Diagram types (a sample — the full map is `RENDERERS` in `render.js`, 18 types)
 
 - **`timeline`** — date-window day-grid; weekend shading; per-day event chips by lane; legend.
 - **`schedule`** — compact day-planner: day columns × time-of-day axis; hour gridlines; **data-driven

@@ -31,6 +31,8 @@ from harness.finance.models import (
     FilingReadout,
     FomcDecision,
     Fundamentals,
+    GateItem,
+    GatesBoard,
     MarketOverview,
     Multiples,
     NetWorth,
@@ -1276,6 +1278,92 @@ class FinanceService:
         )
         return report
 
+    def gates(self, *, horizon_days: int = 30) -> GatesBoard:
+        """The plan-gates board — upcoming held-name prints + macro events inside
+        the horizon, structured + imminent-first. The FAST calendar twin of pulse's
+        print_soon/macro_soon prose flags: no quotes, no wire — the print dates ride the day-TTL
+        earnings cache (a cold symbol falls back to the filing-cadence estimate, labeled), the
+        macro rows read the seed's macro_events verbatim. Built for the Plans tab's
+        countdown bars, where a widget refresh must not cost a full pulse run."""
+        from datetime import date as _date
+        from datetime import datetime
+
+        from harness.finance.providers.nasdaq_provider import fetch_earnings_date
+        from harness.finance.watch import EarningsDateCache
+
+        seed = self.reader.read_portfolio()
+        today = _date.today()
+        board = GatesBoard(
+            as_of=datetime.now().isoformat(timespec="seconds"),
+            horizon_days=horizon_days,
+        )
+
+        # held-name prints — confirmed (nasdaq, day-TTL cache) first, cadence estimate fallback
+        earnings_cache = EarningsDateCache.load()
+        earnings_dirty = False
+        for h in seed.holdings:
+            if h.asset_type != "stock":
+                continue
+            ed = earnings_cache.fresh(h.symbol, today)
+            if ed is None:
+                try:
+                    ed = fetch_earnings_date(h.symbol)
+                    earnings_cache.put(ed, today)
+                    earnings_dirty = True
+                except ProviderError:
+                    ed = None
+            if ed is not None:
+                days = (ed.report_date - today).days
+                if 0 <= days <= horizon_days:
+                    board.gates.append(GateItem(
+                        kind="print", symbol=h.symbol,
+                        label=f"{h.symbol} print",
+                        date=ed.report_date.isoformat(), days=days,
+                        confirmed=ed.confirmed,
+                    ))
+                continue
+            # cadence fallback (honest estimate; unresolvable symbols skip silently — ETF-shaped)
+            cik = self._cik_resolver.cik_for(h.symbol)
+            if not cik:
+                continue
+            try:
+                from harness.finance.research import estimate_next_print
+
+                est = estimate_next_print(fetch_recent_filings(cik, limit=14))
+            except ProviderError as e:
+                board.notes.append(f"{h.symbol} print estimate failed: {e}")
+                continue
+            if not est:
+                continue
+            try:
+                est_date = _date.fromisoformat(est.split()[1])
+            except (ValueError, IndexError):
+                continue
+            days = (est_date - today).days
+            if 0 <= days <= horizon_days:
+                board.gates.append(GateItem(
+                    kind="print", symbol=h.symbol,
+                    label=f"{h.symbol} print (est)",
+                    date=est_date.isoformat(), days=days, confirmed=False,
+                ))
+        if earnings_dirty:
+            earnings_cache.save()
+
+        # macro events — the seed's calendar verbatim, inside the horizon
+        for ev in seed.macro_events:
+            try:
+                d = (_date.fromisoformat(ev.date) - today).days
+            except ValueError:
+                continue
+            if 0 <= d <= horizon_days:
+                board.gates.append(GateItem(
+                    kind="macro", symbol=None, label=ev.label,
+                    date=ev.date, days=d, confirmed=True,
+                ))
+
+        board.gates.sort(key=lambda g: (g.days if g.days is not None else 10_000, g.kind))
+        return board
+
     def trap_map(self, *, days: int = 90) -> TrapMap:
         """The trap-map — every symbol with resting GTC orders as a vertical price
         ladder: live price + rungs (with distance-to-fill, pulse's formula) + bars-derived support
@@ -1564,6 +1652,12 @@ class FinanceService:
         flip_pct = th.get("lot_flip_pct", 2.0)
         if conc and conc_price:
             for lot in conc.lots:
+                # skip empty/zero-cost rows: a qty-0 DISPOSITION TOMBSTONE (a vest delivered then
+                # fully sold — ledgered so vest reconciliation can match the calendar) or a zero-cost
+                # lot (gifted/promo shares) has no flip semantics — guard the division so a zero
+                # basis can't crash pulse.
+                if not lot.qty or lot.unit_cost <= 0:
+                    continue
                 gl_pct = (conc_price - lot.unit_cost) / lot.unit_cost * 100.0
                 if abs(gl_pct) <= flip_pct:
                     flags.append(PulseFlag(

@@ -31,4 +31,4 @@ The high-yield savings runway covers ~20 months of spend. Question for the model
 - [[glide-w2]] — Recompute trailing-12-month spend from the account exports · closed
 
 **Blocks** (1)
-- [[glide-w4]] — Set the August withdrawal transfer + top up the checking buffer · open
+- [[glide-w4]] — Set the October withdrawal transfer + top up the checking buffer · open

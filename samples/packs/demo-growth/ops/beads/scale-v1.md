@@ -25,5 +25,5 @@ The vest calendar runs quarterly: 45 units on 8/15, again 11/15 and 2/15. Every 
 
 **Children** (3)
 - [[scale-v2]] — Model the withholding shortfall on the 8/15 vest · closed
-- [[scale-v3]] — Decide sell-to-cover vs hold for the 8/15 tranche · open
+- [[scale-v3]] — Decide sell-to-cover vs hold for the 8/15 tranche · closed
 - [[scale-v4]] — Map the wash-sale windows around the vest calendar · closed

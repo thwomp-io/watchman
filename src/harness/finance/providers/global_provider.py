@@ -42,6 +42,7 @@ GLOBAL_RAILS: dict[str, list[tuple[str, str]]] = {
         ("YM=F", "Dow fut"),
         ("RTY=F", "Russell 2000 fut"),
         ("^TNX", "US 10-yr yield"),
+        ("^VIX", "VIX (spot)"),  # vol regime rides the US-risk rail with the 10-yr (level, not a future)
     ],
     "asia": [
         ("^N225", "Nikkei 225"),
@@ -84,6 +85,7 @@ GLOBAL_RAILS: dict[str, list[tuple[str, str]]] = {
 SCALAR_KEYS: dict[str, str] = {
     "ES=F": "es_pct", "NQ=F": "nq_pct", "YM=F": "ym_pct", "RTY=F": "rty_pct",
     "^TNX": "us10y",  # level, not pct — the tile shows the yield itself
+    "^VIX": "vix",  # level, not pct — regime reads care where vol SITS (16 vs 28), not its day%
     "^N225": "nikkei_pct", "^HSI": "hsi_pct", "000001.SS": "shanghai_pct",
     "^TWII": "taiex_pct", "^KS11": "kospi_pct", "^AXJO": "asx_pct", "^NSEI": "nifty_pct",
     "^FTSE": "ftse_pct", "^GDAXI": "dax_pct", "^FCHI": "cac_pct", "^STOXX50E": "stoxx_pct",
@@ -95,14 +97,14 @@ SCALAR_KEYS: dict[str, str] = {
 
 
 def rail_scalars(rails: dict[str, list[GlobalQuote]]) -> dict[str, float]:
-    """Tile-ready flat scalars from fetched rails (pct for most, level for the 10-yr)."""
+    """Tile-ready flat scalars from fetched rails (pct for most; LEVEL for the 10-yr + VIX)."""
     out: dict[str, float] = {}
     for cards in rails.values():
         for q in cards:
             key = SCALAR_KEYS.get(q.symbol)
             if key is None:
                 continue
-            val = q.price if key == "us10y" else q.change_pct
+            val = q.price if key in ("us10y", "vix") else q.change_pct
             if val is not None:
                 out[key] = round(float(val), 2)
     return out

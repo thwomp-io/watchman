@@ -1,0 +1,43 @@
+{
+  "lane": "travel-calendar-big",
+  "title": "Big Calendar",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "board",
+      "title": "The month board",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "calendar",
+          "--variant",
+          "big",
+          "--from",
+          "{today}",
+          "--to",
+          "{today+365}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 5,
+      "layout": null
+    }
+  ]
+}

@@ -407,7 +407,7 @@ def _h_list_portfolio_symbols(_: dict[str, Any]) -> list[str]:
     beside the corpus). Returns the BARE list: the native command returns Vec<String>, and
     the door must mirror the native shape exactly (the contract-mirror rule) — the first
     deploy returned a {"symbols": …} wrapper here and the webview silently fell back to the
-    static list (caught by the eye: chips rendered in fallback order)."""
+    static list (chips rendered in fallback order)."""
     from harness.finance.corpus.reader import CorpusReader
 
     seed = CorpusReader().read_portfolio()

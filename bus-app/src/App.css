@@ -1431,7 +1431,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .studio-grid.editing .studio-cell:active { cursor: grabbing; }
 .studio-grid .react-grid-placeholder { background: var(--amber); opacity: 0.15; border-radius: 4px; }
 
-/* DASH lane subtabs: the second nav level under a group (Finance ▸ Core/Unwind/Market) */
+/* DASH lane subtabs: the second nav level under a group (Finance ▸ Core/Market/News) */
 .substrip { display: flex; align-items: center; gap: 8px; padding: 6px 16px 8px;
             border-bottom: var(--hairline); }
 .substrip button { padding: 3px 10px; font-size: 11px; color: var(--ink-dim); }
@@ -1521,7 +1521,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .dash-grid .treemap-canvas .viz-svg { width: 100%; height: 100%; }
 .dash-grid .viz-hint { position: absolute; bottom: 3px; left: 12px; margin: 0; z-index: 1; }
 /* the calendar canvas flows its own legend+hint (the absolute dash-grid hint collided with the
-   legend row — eye-caught); keep them stacked in-flow at the canvas bottom */
+   legend row); keep them stacked in-flow at the canvas bottom */
 .dash-grid .cal-canvas .viz-hint { position: static; margin: 0; text-align: left; }
 /* Donut tile: fixed height + donut and legend SIDE-BY-SIDE so the round chart uses the wide span-2
    tile (instead of a small square with whitespace). */
@@ -1702,11 +1702,29 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
   /* thinner bezels at phone width: tighter chrome, more data per screen */
   .widget > header { padding: 6px 9px; gap: 6px; }
   .dash-grid { gap: 7px; padding: 8px; }
-  /* chip rows + masthead wrap instead of clipping off-screen */
-  .dash-tabs, .dash-groups, .zones, .masthead, .widget > header { flex-wrap: wrap; row-gap: 4px; }
+  /* chip rows + masthead wrap instead of clipping off-screen. NOTE: the DASH group row and lane
+     subtabs are .strip/.substrip (the old .dash-tabs/.dash-groups names died in a refactor and the
+     dead selectors let a 9-subtab Finance row push the page to ~718px on a 390px phone — the
+     phone-width overflow). Keep the real class names here. */
+  .strip, .substrip, .zones, .masthead, .widget > header { flex-wrap: wrap; row-gap: 4px; }
   /* doc panels + tables scroll inside their tile, never widen the page */
   .widget { min-width: 0; }
   .widget pre, .widget table { max-width: 100%; overflow-x: auto; }
+  /* Inbox instrument rows: the statusbar agenda and the watch-floor vitals are nowrap stat
+     columns sized for a wide bezel — on a phone they were the other page-wideners. The bar
+     wraps; the agenda left-aligns on its own wrapped line; a vital's identity takes the full
+     row and its stat columns share the next as a 2-up. */
+  .statusbar { flex-wrap: wrap; }
+  .status-agenda { margin-left: 0; max-width: 100%; }
+  /* the last-flag line sizes to its text (nowrap) — pin it to the bar's width and let the
+     dd ellipsize in the remaining space, or it re-widens the page (the 418px residual) */
+  .status-lastflag { width: 100%; }
+  .status-lastflag dd { flex: 1; min-width: 0; max-width: 100%; }
+  .watchmen { margin: 0 10px 10px; padding: 12px 14px 14px; }
+  .vital { flex-wrap: wrap; gap: 10px 18px; }
+  .vital-id { flex-basis: 100%; min-width: 0; }
+  .vital-stat { flex: 1 1 38%; }
+  .vital-stat .stat-val { font-size: 14px; }
 }
 
 /* ————— installed-PWA ergonomics (standalone home-screen install) ————————————————————
@@ -1995,7 +2013,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 
 /* ── interactive calendar (the `calendar` twin) ─────────────────────────────── */
 .cal-canvas { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
-/* the months grid owns the scroll (legend + hint stay pinned below — the eye caught the hint
+/* the months grid owns the scroll (legend + hint stay pinned below — a headless shot caught the hint
    overlapping January when the whole canvas tried to overflow instead) */
 .cal-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;
   flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
@@ -2075,7 +2093,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .calbig-more { font-size: 9.5px; font-style: normal; opacity: 0.65; }
 /* the Big Calendar lane: its one widget IS the page — fill the viewport below the chrome
    (masthead + group tabs + subtabs + paddings ≈ 158px), so a fullscreen monitor gets a true
-   wall calendar instead of a default-height tile (the 4K eye-shot caught the collapse). */
+   wall calendar instead of a default-height tile (a default-height tile collapsed the wall calendar at 4K). */
 .dash-grid.lane-travel-calendar-big .widget { grid-column: 1 / -1; height: calc(100vh - 178px); min-height: 480px; }
 .dash-grid.lane-travel-calendar-big .widget .viz-canvas { height: 100%; box-sizing: border-box; }
 
@@ -2146,3 +2164,253 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .scorebook-turn:disabled { color: var(--ink-faint); cursor: default; }
 .scorebook-turn:not(:disabled):hover { border-color: rgba(var(--amber-rgb), 0.55); }
 .scorebook-empty { color: var(--ink-dim); font-size: 12px; }
+
+/* ── ProjectionTiles — the Projections tab ─────────
+   Loot-card tiles classified by the ENGINE rarity ladder; hover → a portal-rendered item
+   tooltip (fixed positioning — immune to widget overflow — the in-tile clipping fix). The
+   tooltip panel is self-contained DARK (its own bg, like the noir SVGs) so it reads identically
+   on every console theme. Rarity palette = the canonical loot hexes (instantly readable). */
+.projections { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.projections-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.projection-chip {
+  font-size: 11px; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 3px;
+  border: 1px solid var(--etch); color: var(--ink-dim); text-transform: capitalize;
+  /* filter tabs: the chips are buttons — reset chrome, keep the chip look */
+  background: none; cursor: pointer; font-family: inherit;
+}
+.projection-chip b { margin-left: 4px; }
+.projection-chip.active {
+  /* active tier: rarity-colored underline + weight — reads on both themes via the --rarity token */
+  box-shadow: inset 0 -2px 0 var(--rarity, var(--ink-strong));
+  font-weight: 600; color: var(--rarity, var(--ink-strong));
+}
+.projection-chip.rarity-all { color: var(--ink-dim); }
+.projection-chip.rarity-all.active { color: var(--ink-strong); }
+.projections-pane { display: flex; flex-direction: column; gap: 8px; }
+.projections-pane + .projections-pane { margin-top: 14px; border-top: 1px solid var(--etch); padding-top: 12px; }
+.projections-pane-title {
+  margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.projections-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+  align-content: start; flex: 1; min-height: 0;
+}
+.projection-tile {
+  display: flex; flex-direction: column; gap: 5px; text-align: left; cursor: pointer;
+  background: var(--graphite-2); border: 1px solid var(--etch); border-left-width: 3px;
+  border-radius: 4px; padding: 10px 12px; color: var(--ink); font: inherit;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.projection-tile:hover, .projection-tile:focus-visible { transform: translateY(-1px); }
+.projection-tile.stale { opacity: 0.55; }
+.projection-head { display: flex; align-items: baseline; gap: 8px; }
+.projection-sym { font-size: 16px; font-weight: 700; }
+.projection-ilvl { margin-left: auto; font-size: 11px; color: var(--ink-dim); letter-spacing: 0.04em; }
+.projection-screened {
+  font-size: 12px; color: var(--neg); border: 1px solid var(--neg); border-radius: 3px;
+  padding: 0 4px; line-height: 1.3; cursor: help;
+}
+.item-tip-screen {
+  color: #ff5a5a; font-size: 11px; margin: 3px 0; line-height: 1.35;
+  border-left: 2px solid #ff5a5a; padding-left: 6px;
+}
+.projection-held {
+  font-size: 9px; letter-spacing: 0.08em; color: var(--amber);
+  border: 1px solid rgba(var(--amber-rgb), 0.45); border-radius: 3px; padding: 0 4px;
+}
+.projection-year { font-size: 12.5px; letter-spacing: 0.02em; }
+.projection-sub { font-size: 11px; color: var(--ink-dim); }
+.projection-year .pos { color: var(--pos); }
+.projection-year .neg { color: var(--neg); }
+.stale-chip {
+  font-size: 9px; color: var(--grade-ok); border: 1px dashed var(--grade-ok);
+  border-radius: 3px; padding: 0 4px; margin-left: 6px; font-style: normal;
+}
+/* Rarity accents — canonical loot palette (poor gray / common ink / rare blue / epic purple /
+   legendary orange). Tiles carry the accent on border + symbol; chips echo it. */
+.rarity-poor      { --rarity: #9d9d9d; }
+.rarity-common    { --rarity: var(--ink-strong); }
+.rarity-rare      { --rarity: #0070dd; }
+.rarity-epic      { --rarity: #a335ee; }
+.rarity-legendary { --rarity: #ff8000; }
+.projection-tile.rarity-poor,
+.projection-tile.rarity-common,
+.projection-tile.rarity-rare,
+.projection-tile.rarity-epic,
+.projection-tile.rarity-legendary { border-left-color: var(--rarity); }
+.projection-tile:hover, .projection-tile:focus-visible {
+  border-color: var(--rarity); box-shadow: 0 0 10px color-mix(in srgb, var(--rarity) 35%, transparent);
+}
+.projection-tile .projection-sym { color: var(--rarity); }
+.projection-chip.rarity-poor, .projection-chip.rarity-common, .projection-chip.rarity-rare,
+.projection-chip.rarity-epic, .projection-chip.rarity-legendary { color: var(--rarity); border-color: var(--rarity); }
+
+/* The item tooltip — portal-rendered at body, fixed position, always dark (self-contained). */
+.item-tip {
+  position: fixed; z-index: 2000; width: 320px; pointer-events: none;
+  background: rgba(7, 10, 24, 0.97); border: 1px solid var(--rarity, #ffd100);
+  border-radius: 5px; padding: 12px 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  font-size: 12px; line-height: 1.45; color: #e8e8e8;
+}
+.item-tip-name { font-size: 15px; font-weight: 700; color: var(--rarity, #fff); margin-bottom: 2px; }
+.item-tip-ilvl { color: #ffd100; font-size: 11.5px; margin-bottom: 4px; }
+.item-tip-bind { display: flex; color: #e8e8e8; }
+.item-tip-slot { margin-left: auto; color: #9aa0b0; }
+.item-tip-stat { color: #e8e8e8; }
+.item-tip-grid { width: 100%; border-collapse: collapse; margin: 8px 0 2px; font-size: 11.5px; }
+.item-tip-grid th {
+  text-align: right; color: #9aa0b0; font-weight: 500; letter-spacing: 0.06em;
+  padding: 1px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.item-tip-grid th:first-child, .item-tip-grid td:first-child { text-align: left; color: #e8e8e8; }
+.item-tip-grid td { text-align: right; padding: 2px 4px; }
+.item-tip .pos { color: #1eff00; }
+.item-tip .neg { color: #ff5a5a; }
+.item-tip-grid tr.tier-sketch td { opacity: 0.55; }
+.tier-chip {
+  font-size: 9px; color: #9aa0b0; margin-left: 4px; font-style: normal; letter-spacing: 0.06em;
+}
+.item-tip-warn { color: #ffd100; font-size: 11px; margin-top: 4px; }
+.item-tip-flavor { color: #ffd100; font-style: italic; margin-top: 6px; font-size: 11px; line-height: 1.35; }
+.item-tip-source { color: #9aa0b0; font-size: 10px; margin-top: 4px; }
+.projections-disclaimer { margin: auto 0 0; font-size: 10px; color: var(--ink-faint); }
+.projections-empty { color: var(--ink-dim); font-size: 12px; }
+
+/* ── HOLDINGS tab — the inventory to the Projections shop ──────────────────────
+   Same loot language (rarity accents, the shared .item-tip), holdings-flavored cards: position-size
+   order, value + G/L line, and the two-level appraisal read (ilvl now · entry). Unappraised
+   rows (fund structures / registry gaps) stay visible but dim — honesty over polish. */
+.holdings { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.holdings-summary {
+  display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-dim);
+  padding-bottom: 2px;
+}
+.holdings-summary b { color: var(--ink-strong); font-weight: 600; }
+.holdings-summary .pos { color: var(--pos); }
+.holdings-summary .neg { color: var(--neg); }
+.holdings-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px;
+  align-content: start; flex: 1; overflow-y: auto;
+}
+.holding-card {
+  text-align: left; background: var(--graphite-1); border: 1px solid var(--etch);
+  border-left: 3px solid var(--etch); border-radius: 5px; padding: 8px 10px;
+  cursor: pointer; transition: transform 80ms ease, box-shadow 80ms ease;
+  display: flex; flex-direction: column; gap: 3px; color: var(--ink);
+}
+.holding-card:hover, .holding-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--rarity, var(--etch));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--rarity, transparent) 35%, transparent);
+}
+.holding-card.rarity-poor, .holding-card.rarity-common, .holding-card.rarity-rare,
+.holding-card.rarity-epic, .holding-card.rarity-legendary { border-left-color: var(--rarity); }
+.holding-card .projection-sym { color: var(--rarity, var(--ink-strong)); }
+.holding-card.unappraised { opacity: 0.62; }
+.holding-weight { margin-left: auto; font-size: 11px; color: var(--ink-dim); }
+.holding-line { font-size: 12.5px; }
+.holding-line .pos { color: var(--pos); }
+.holding-line .neg { color: var(--neg); }
+.holding-appraisal { font-size: 11px; color: var(--ink-dim); }
+.holding-appraisal b { color: var(--ink-strong); font-weight: 600; }
+.holding-appraisal .pos { color: var(--pos); }
+.holding-appraisal .neg { color: var(--neg); }
+.holding-appraisal.dim { font-style: italic; color: var(--ink-faint); }
+
+/* ── Prints + Projections at phone width ───────────────────────────────────────
+   MUST live after the components' base rules above — the phone flatten blocks sit mid-file, and
+   equal-specificity base rules re-cascade over anything declared there.
+   The fix itself: break the fill-the-tile height chain. Desktop gives these widgets a definite
+   height, so `height:100%` + `flex:1` let the card grid's auto rows SQUASH (overflow-hidden
+   items have min-size 0 — scorecards clipped mid-glyph at 119px tracks while their content ran
+   ~680px). Flattened, the tile is as tall as its content, period: nothing clips. */
+@media (max-width: 720px) {
+  .scorebook, .projections, .holdings { height: auto; }
+  .scorebook-grid, .projections-grid, .holdings-grid { flex: none; }
+}
+@media (max-width: 600px) {
+  /* one card per row — 2-up at 390px was ~180px slivers */
+  .scorebook-grid { grid-template-columns: 1fr; }
+  /* News reader: the master-detail grid (minmax(300px,38%) | 1fr) left the detail pane a
+     ~74px one-word-per-line sliver at 390px — stack the panes, each internally scrollable */
+  .news-reader { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .news-list { max-height: 38vh; }
+  .news-detail { max-height: 48vh; border-top: var(--hairline); }
+}
+
+/* ── Nudge cards (the Planning tab's proactive band) ───────────────────────────
+   Card grid + the portal item-tooltip (reuses the .item-tip dark panel; .nudge-tip just sets the
+   accent token + spacing). Base rules HERE, phone flatten in the @media block directly below —
+   the cascade rule (component overrides live at/after the component's base CSS). */
+.nudges { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.nudges-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;
+  align-content: start; flex: 1; min-height: 0;
+}
+.nudge-card {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  background: var(--graphite-2); border: 1px solid var(--etch); border-left: 3px solid var(--nudge);
+  border-radius: 4px; padding: 10px 12px; color: var(--ink); font: inherit;
+  transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.nudge-card:hover, .nudge-card:focus-visible {
+  transform: translateY(-1px); border-color: var(--nudge);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--nudge) 30%, transparent);
+}
+.nudge-head { display: flex; align-items: baseline; gap: 8px; }
+.nudge-dest { font-size: 15px; font-weight: 700; color: var(--nudge); }
+.nudge-score {
+  margin-left: auto; font-size: 11px; color: var(--ink-dim); border: 1px solid var(--etch);
+  border-radius: 3px; padding: 0 5px; letter-spacing: 0.04em;
+}
+.nudge-window { font-size: 12px; color: var(--ink-strong); }
+.nudge-lw {
+  font-size: 9px; font-style: normal; letter-spacing: 0.08em; margin-left: 6px;
+  color: var(--nudge); border: 1px solid var(--nudge); border-radius: 3px; padding: 0 4px;
+}
+.nudge-reason { font-size: 11.5px; color: var(--ink-dim); line-height: 1.4; }
+.nudges-note, .nudges-empty { color: var(--ink-dim); font-size: 11px; margin: 0; }
+.nudge-tip { --rarity: var(--nudge); }
+.nudge-tip-event { font-size: 11px; }
+/* the nudge accent — a semantic token (NOT a theme accent: a fixed hue promise on
+   every theme), stated once; readable on dark + bright grounds */
+:root, [data-theme] { --nudge: #2f9e6e; }
+
+@media (max-width: 720px) {
+  /* break the fill-the-tile height chain when the layout flattens (the grid-squash class) */
+  .nudges { height: auto; }
+  .nudges-grid { flex: none; }
+}
+@media (max-width: 600px) {
+  .nudges-grid { grid-template-columns: 1fr; }
+}
+
+/* the global `button:hover` amber border (0-2-1) outguns `.nudge-card:hover` (0-2-0) — restate
+   the nudge hover at matching specificity so the accent stays the nudge token, not the theme amber */
+button.nudge-card:hover:not(:disabled), button.nudge-card:focus-visible {
+  border-color: var(--nudge); color: var(--ink);
+}
+.nudge-tip-meta { color: #9aa0b0; font-size: 11.5px; margin-bottom: 4px; }
+
+/* the plan-gates board — ranked countdown meters for upcoming binaries:
+   ranked fat bars, length = imminence, kind-accent color identity, hot (≤2d) glows */
+.gates-board { display: flex; flex-direction: column; gap: 5px; height: 100%; overflow: auto; padding: 2px 0; }
+.gates-row { display: flex; align-items: center; gap: 7px; min-height: 30px; }
+.gates-rank { flex: 0 0 16px; text-align: right; font: 700 10px var(--mono); color: var(--ink-dim); }
+.gates-bar { display: flex; align-items: center; gap: 7px; min-width: 0; height: 28px;
+  padding: 0 9px; border: 1px solid; border-radius: 4px; box-sizing: border-box;
+  transition: width 300ms ease; }
+.gates-bar.hot { box-shadow: 0 0 8px 1px color-mix(in srgb, var(--hot-c, #d99a2b) 55%, transparent); }
+.gates-kind { font: 700 9px var(--mono); letter-spacing: 0.1em; opacity: 0.85; flex: 0 0 auto; }
+.gates-sym { font: 700 12px var(--mono); flex: 0 0 auto; }
+.gates-label { font: 500 10.5px var(--mono); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; min-width: 0; }
+.gates-est { font: 700 8.5px var(--mono); letter-spacing: 0.08em; border: 1px solid currentcolor;
+  border-radius: 3px; padding: 0 3px; opacity: 0.9; flex: 0 0 auto; }
+.gates-count { flex: 0 0 auto; margin-left: auto; display: flex; flex-direction: column;
+  align-items: flex-end; font: 700 15px var(--mono); color: var(--ink); line-height: 1.05; }
+.gates-count.hot { color: #d99a2b; }
+.gates-date { font: 500 9px var(--mono); color: var(--ink-dim); }
+.gates-empty { display: grid; place-items: center; height: 100%; font: 500 11px var(--mono);
+  color: var(--ink-dim); }

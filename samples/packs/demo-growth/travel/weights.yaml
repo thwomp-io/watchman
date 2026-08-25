@@ -36,7 +36,27 @@ destination_airports:
   portland: PDX
   moab: CNY
   austin: AUS
+  santa-fe: SAF
+  las-vegas: LAS
+  mexico-city: MEX
 destination_cities:
   portland: "Portland, OR"
   moab: "Moab, UT"
   austin: "Austin, TX"
+  santa-fe: "Santa Fe, NM"
+  las-vegas: "Las Vegas, NV"
+  mexico-city: "Mexico City, MX"
+
+# The proactive-nudge registry (the Planning tab's nudge cards). FICTIONAL sample entries for the
+# demo-growth persona (Denver home base): budget long weekends, drivable first.
+destination_nudge:
+  moab:       {best_windows: [4,5,9,10], drive_hours: 5.5, base_fit: 8,
+               nudge_hooks: [{when: long_weekend, text: "the drive-and-camp default — shoulder season keeps the crowds and the heat down"}]}
+  santa-fe:   {best_windows: [5,6,9,10,12], drive_hours: 6.0, flight_hours: 1.5, base_fit: 7,
+               nudge_hooks: [{when: long_weekend, text: "green chile and a cheap flight — the easiest culture weekend from here"}]}
+  austin:     {best_windows: [3,4,10,11], flight_hours: 2.0, base_fit: 7,
+               nudge_hooks: [{when: long_weekend, text: "live music every night of a long weekend; spring and fall only"}]}
+  las-vegas:  {best_windows: [3,4,5,10,11], flight_hours: 2.0, base_fit: 6}
+  portland:   {best_windows: [6,7,8,9], flight_hours: 2.5, base_fit: 7}
+  mexico-city: {best_windows: [2,3,4,10,11], flight_hours: 4.0, base_fit: 8,
+               nudge_hooks: [{when: long_weekend, text: "the best-value big city on a direct flight — four days is enough"}]}

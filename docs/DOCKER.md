@@ -7,8 +7,8 @@ platform bundles, never a container.
 Images are built, vulnerability-scanned, and smoke-tested in CI, then published to GHCR:
 
 ```
-ghcr.io/thwomp-io/watchman:<version> # one per release — pin this for anything durable
-ghcr.io/thwomp-io/watchman:latest # moving pointer to the newest release
+ghcr.io/thwomp-io/watchman:<version>    # one per release — pin this for anything durable
+ghcr.io/thwomp-io/watchman:latest       # moving pointer to the newest release
 ```
 
 ## Run engine commands

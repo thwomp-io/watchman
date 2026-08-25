@@ -1,0 +1,53 @@
+# Print scorecards — the machine registry behind the Finance ▸ Prints tab (FICTIONAL sample data
+# for the early-retiree persona; illustrative only, not advice).
+# grade enum: GREAT | GOOD | OK | BAD | DISASTER | PENDING · price_reaction = print-day move %.
+
+scorecards:
+  - symbol: PG
+    period: Q4 FY2026
+    print_date: 2026-07-29
+    grade: OK
+    price_reaction: -0.6
+    held: true
+    headline: "OK — organic growth low-single-digit, pricing carried volume flat; the dividend is what this position is for and the dividend is fine"
+    key_facts:
+      - "Organic sales growth in the low single digits, all price and mix"
+      - "Gross margin steady; the FY27 guide was in-line and cautious on volume"
+      - "Dividend growth streak intact — the income-sleeve bar, met"
+    card_doc: finance/research/prints/PG-2026-07-29.md
+  - symbol: IBM
+    period: Q2 2026
+    print_date: 2026-07-22
+    grade: BAD
+    price_reaction: -6.1
+    held: true
+    headline: "BAD — software growth decelerated and consulting stayed soft; the career-accumulated position's next tranche moves up the calendar"
+    key_facts:
+      - "Software segment growth slowed for the second straight quarter"
+      - "Consulting revenue down year over year again; free cash flow guide reiterated, not raised"
+      - "The unwind plan's response: the Q3 tranche moves up to the next scheduled window instead of waiting for the September one"
+    card_doc: finance/research/prints/IBM-2026-07-22.md
+  - symbol: JNJ
+    period: Q2 2026
+    print_date: 2026-07-15
+    grade: GOOD
+    price_reaction: 1.8
+    held: true
+    headline: "GOOD — pharma growth carried the medtech softness; guide raised modestly, litigation reserves unchanged"
+    key_facts:
+      - "Pharmaceutical segment growth mid-single-digit, ahead of the guide"
+      - "Full-year sales and EPS guide raised at the low end"
+      - "No change to the litigation-reserve picture — the overhang neither grew nor shrank"
+    card_doc: finance/research/prints/JNJ-2026-07-15.md
+  - symbol: JPM
+    period: Q2 2026
+    print_date: 2026-07-14
+    grade: GREAT
+    price_reaction: 2.4
+    held: true
+    headline: "GREAT — net interest income guide raised again, credit costs benign, the buyback stepped up; the income sleeve's best print of the quarter"
+    key_facts:
+      - "Net interest income guide raised for the full year"
+      - "Card charge-offs in line with the guided range — no credit deterioration"
+      - "Buyback pace increased; capital ratio comfortably above the requirement"
+    card_doc: finance/research/prints/JPM-2026-07-14.md

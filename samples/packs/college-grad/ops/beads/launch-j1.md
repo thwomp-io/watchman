@@ -19,7 +19,7 @@ tags: [bead, career, job-hunt]
 
 ## Description
 
-Two live applications: Stripe (applied, top choice, referral in play) and Cloudflare (interviewing, Austin hybrid). Goal is one signed offer without torching the current Datadog seat — internal mobility stays a fallback. Children carry the stages.
+Two live applications: Stripe (applied, top choice, referral in play) and Cloudflare (interviewing, Austin hybrid). Goal is one signed offer without torching the current Datadog job — internal mobility stays a fallback. Children carry the stages.
 
 ## Linked issues
 

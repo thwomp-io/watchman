@@ -114,5 +114,17 @@
   "TSLA": {
     "price": 347.9,
     "prev_close": 343.17
+  },
+  "HYG": {
+    "price": 79.6,
+    "prev_close": 78.24
+  },
+  "LQD": {
+    "price": 108.9,
+    "prev_close": 110.77
+  },
+  "IEF": {
+    "price": 95.3,
+    "prev_close": 96.93
   }
 }

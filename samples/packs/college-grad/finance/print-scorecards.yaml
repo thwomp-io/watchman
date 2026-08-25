@@ -1,0 +1,30 @@
+# Print scorecards — the machine registry behind the Finance ▸ Prints tab (FICTIONAL sample data
+# for the college-grad persona; illustrative only, not advice).
+# grade enum: GREAT | GOOD | OK | BAD | DISASTER | PENDING · price_reaction = print-day move %.
+
+scorecards:
+  - symbol: DDOG
+    period: Q2 2026
+    print_date: 2026-08-06
+    grade: GOOD
+    price_reaction: 8.3
+    held: true
+    headline: "GOOD — revenue growth held in the mid-20s and the guide inched up; the first-employer RSUs had their first green print"
+    key_facts:
+      - "Revenue growth mid-20s for the third quarter running; large-customer count up again"
+      - "Full-year guide raised by a little more than the beat"
+      - "Free cash flow margin steady — the stock re-rated on relief, not on a new story"
+    card_doc: finance/research/prints/DDOG-2026-08-06.md
+  - symbol: NVDA
+    period: Q1 FY2027
+    print_date: 2026-05-28
+    grade: GREAT
+    price_reaction: 5.9
+    held: true
+    headline: "GREAT — the first individual pick's first print as a holder: data-center revenue above the range, guide up again"
+    key_facts:
+      - "Data-center revenue above the top of the guided range"
+      - "Next-quarter guide up double digits sequentially"
+      - "The lesson banked in the card: a great print is not a reason to add to an 8-share starter"
+    card_doc: finance/research/prints/NVDA-2026-05-28.md
+    take_doc: finance/market/takes/2026-06-19-take.md

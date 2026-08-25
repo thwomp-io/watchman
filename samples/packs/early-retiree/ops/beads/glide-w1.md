@@ -19,11 +19,11 @@ tags: [bead, finance, withdrawal]
 
 ## Description
 
-The yearly re-underwrite of the glidepath: trailing spend, portfolio value at the June 30 mark, and the cash-runway refill rule all get re-checked before the August transfer is set. The line to hold is 3.6% — sequence risk in the early years is the whole game. Children carry the mechanical steps.
+The yearly re-underwrite of the glidepath: trailing spend, portfolio value at the June 30 mark, and the cash-runway refill rule all get re-checked before the October transfer is set. The line to hold is 3.6% — sequence risk in the early years is the whole game. Children carry the mechanical steps.
 
 ## Linked issues
 
 **Children** (3)
 - [[glide-w2]] — Recompute trailing-12-month spend from the account exports · closed
 - [[glide-w3]] — Model the withdrawal rate against the cash-runway refill rule · in_progress
-- [[glide-w4]] — Set the August withdrawal transfer + top up the checking buffer · open
+- [[glide-w4]] — Set the October withdrawal transfer + top up the checking buffer · open

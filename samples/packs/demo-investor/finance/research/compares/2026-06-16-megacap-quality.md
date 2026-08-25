@@ -6,8 +6,8 @@ tags: [finance, research, compare, sample, fictional]
 
 *FICTIONAL sample comparison. Not advice.*
 
-The two held convictions (AAPL, MSFT) against a watchlist quality name (COST) and the obvious
+The three held convictions (AAPL, MSFT, COST) against the obvious
 growth-adjacent one (NVDA). AAPL + MSFT anchor the single-stock sleeve on durable cash flows; COST
-is the wishlist compounder priced at a premium; NVDA is the torque the index already gives some
+is the premium-priced compounder already in the sleeve; NVDA is the torque the index already gives some
 exposure to. The metrics table shows the valuation spread — quality isn't cheap here, which is why
 the core stays index-anchored and the single names stay a *sleeve*, not the strategy.

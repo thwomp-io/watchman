@@ -27,4 +27,4 @@ The dividend-reinvestment flag is the classic trap — an auto-reinvested $40 di
 - [[nest-r1]] — 2026 rebalance — drift back to 70/20/10 target weights · open
 
 **Blocks** (1)
-- [[nest-r3]] — Harvest the VXUS lot bought at the March high · in_progress
+- [[nest-r3]] — Check the March VXUS add for a harvest · in_progress

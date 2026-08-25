@@ -63,8 +63,8 @@ holdings:
     name: Oracle Corp (legacy single-stock from a prior employer)
     account: taxable
     shares: 520
-    avg_cost: 96.80
-    cost_basis: 50336.00
+    avg_cost: 90.95
+    cost_basis: 47296.00
     type: stock
     lots:
       - {acquired: "2019-05-20", qty: 200, unit_cost: 52.30}    # deep long-term gain
@@ -191,7 +191,7 @@ watchlist:
 # the allocation *decision*, synced when the strategy changes (rare), NOT per-fill. Values ~$k; each pie
 # self-normalizes to 100%.
 allocation_target:
-  caption: "~$490k taxable pool · illustrative index-anchored target"
+  caption: "~$630k taxable pool · illustrative index-anchored target"
   slices:
     - {label: "Core index (VTI/VXUS/BND)", value: 300}
     - {label: "Single-stock convictions", value: 90}

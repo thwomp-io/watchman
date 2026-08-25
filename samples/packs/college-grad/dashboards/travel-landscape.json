@@ -1,0 +1,50 @@
+{
+  "lane": "travel-landscape",
+  "title": "Landscape",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "matrix",
+      "title": "Destination characteristics — the whole corpus",
+      "kind": "viz",
+      "source": {
+        "type": "file",
+        "path": "travel/destinations/_meta/meta-ranking.json"
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "meta",
+      "title": "Meta-ranking — how to read it",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "travel/destinations/_meta"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

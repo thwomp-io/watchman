@@ -5,7 +5,7 @@
 Watchman renders live, deterministic views over your own data — finance, career, travel — through a CLI
 and a resident desktop console. It's built on one thesis:
 
-> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take, a
+> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take (a dated market note), a
 > ghost-written note — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
 > your stories, the *why* behind your decisions, your preferences and their emotional texture, **in your own
 > voice**. That voice is the moat — it's what makes the output sound like *you* instead of generic AI. The
@@ -36,9 +36,10 @@ console; the dashboards are just weights over the corpus.
 
 ![Touring the finance console on a sample persona](docs/assets/demo-finance.gif)
 
-_Finance console on a bundled sample persona — net worth and trend, the sell-planning view, the
-market-take reader, and an execution ticket, all rendering **live, deterministic data** as the
-widgets refresh. (Recorded headlessly against a sealed demo instance — fictional data only.)_
+_Finance console on a bundled sample persona — net worth and trend, the market-take reader, an
+execution ticket beside the GTC ladder, the graded print book, projection and holdings tiles, and
+the event plan with its gates board, all rendering **live, deterministic data** as the widgets
+refresh. (Recorded headlessly against a sealed demo instance — fictional data only.)_
 
 ![The career board on a sample persona](docs/assets/demo-career.gif)
 
@@ -60,7 +61,9 @@ _Eleven built-in themes — three utilitarian daily drivers and a creative fleet
     multiples · **correlate** (diversification/beta vs. a factor) · **gauges** (options-positioning
     read: put/call, IV30 vs HV30, the braced/neutral/complacent spread) · news · wire
     (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) ·
-    **scorecards** (your graded earnings-print history as a browsable registry) · screen. **No trading; observation only.**
+    **scorecards** (your graded earnings-print history as a browsable registry) · **projections** (scenario-grid
+    risk/reward bands from your own authored params) · **holdings** (the held book appraised through that lens) ·
+    **gates** (upcoming prints + macro events as a countdown board) · screen. **No trading; observation only.**
   - `hn career` — a read-only role-hunt lane: keyless openings scans (Greenhouse/Ashby) with posted comp,
     company profiles, and D3 visuals.
   - `hn travel` — live-travel research hands: flight ranking · hotels · events + an **events calendar**
@@ -70,8 +73,10 @@ _Eleven built-in themes — three utilitarian daily drivers and a creative fleet
   - `hn beads` — a read-only board over a [beads](https://github.com/gastownhall/beads) issue tracker's
     export: counts, presence, an honest ready queue, per-issue ticket pages.
 - **Watchman console** — a small resident desktop app (Tauri): domain **dashboards** that self-refresh from
-  the CLI's `--json` verbs, a **notification bus** for standing agents, and an interactive **viz** layer.
-  No model is ever in the render loop.
+  the CLI's `--json` verbs (Finance ▸ Core · Market · Tickets · News · Compare · Prints · Projections · Holdings ·
+  **Plans**; Travel ▸ Planning · Landscape · Conditions · Calendar · Big Calendar · Visits; Career;
+  Ops ▸ Backlog), a **notification
+  bus** for standing agents, and an interactive **viz** layer. No model is ever in the render loop.
 - **The web console** — the same console, served: `hn bus serve --console --ui` puts it in any browser on
   your network or private mesh — including your phone, installable as a PWA. One server, one token; see
   [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
@@ -157,18 +162,18 @@ Running the engine from the shell (any platform) and building the console from s
 
 > Platform notes:
 > - **Standing agents** (scheduled headless runs): macOS-`launchd` today; Task Scheduler / systemd
-> ports on the roadmap — Windows/Linux render a calm *standby* state until configured
+>   ports on the roadmap — Windows/Linux render a calm *standby* state until configured
 > - State lives under `~/.local/state/harness` + `~/.config/harness` everywhere (yes, dot-dirs on
-> Windows — one convention)
+>   Windows — one convention)
 
 ## The web console — any browser on your network
 
 The bus server serves the **same UI** over HTTP — a laptop, a second desktop, your phone as a PWA:
 
 ```bash
-cd bus-app && npm install && npm run build # build the console once
+cd bus-app && npm install && npm run build     # build the console once
 uv run hn bus serve --console --ui bus-app/dist
-# → http://127.0.0.1:8787/ (the page prompts for the bearer token on first visit)
+# → http://127.0.0.1:8787/  (the page prompts for the bearer token on first visit)
 ```
 
 - **One server, one token, one bind** — the bus process serves the console; every `/api` route
@@ -210,11 +215,11 @@ _The Finance Core view re-rendering under three bundled personas — same widget
 
 ```
 samples/packs/<persona>/
-  pack.yaml # identity: name, title, description, lanes, default
-  finance/ # narrative + machine weights (portfolio.yaml, networth-history.json)
-  career/ # the role-hunt root (watchlist.yml, applications.yaml, discoveries/)
-  travel/ # preferences + weights.yaml, trips/
-  dashboards/ # (optional) a curated console the pack describes for itself
+  pack.yaml          # identity: name, title, description, lanes, default
+  finance/           # narrative + machine weights (portfolio.yaml, networth-history.json)
+  career/            # the role-hunt root (watchlist.yml, applications.yaml, discoveries/)
+  travel/            # preferences + weights.yaml, trips/
+  dashboards/        # (optional) a curated console the pack describes for itself
 ```
 
 - A pack only needs subdirs for the lanes it covers
@@ -233,12 +238,12 @@ A taste from the bundled `demo-investor` persona (fictional data):
 
 ```yaml
 holdings:
-  - {symbol: VTI, account: taxable, shares: 900, avg_cost: 238.40, type: etf}
+  - {symbol: VTI,  account: taxable, shares: 900, avg_cost: 238.40, type: etf}
   - {symbol: AAPL, account: taxable, shares: 200, avg_cost: 168.25, type: stock}
 watchlist:
   - {symbol: NVDA, note: "megacap semis — AI bellwether"}
-pulse: # standing-watch thresholds
-  day_move_pct: 5.0 # flag a holding moving more than this on the day
+pulse:                        # standing-watch thresholds
+  day_move_pct: 5.0           # flag a holding moving more than this on the day
   index_move_pct: 1.5
 ```
 
@@ -248,9 +253,9 @@ pulse: # standing-watch thresholds
 companies:
   - {name: ExampleCo, ats: greenhouse, token: exampleco, tier: "Tier 1"}
 filters:
-  title_any: [backend, platform, devops]
+  title_any:     [backend, platform, devops]
   seniority_any: [mid, senior]
-  title_none: [sales, intern]
+  title_none:    [sales, intern]
 ```
 
 `travel/weights.yaml` — home base + what makes an event worth a trip:
@@ -259,7 +264,7 @@ filters:
 conditions:
   home: "Minneapolis, MN"                # drives the conditions watch + flight ranking
 events:
-  centerpiece_subgenres: ["NBA", "NFL"] # leagues worth planning a trip around
+  centerpiece_subgenres: ["NBA", "NFL"]  # leagues worth planning a trip around
 ```
 
 Change a number, reload, and every dashboard reprojects. An [AI agent maintains these *for*

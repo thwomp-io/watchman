@@ -229,6 +229,71 @@ def finance_gauges(symbol: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def finance_projections() -> dict[str, Any]:
+    """Scenario-grid projections for every name in the agent-authored params registry
+    (finance/reference/projection-params.yaml): per-horizon (6/12/24/36mo) price + return bands
+    from forward-EPS × growth-band × multiple-band arithmetic against the live quote (ref_price
+    fallback, source named). Horizons beyond 1y are sketch-tier; entries older than ~a quarter
+    flag stale. SCENARIOS to reason against, never forecasts — the bands were authored at
+    research time by the operating loop. READ-ONLY."""
+    from harness.finance.config.settings import get_settings
+    from harness.finance.projections import build_contract, load_params
+
+    path = get_settings().projections_path
+    if path is None:
+        return {"projections": [], "summary": {"total": 0, "held": 0, "stale": 0}}
+    params = load_params(path)
+    quotes: dict[str, float] = {}
+    try:
+        for q in _svc().quote([p.symbol for p in params]):
+            if q.available and q.price is not None:
+                quotes[q.symbol] = q.price
+    except Exception:  # noqa: BLE001 — degrade to ref prices, never a dead tool
+        pass
+    holdings = {
+        h.symbol: float(h.avg_cost)
+        for h in _svc().reader.read_portfolio().holdings
+        if h.avg_cost
+    }
+    return build_contract(params, quotes, holdings)
+
+
+@mcp.tool()
+def finance_holdings() -> dict[str, Any]:
+    """Holdings appraisal — the held book through the projections lens (the inventory to
+    finance_projections' shop): every held instrument valued from the positions snapshot and
+    appraised against the params registry — item_level (the modeled 12-month mid-scenario return %,
+    rarity-tiered as finance_projections scores it) from the live price + entry_item_level
+    from the average cost ("how good was the buy, against the current model"), entry_edge the
+    delta the entry banked. Unappraised names (no registry entry / fund structures) render with
+    the reason named. Present-knowledge lens (params re-anchor per print), never a verdict.
+    READ-ONLY."""
+    from harness.finance.config.settings import get_settings
+    from harness.finance.holdings import build_holdings_contract
+    from harness.finance.projections import load_params
+
+    path = get_settings().projections_path
+    params = load_params(path) if path is not None else []
+    snap = _svc().positions()
+    rows = [
+        {
+            "symbol": pos.symbol,
+            "name": pos.name,
+            "account": pos.account,
+            "valuation": pos.valuation,
+            "shares": pos.shares,
+            "avg_cost": pos.avg_cost,
+            "cost_basis": pos.cost_basis,
+            "price": pos.price,
+            "market_value": pos.market_value,
+        }
+        for pos in snap.positions
+        if pos.valuation in ("live", "last_known") and pos.shares > 0
+    ]
+    return build_holdings_contract(params, rows)
+
+
+@mcp.tool()
 def finance_screen(symbol: str) -> dict[str, Any]:
     """Check a ticker against the configured values screen (corpus-only, no network). Returns
     excluded (+category) or clean."""
