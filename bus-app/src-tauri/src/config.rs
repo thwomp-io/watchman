@@ -1,6 +1,6 @@
 //! App config: bus db path resolution (mirrors harness.bus.store.default_db_path) + the
 //! producers registry (~/.config/harness/bus-app.json) — "Refresh now" targets are CONFIG,
-//! not code, so adding a producer (career watchman) is a JSON edit (OSS seam).
+//! not code, so adding a producer is a JSON edit.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,7 +54,7 @@ pub struct AppConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bus_url: Option<String>,
     /// Bearer token for `bus_url` (the server's `~/.config/harness/bus-token` value). Same
-    /// threat model as the toolkit's .env keys: the mesh/ACL is the perimeter, this is
+    /// threat model as the toolkit's .env keys: the network/ACL is the perimeter, this is
     /// defense-in-depth. Required whenever `bus_url` is set.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bus_token: Option<String>,
@@ -148,8 +148,6 @@ const PATH_LIST_SEP: char = ':';
 /// that omits `/opt/homebrew/bin` (where uv lives). Dev launches worked only because a
 /// terminal-launched process inherits the interactive shell PATH. We prepend the standard
 /// tool dirs deterministically, dir-existence-checked + dedup'd against the inherited PATH.
-/// (Cross-language twin of the career `render` texbin PATH-extend; same rationale: long-lived
-/// / non-interactive launch contexts don't inherit the dirs.)
 ///
 /// Candidates are platform-gated: unix gets the homebrew/local tool dirs; Windows gets uv's
 /// per-user install dir (`%USERPROFILE%\.local\bin`) and cargo's. Startup-registered launches on
@@ -209,6 +207,31 @@ mod tests {
         let out = augment_path_with("/usr/bin:/bin", &candidates, ':');
         assert_eq!(out, "/:/usr/bin:/bin");
         assert_eq!(out.split(':').filter(|p| *p == "/").count(), 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_writes_the_config_owner_only_and_keeps_it_across_resaves() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("harness-config-perms-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let path = dir.join(".config/harness/bus-app.json");
+        let cfg = default_config();
+        save_to(&path, &cfg).expect("first save");
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "bus-app.json must be owner-only (it can carry bus_token)");
+        // No temp file left behind, and a re-save over the existing file holds the mode.
+        assert!(!path.with_extension("json.tmp").exists());
+        save_to(&path, &cfg).expect("second save");
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+        // The .bak path takes the same restriction (the load() unreadable-registry branch).
+        let bak = path.with_extension("json.bak");
+        fs::write(&bak, "{not json").unwrap();
+        fs::set_permissions(&bak, fs::Permissions::from_mode(0o644)).unwrap();
+        restrict_to_owner(&bak);
+        assert_eq!(fs::metadata(&bak).unwrap().permissions().mode() & 0o777, 0o600);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -296,7 +319,7 @@ mod tests {
         // Blank url = unset.
         cfg.bus_url = Some("   ".into());
         assert!(matches!(bus_endpoint(&cfg), BusEndpoint::Local(_)));
-        // Demo seal trumps remote: bundled pack active → the sealed local bus, never the mesh.
+        // Demo seal trumps remote: bundled pack active → the sealed local bus, never the network.
         cfg.bus_url = Some("http://bus-host.tailnet.example:8787".into());
         cfg.active_pack = Some(samples_packs_dir().join("demo-investor").display().to_string());
         assert_eq!(
@@ -329,7 +352,7 @@ pub enum BusEndpoint {
 
 /// Resolve the bus endpoint. Three rules, in order:
 /// 1. **Demo seal trumps remote** — while a bundled demo pack is active the console renders its
-///    sealed (empty) bus and nothing else; a configured mesh bus is real state and must not leak
+///    sealed (empty) bus and nothing else; a configured network bus is real state and must not leak
 ///    into demo mode.
 /// 2. `bus_url` set (non-blank) → remote. The token rides along even when missing/blank — the
 ///    remote client surfaces "token missing" as an actionable error instead of silently falling
@@ -383,14 +406,42 @@ pub fn config_file() -> PathBuf {
 /// leaves a zeroed registry if the process dies mid-save, and a zeroed registry reads as corrupt
 /// on the next launch (losing the user's producers/pack selection to a reseed).
 pub fn save(cfg: &AppConfig) -> Result<(), String> {
-    let path = config_path();
+    save_to(&config_path(), cfg)
+}
+
+/// The path-taking core of [`save`] (split out so the permission contract is unit-testable
+/// without touching the real config dir or mutating `HARNESS_HOME`).
+///
+/// Owner-only (0600) on unix: a satellite's `bus-app.json` carries `bus_token` — the bearer
+/// token that reads the whole served corpus — and `fs::write` under the default umask lands it
+/// world-readable. The token file the server generates is already 0600, so this closes the
+/// copy the client keeps. The mode is set on the TEMP file, before the rename, so there is no
+/// window where a readable file with the token sits at the final path.
+fn save_to(path: &Path, cfg: &AppConfig) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
     let body = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
     let tmp = path.with_extension("json.tmp");
     fs::write(&tmp, body).map_err(|e| e.to_string())?;
-    fs::rename(&tmp, &path).map_err(|e| e.to_string())
+    restrict_to_owner(&tmp);
+    fs::rename(&tmp, path).map_err(|e| e.to_string())
+}
+
+/// `chmod 600` on unix; a no-op elsewhere (Windows ACLs don't map to the mode bits, and the
+/// per-user AppData location already scopes the file to the account). Failure is deliberately
+/// ignored: a config that saved but kept a looser mode beats a save that errors — the
+/// permission is defense-in-depth on top of the token model, not the auth itself.
+fn restrict_to_owner(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
 }
 
 /// The app-bundle resource packs dir (`<resource_dir>/packs`), set once at Tauri setup — the
@@ -406,10 +457,11 @@ pub fn set_resource_packs_dir(dir: Option<PathBuf>) {
 }
 
 /// Where the sample weight packs live. Two-stage resolution:
-///   1. the harness REPO checkout (`{harness_home}/projects/harness/samples/packs`) when present —
-///      the dev daily-driver + the sandboxed-launcher case (packs symlinked under `HARNESS_HOME`);
+///   1. the harness REPO checkout (`{harness_home}/projects/harness/samples/packs`, the
+///      configurable default) when present — the dev checkout + the sandboxed-launcher case (packs symlinked under `HARNESS_HOME`);
 ///   2. else the packs bundled INTO the app itself (`tauri.conf.json bundle.resources` ships
 ///      `samples/packs` → `<resource_dir>/packs`; see [`set_resource_packs_dir`]).
+///
 /// The repo wins when both exist so dev edits to packs reflect without a rebuild.
 pub fn samples_packs_dir() -> PathBuf {
     let repo = harness_home().join("projects/harness/samples/packs");
@@ -444,7 +496,7 @@ pub struct Engine {
 /// Where the `hn` engine lives. Two candidates, mirroring [`samples_packs_dir`]:
 ///   - the engine bundled INTO the app itself (`bundle.resources` ships a staged copy of the uv
 ///     project → `<resource_dir>/engine`; see `scripts/stage-engine.mjs`);
-///   - a development checkout at the conventional `{harness_home}/projects/harness`, when present.
+///   - a development checkout at the configurable default `{harness_home}/projects/harness`, when present.
 ///
 /// The order is build-profile-dependent, and that's the product contract: a RELEASE build is a
 /// self-contained install — it prefers its own bundled engine on every platform, so an installed
@@ -543,7 +595,8 @@ pub fn default_pack_dir() -> Option<PathBuf> {
     })
 }
 
-/// The tracker vault root (viz data discovery): config override > {harness_home}/projects/corpus.
+/// The tracker vault root (viz data discovery): config override > the configurable default
+/// {harness_home}/projects/corpus.
 pub fn tracker_path(cfg: &AppConfig) -> PathBuf {
     cfg.tracker_path.as_deref().map(expand_home)
         .unwrap_or_else(|| harness_home().join("projects/corpus"))
@@ -611,8 +664,8 @@ fn default_config() -> AppConfig {
             id: "finance.pulse".into(),
             label: "Finance pulse".into(),
             cmd: "uv".into(),
-            // --notify is the publish path (osascript inside it is the deprecated fallback,
-            // removed once the console transport is verified — after which this is purely publish + log).
+            // --notify is the publish path (bus + run log). TODO: drop the engine's legacy
+            // osascript fallback once the console transport fully replaces it.
             args: vec!["run".into(), "hn".into(), "finance".into(), "pulse".into(),
                        "--notify".into(), "--json".into()],
             cwd: ".".into(),
@@ -630,8 +683,13 @@ pub fn load() -> AppConfig {
             return cfg;
         }
         // An existing-but-unreadable registry is preserved for inspection, never silently
-        // replaced — the reseed below then treats this launch as a first run.
-        let _ = fs::rename(&path, path.with_extension("json.bak"));
+        // replaced — the reseed below then treats this launch as a first run. The backup can
+        // still carry a bus_token, so it gets the same owner-only mode as a fresh save (a file
+        // written before the 0600 rule inherits its old mode through the rename otherwise).
+        let bak = path.with_extension("json.bak");
+        if fs::rename(&path, &bak).is_ok() {
+            restrict_to_owner(&bak);
+        }
     }
     let mut cfg = default_config();
     // First run (no config on disk): default to the bundled fictional pack so a fresh / published

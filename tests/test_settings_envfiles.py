@@ -18,3 +18,8 @@ def test_env_files_cover_config_repo_and_cwd() -> None:
     assert ".env" in files
     # every candidate is absolute or the bare cwd name — never a surprise relative path
     assert all(f == ".env" or Path(f).is_absolute() for f in files)
+
+
+def test_a_sealed_config_dir_reads_only_its_own_env(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HARNESS_CONFIG_DIR", str(tmp_path / "cfg"))
+    assert _env_files() == (str(tmp_path / "cfg" / ".env"),)

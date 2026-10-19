@@ -17,8 +17,8 @@ use crate::config;
 /// many events; we coalesce them into a single refresh.
 const COALESCE: Duration = Duration::from_millis(300);
 
-/// Path segments we never wake on: VCS/tooling internals + non-browsable dirs that churn
-/// constantly (a `git commit`/`bd` write must not trigger a vault refresh).
+/// Path segments we never wake on: VCS/tooling internals + non-browsable dropzone dirs
+/// (screenshots, scratch tmp) that churn constantly (a `git commit`/`bd` write must not trigger a vault refresh).
 const NOISE: &[&str] = &[
     "/.git/", "/.beads/", "/.obsidian/", "/node_modules/", "/.trash/", "/screenshots/", "/tmp/",
 ];

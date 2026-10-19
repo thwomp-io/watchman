@@ -1,0 +1,8 @@
+# The career calendar — operator-authored milestones the Campaign tab counts down to (fictional sample).
+# Board and advisory work runs on the governance calendar, not a job-search clock.
+milestones:
+  - {date: "2030-03-15", label: "Board nominations close", kind: board}
+  - {date: "2030-05-20", label: "Annual shareholder meeting", kind: board}
+  - {date: "2030-09-01", label: "Advisory agreement renewal", kind: contract}
+notes:
+  - "Sample persona — the dates and amounts are illustrative."

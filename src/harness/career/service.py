@@ -4,7 +4,7 @@ read-rich/execute-gated doctrine: scan + watch + surface comp freely; applying i
 Stateless + explainable: reads `role-hunt/watchlist.yml`, queries each company's public board API,
 filters titles by the watchlist keywords (ANY title-kw AND ANY seniority-kw, lowercase-contains),
 and returns per-company results with partial failures surfaced loudly (a board erroring must never
-read as "no openings there" — the false-empty lesson)."""
+read as "no openings there" — a silent empty result is indistinguishable from a real one)."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from harness.career.models import CompanyScan
 from harness.career.providers import (
     fetch_ashby,
@@ -20,6 +22,7 @@ from harness.career.providers import (
     fetch_greenhouse,
     fetch_workday,
 )
+from harness.career.shapes import AXES, shape_of
 from harness.career.watchlist import Watchlist, load_watchlist
 from harness.errors import ProviderError
 
@@ -108,7 +111,9 @@ class CareerService:
                     )
                 else:
                     openings = _FETCHERS[comp.ats](comp.name, comp.token)
-            except ProviderError as e:
+            except (ProviderError, httpx.HTTPError) as e:
+                # Providers wrap transport errors themselves; catching httpx here too is the belt
+                # for a future fetcher that forgets — a board error is a row, never an aborted scan.
                 out.append(CompanyScan(company=comp.name, ats=comp.ats, error=str(e)))
                 continue
             f = wl.filters
@@ -129,35 +134,23 @@ class CareerService:
             )
         return out
 
-    # Role-shape buckets for the openings matrix (deterministic keyword classification —
-    # the doc + its visual derive from the same scan in the same call; lock-step by construction).
-    _SHAPE_BUCKETS: tuple[tuple[str, tuple[str, ...]], ...] = (
-        ("SRE / Reliability", ("sre", "reliability", "site reliability")),
-        ("Platform / Infra", ("platform", "infrastructure", "infra", "kubernetes", "cloud",
-                              "devops", "systems engineer")),
-        ("Security", ("security",)),
-        ("Leadership", ("director", "manager", "head of", "lead,")),
-    )
-
-    @classmethod
-    def shape_bucket(cls, title: str) -> str:
-        t = title.lower()
-        for label, keys in cls._SHAPE_BUCKETS:
-            if any(k in t for k in keys):
-                return label
-        return "Other"
+    @staticmethod
+    def shape_bucket(title: str, department: str = "") -> str:
+        """The opening's role shape — `career.shapes` (title first, department second; "Other" is
+        the residue). The hiring map, the shortlist and the role items share it."""
+        return shape_of(title, department)
 
     @classmethod
     def openings_matrix_data(cls, scans: list[CompanyScan], title: str) -> dict[str, Any] | None:
         """Company × role-shape counts for the `matrix` viz; None when no hits."""
-        axes = [label for label, _ in cls._SHAPE_BUCKETS] + ["Other"]
+        axes = list(AXES)
         rows: list[dict[str, Any]] = []
         for s in scans:
             if not s.matched:
                 continue
             counts = dict.fromkeys(axes, 0)
             for o in s.matched:
-                counts[cls.shape_bucket(o.title)] += 1
+                counts[cls.shape_bucket(o.title, o.department)] += 1
             rows.append({"label": f"{s.company} ({len(s.matched)})",
                          "values": [counts[a] for a in axes],
                          # deep-link the row to the company's profile doc (the scatter-ref pattern).
@@ -169,7 +162,7 @@ class CareerService:
         rows.sort(key=lambda r: -sum(int(v) for v in r["values"]))
         return {
             "title": title,
-            "subtitle": "matched openings per company × role shape · deterministic title buckets · counts",
+            "subtitle": "matched openings per company × role shape · title + team buckets · counts",
             "axes": axes,
             "rows": rows,
         }
@@ -192,7 +185,40 @@ class CareerService:
             raw = json.loads(latest.read_text())
         except (OSError, ValueError) as e:
             raise ProviderError(f"could not read scan twin {latest}: {e}") from e
-        return [CompanyScan.model_validate(s) for s in raw], as_of
+        scans = [CompanyScan.model_validate(s) for s in raw]
+        if any(o.new is None for sc in scans for o in sc.matched):
+            # a twin written before delta mode: compare it to the scans before it, on read
+            self.annotate_new(scans, as_of)
+        return scans, as_of
+
+    def first_seen_index(self, before: str) -> dict[str, str]:
+        """URL → the date of the earliest persisted scan (strictly before `before`, YYYY-MM-DD) that
+        carried it. Built from EVERY earlier twin, not just the previous one, so a board that errored
+        on one scan never makes its postings look new (or gone) on the next."""
+        out: dict[str, str] = {}
+        for twin in sorted(self._discoveries_dir().glob("*-openings.json")):
+            day = twin.stem.replace("-openings", "")
+            if day >= before:
+                continue
+            try:
+                raw = json.loads(twin.read_text())
+            except (OSError, ValueError):
+                continue  # an unreadable old twin is skipped, never fatal
+            for s in raw:
+                for o in s.get("matched") or []:
+                    url = o.get("url")
+                    if url and url not in out:
+                        out[url] = day  # twins sort oldest first: the first hit is the earliest
+        return out
+
+    def annotate_new(self, scans: list[CompanyScan], as_of: str) -> list[CompanyScan]:
+        """Stamp every matched opening with `first_seen` + `new` against the scans before `as_of`."""
+        seen = self.first_seen_index(as_of)
+        for s in scans:
+            for o in s.matched:
+                o.first_seen = seen.get(o.url, as_of)
+                o.new = o.url not in seen
+        return scans
 
     def shortlist(self, limit: int = 30) -> dict[str, Any]:
         """High-priority role shortlist from the latest scan twin + watchlist tiers (LOCAL, no
@@ -227,7 +253,7 @@ class CareerService:
             boards_with_hits += 1
             tier = tier_by_company.get(s.company, "")
             for o in s.matched:
-                shape = self.shape_bucket(o.title)
+                shape = self.shape_bucket(o.title, o.department)
                 shape_counts[shape] = shape_counts.get(shape, 0) + 1
                 if shape == "Leadership":
                     leadership += 1
@@ -251,7 +277,7 @@ class CareerService:
         # Living visuals (lock-step with this scan): the matrix (company × role-shape grid) + the
         # shape bar (aggregate openings-by-role-shape — the at-a-glance market shape). The CAREER
         # dashboard renders both off this same call (no drift); shape_bar is the rank-bar contract.
-        ordered_shapes = [label for label, _ in self._SHAPE_BUCKETS] + ["Other"]
+        ordered_shapes = list(AXES)
         shape_bar = {
             "title": "Openings by role shape",
             "subtitle": f"matched openings per deterministic title bucket · as of {as_of or '—'}",
@@ -379,7 +405,7 @@ class CareerService:
             name = s.company
             shapes: dict[str, int] = {}
             for o in s.matched:
-                sh = self.shape_bucket(o.title)
+                sh = self.shape_bucket(o.title, o.department)
                 shapes[sh] = shapes.get(sh, 0) + 1
             tm = tmap.get(name.lower()) or next(
                 (v for k, v in tmap.items() if k.startswith(name.lower()) or name.lower().startswith(k)),
@@ -399,8 +425,20 @@ class CareerService:
                 ],
                 "target_map": tm,
                 "fit_excerpt": self._fit_excerpt(name),
+                "comp": self._comp_block(name),
             })
         return out
+
+    def _comp_block(self, name: str) -> str | None:
+        """The `## Comp (levels.fyi)` block from the vault cache (`role-hunt/comp/<slug>.json`,
+        — the default family/location key; None when nothing is cached. No network."""
+        from harness.career.comp import DEFAULT_FAMILY, DEFAULT_LOCATION, cached_ladder, ladder_markdown
+        from harness.career.levels_index import load_index, resolve_slug_in_index
+
+        index = load_index(self.role_hunt)
+        slug = (resolve_slug_in_index(index, name)[0] if index else None) or slugify(name)
+        lad = cached_ladder(self.role_hunt, slug, DEFAULT_FAMILY, DEFAULT_LOCATION)
+        return ladder_markdown(lad) if lad else None
 
     @staticmethod
     def company_profile_md(d: dict[str, Any]) -> str:
@@ -440,6 +478,9 @@ class CareerService:
                   "| Title | Location | Salary | Link |", "|---|---|---|---|"]
         for r in d["roles"]:
             lines.append(f"| {r['title']} | {r['location']} | {r['salary']} | [post]({r['url']}) |")
+        lines += ["", d["comp"] if d.get("comp") else
+                  "## Comp (levels.fyi)\n\n_no comp cache — run `hn career comp <name>` (the ladder lands in "
+                  "role-hunt/comp/ and this block fills on the next regen)._"]
         lines += ["", "## Fit", "", d["fit_excerpt"] or "_No fit-profile section yet — add one in "
                   "`fit-profiles.md`._", ""]
         return "\n".join(lines)

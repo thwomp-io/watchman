@@ -8,9 +8,12 @@ import { useCatColors, type Tip } from "./common";
 interface Candidate { label: string; values: number[] }
 interface RadarData { title?: string; subtitle?: string; max?: number; axes: string[]; candidates: Candidate[] }
 
-const R = 165, CX = 0, CY = 0, PAD = 110;
+const R = 165, CX = 0, CY = 0, PAD = 135;
 
-export default function Radar({ data }: { data: RadarData }) {
+// `highlight` (a candidate label) brings that trace forward and dims the rest — the hook a ranked list
+// beside the radar drives on row hover. `bare` drops the legend + hint when that list stands in for them.
+export default function Radar({ data, highlight = null, bare = false }:
+  { data: RadarData; highlight?: string | null; bare?: boolean }) {
   const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
   const [off, setOff] = useState<Set<string>>(new Set());
   const [tip, setTip] = useState<Tip | null>(null);
@@ -33,19 +36,23 @@ export default function Radar({ data }: { data: RadarData }) {
                      points={data.axes.map((_, i) => pt(i, max * f).join(",")).join(" ")} />
           ))}
           {data.axes.map((a, i) => {
-            const [ax, ay] = pt(i, max * 1.16);
+            const [ax, ay] = pt(i, max * 1.1);
+            // anchor each label AWAY from the centre by side, so a long label on a side axis grows
+            // outward instead of running back across its own vertex
+            const c = Math.cos(angle(i));
+            const anchor = c > 0.3 ? "start" : c < -0.3 ? "end" : "middle";
             return (
               <g key={a}>
                 <line x1={CX} y1={CY} x2={pt(i, max)[0]} y2={pt(i, max)[1]} className="radar-ring" />
-                <text x={ax} y={ay} textAnchor="middle" dy="0.35em" className="radar-axis">{a}</text>
+                <text x={ax} y={ay} textAnchor={anchor} dy="0.35em" className="radar-axis">{a}</text>
               </g>
             );
           })}
           {data.candidates.map((c, ci) => off.has(c.label) ? null : (
-            <g key={c.label}>
+            <g key={c.label} className={highlight ? (highlight === c.label ? "radar-hot" : "radar-dim") : undefined}>
               <polygon points={c.values.map((v, i) => pt(i, v).join(",")).join(" ")}
-                       fill={COLORS[ci % COLORS.length]} fillOpacity={0.12}
-                       stroke={COLORS[ci % COLORS.length]} strokeWidth={1.8} />
+                       fill={COLORS[ci % COLORS.length]} fillOpacity={highlight === c.label ? 0.3 : 0.12}
+                       stroke={COLORS[ci % COLORS.length]} strokeWidth={highlight === c.label ? 3 : 1.8} />
               {c.values.map((v, i) => {
                 const [vx, vy] = pt(i, v);
                 return (
@@ -64,7 +71,7 @@ export default function Radar({ data }: { data: RadarData }) {
         </svg>
         {tip && <div className="viz-tip" style={{ left: tip.x + 10, top: tip.y + 4 }}>{tip.text}</div>}
       </div>
-      <ul className="viz-legend radar-legend">
+      {!bare && <ul className="viz-legend radar-legend">
         {data.candidates.map((c, ci) => (
           <li key={c.label} className={off.has(c.label) ? "off" : ""}
               onClick={() => setOff((o) => {
@@ -76,8 +83,8 @@ export default function Radar({ data }: { data: RadarData }) {
             {c.label}
           </li>
         ))}
-      </ul>
-      <p className="viz-hint">CLICK A LEGEND ITEM TO TOGGLE ITS TRACE · HOVER A VERTEX FOR ITS SCORE</p>
+      </ul>}
+      {!bare && <p className="viz-hint">CLICK A LEGEND ITEM TO TOGGLE ITS TRACE · HOVER A VERTEX FOR ITS SCORE</p>}
     </div>
   );
 }

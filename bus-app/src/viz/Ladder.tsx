@@ -1,5 +1,5 @@
 // The trap-map ladder — the interactive twin of `hn finance trap-map --json`.
-// v3 CHUNKY pass (field feedback): the damage-meter aesthetic. The v2 true-to-scale
+// v3: dense, chunky bars. The v2 true-to-scale
 // price axis rendered mostly empty canvas (the price GAPS were the dead space the operator
 // flagged); v3 collapses the axis into a DENSE STACK OF FAT BARS — every row a full-width
 // colored strip carrying its data ON the bar, near-zero dead space. Ladder ORDER is preserved

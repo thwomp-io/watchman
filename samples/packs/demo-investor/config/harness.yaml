@@ -14,3 +14,11 @@ travel:
   global_settings:
     home_city: Minneapolis, MN
     home_airports: [MSP]
+
+career:
+  global_settings:
+    # The comp anchor the pool's item model + the reports rail measure a median against — the
+    # anchor this persona negotiates from (FICTIONAL sample value).
+    comp_anchor:
+      anchor_tc: 320000
+      bands: [staff, principal]

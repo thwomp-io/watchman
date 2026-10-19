@@ -43,6 +43,7 @@ from typing import Any
 from harness._http import get_with_retry
 from harness.errors import ProviderError
 from harness.finance.models import ConsensusPT, EarningsDate
+from harness.finance.scan import paced
 
 _EARNINGS_URL = "https://api.nasdaq.com/api/analyst/{symbol}/earnings-date"
 _TARGET_URL = "https://api.nasdaq.com/api/analyst/{symbol}/targetprice"
@@ -59,7 +60,9 @@ _ALGO_PHRASE = "derived from an algorithm"
 
 def _data(url: str, symbol: str) -> dict[str, Any]:
     """GET + unwrap Nasdaq's {data, status} envelope; null data = honest miss."""
-    resp = get_with_retry(url.format(symbol=symbol.upper()), headers=_HDRS)
+    target = url.format(symbol=symbol.upper())
+    with paced(target):
+        resp = get_with_retry(target, headers=_HDRS)
     try:
         body: dict[str, Any] = resp.json()
     except ValueError as e:  # pragma: no cover - transport-shaped failure

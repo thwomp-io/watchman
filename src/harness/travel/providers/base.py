@@ -78,8 +78,12 @@ class EventProvider(Protocol):
         *,
         classification: str | None = None,
         size: int = 200,
+        near: tuple[float, float, int] | None = None,
+        keyword: str | None = None,
     ) -> list[EventResult]:
-        """Return events in `city` within [start_date, end_date], chronological.
+        """Return events in `city` within [start_date, end_date], chronological. `near` =
+        (lat, lon, radius miles) searches around a point instead of matching the city name;
+        `keyword` searches by name (a team's schedule anywhere), `city` then optional.
 
         Raw + classified; the configured centerpiece/perk tiering is applied downstream
         (EventWeights.tier_for), so the provider stays a generic events source.

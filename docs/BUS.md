@@ -71,7 +71,7 @@ change** (it rides the open `payload_json`), so any producer can adopt it and ol
 button. Shape (the app's universal `Ref` descriptor):
 
 ```json
-{ "ref": { "zone": "vault", "dir": "finance/research/positions/NVDA" } }
+{ "ref": { "zone": "vault", "dir": "finance/research/positions/ACME" } }
 ```
 
 - `zone` (required) — `inbox | dash | surfaces | viz | vault`.
@@ -114,6 +114,12 @@ additive — no schema change, no producer change. Local transports write their 
 
 - `hn bus list [--unread] [--lane X] [--kind Y] [--since ISO] [--limit N] [--json]`
 - `hn bus ack <ID…> | --all [--lane X]` · `hn bus stats [--json]` · `hn bus purge --before 30d`
+- **Retention** (`hn bus purge --policy default [--dry-run]`, run weekly by a
+  scheduler such as a launchd timer): `catalyst` wire items older than 30 days ·
+  read AND delivered non-alert events older than 90 days · read alerts older than a year. An
+  unread event is never purged by policy — it is still a to-do. The same run rotates
+  `pulse-json.log` / `travel-pulse-json.log` to `.1` past 1MB (the launchd redirects append
+  forever otherwise). Counts print per rule so a run is auditable.
 - MCP: `bus_list` / `bus_ack` / `bus_stats` / `bus_publish` on the unified server.
 - The tray app (`bus-app/`) polls every 30s via rusqlite, posts notifications for
   undelivered unread events, marks `delivered_via`, and acks on user mark-read.
@@ -148,7 +154,7 @@ out-of-box demo is mesh-free by design — multi-device is an opt-in layer with 
     `{"results": [{status: published|duplicate, …}]}` — **idempotency keys dedup exactly as
     local publish does**; remote producers inherit once-per-day semantics for free
   - `POST /api/bus/ack` — `{"ids": [1,2]}` or `{"all": true, "lane"?: "finance"}` → `{"acked": N}`
-  - `POST /api/bus/delivered` — `{"id": N, "marker": "desktop:winbox"}` →
+  - `POST /api/bus/delivered` — `{"id": N, "marker": "desktop:laptop-1"}` →
     `{"id", "delivered_via"}` — a remote transport's half of the delivered_via contract
     (append-own-marker-only; idempotent; 404 on unknown id)
   - `GET /api/bus/stats` → the `BusStats` shape (remote consoles also derive unread counts and

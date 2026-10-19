@@ -1,32 +1,74 @@
 {
-  "title": "How the harness works",
-  "subtitle": "The corpus is the product; the tools render value off it.",
+  "title": "How Watchman works",
+  "subtitle": "Your corpus in, live views and a sealed agent out \u2014 reachable from any device you own.",
   "nodes": [
     {
       "id": "corpus",
       "col": 0,
       "label": "Corpus",
-      "sublabel": "your narrative + voice\nstories, reasoning, weights\n(the moat)",
+      "sublabel": "your narrative + voice\nstories, reasoning, weights\n(the product)",
       "accent": "#e8a33d"
     },
     {
       "id": "harness",
       "col": 1,
-      "label": "Harness · hn",
-      "sublabel": "reads corpus + live data\nfinance · career · travel\nread-rich, execute-gated",
+      "label": "Harness \u00b7 hn",
+      "sublabel": "reads corpus + live data\nfinance \u00b7 career \u00b7 travel\nread-rich, execute-gated",
       "accent": "#59b9ff"
+    },
+    {
+      "id": "agent",
+      "col": 1,
+      "label": "Your agent",
+      "sublabel": "Claude Code on your own plan\nreads corpus + hn read tools\nsealed: read-only by default",
+      "accent": "#d98fb6"
     },
     {
       "id": "watchman",
       "col": 2,
       "label": "Watchman",
-      "sublabel": "console · dashboards · bus\nstanding agents, deterministic\nno model in the render loop",
+      "sublabel": "dashboards \u00b7 bus \u00b7 CHAT\nno model in the render loop\nserved over your private mesh",
       "accent": "#7dd6a0"
+    },
+    {
+      "id": "you",
+      "col": 3,
+      "label": "You",
+      "sublabel": "desktop app\nany browser\nphone (PWA + push)",
+      "accent": "#c9d65e"
     }
   ],
   "links": [
-    { "source": "corpus", "target": "harness", "label": "weights + narrative" },
-    { "source": "harness", "target": "watchman", "label": "live, deterministic data" },
-    { "source": "watchman", "target": "corpus", "label": "research artifacts written back", "feedback": true }
+    {
+      "source": "corpus",
+      "target": "harness",
+      "label": "weights + narrative"
+    },
+    {
+      "source": "corpus",
+      "target": "agent",
+      "label": "reads"
+    },
+    {
+      "source": "harness",
+      "target": "watchman",
+      "label": "live, deterministic data"
+    },
+    {
+      "source": "agent",
+      "target": "watchman",
+      "label": "streamed replies"
+    },
+    {
+      "source": "watchman",
+      "target": "you",
+      "label": "token-authed"
+    },
+    {
+      "source": "watchman",
+      "target": "corpus",
+      "label": "research artifacts written back",
+      "feedback": true
+    }
   ]
 }

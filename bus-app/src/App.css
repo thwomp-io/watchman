@@ -1085,8 +1085,8 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 .vault-stage { flex: 1; min-width: 0; overflow-y: auto; padding: 0; }
 .vault-back { display: none; font: inherit; background: transparent; color: var(--amber);
   border: 1px solid rgba(var(--amber-rgb), 0.4); border-radius: 5px; padding: 4px 10px; cursor: pointer; }
-/* PHONE MASTER-DETAIL (the phone field report: rail + reader side-by-side left the reader ~10
-   chars wide — one-word-per-line text). ≤720px: the tree is the page; opening a doc swaps to
+/* PHONE MASTER-DETAIL (rail + reader side-by-side leaves the reader ~10 chars wide on a phone —
+   one-word-per-line text). ≤720px: the tree is the page; opening a doc swaps to
    a full-width reader with ◀ back. Desktop untouched. */
 @media (max-width: 720px) {
   .vault-zone { padding: 8px 10px; gap: 0; }
@@ -1416,7 +1416,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .studio-cell .widget { width: 100%; height: 100%; min-height: 0; }
 .studio-cell .widget .viz-canvas:not(.donut-bank) { height: 100%; }
 /* the unlock toggle (checkpoint C): quiet when locked; amber + live when editing. Locked is the
-   default state always — the operator ruling that gated the whole Studio write path. */
+   default state always, so browsing never accidentally drags a widget. */
 .unlock-toggle { padding: 4px 11px; font: 600 10px var(--mono); letter-spacing: 0.1em;
                  color: var(--ink-dim); }
 .unlock-toggle:hover { color: var(--amber); }
@@ -1499,7 +1499,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .news-foot-kbd { margin-left: auto; color: var(--ink-faint); opacity: 0.7; }
 .doc-series-body { flex: 1; overflow-y: auto; padding: 6px 14px 14px; }
 .doc-series-body.vault-md { font-size: 12.5px; line-height: 1.6; }
-/* Dashboard viz tiles FILL their width (scaling fix). The earlier blanket max-height
+/* Dashboard viz tiles FILL their width. The earlier blanket max-height
    cap letterboxed everything (charts sat at ~half width with side whitespace). Instead: let the SVG
    fill its tile width (height follows the viewBox aspect — the wide charts carry a ~4:1 viewBox so
    full width = a sane ~350px, not 580px), and cap ONLY the square Donut so it doesn't balloon. */
@@ -1547,7 +1547,47 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 .stat-big.pos { color: var(--pos); }
 .stat-big.neg { color: var(--neg); }
 
+/* ticker strip: one cell per instrument — name, level, the day's move, the session it measures */
+/* One row that scrolls sideways when it runs out of width (the CNBC strip shape). Not a wrapping
+   grid: the dashboard grid has no spare height, so its auto rows sit at each widget's min-height
+   and wrapped cells would clip. A fixed min-height fits exactly one row of cells. */
+.widget.kind-ticker { min-height: 136px; }
+.ticker-strip { display: flex; gap: 6px; padding: 8px; overflow-x: auto; scrollbar-width: thin; }
+.ticker-cell { flex: 1 0 128px; border: 1px solid rgba(var(--etch-rgb), 0.12); border-left-width: 3px;
+               padding: 6px 8px 5px; font-family: var(--mono); font-variant-numeric: tabular-nums;
+               min-width: 0; }
+.ticker-cell.pos { border-left-color: var(--pos); background: color-mix(in srgb, var(--pos) 7%, transparent); }
+.ticker-cell.neg { border-left-color: var(--neg); background: color-mix(in srgb, var(--neg) 7%, transparent); }
+.ticker-name { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ticker-month { margin-left: 6px; font-weight: 400; opacity: 0.6; letter-spacing: 0.02em; }
+.ticker-level { font-size: 20px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.ticker-move { font-size: 11px; white-space: nowrap; }
+.ticker-cell.pos .ticker-move { color: var(--pos); }
+.ticker-cell.neg .ticker-move { color: var(--neg); }
+.ticker-foot { font-size: 9px; opacity: 0.55; letter-spacing: 0.06em; margin-top: 2px; white-space: nowrap; }
+.ticker-cell.missing { opacity: 0.5; }
+
 .widget-table { padding: 4px 8px 8px; overflow-x: auto; }
+/* The legacy grid's rows resolve to each tile's min-height (the grid sits in a fixed-height column,
+   so auto rows never grow to content), which left tables one row tall. A numeric minimum is
+   honored: ~5 rows + the header; longer tables scroll inside the tile. */
+.dash-grid > .widget.kind-table { min-height: 210px; }
+/* the visit timeline: a full 08–22 day axis + its header + the bank chips, unclipped */
+.dash-grid > .widget.kind-schedule { min-height: 860px; }
+/* the bank grid scrolls inside its tile; without a floor its auto rows collapse to 96px whenever
+   the widgets above it fill the viewport (the tiles become unreachable) */
+.dash-grid > .widget.kind-bank { min-height: 640px; }
+
+/* price chart: a canvas needs a real height (the grid will not grow a row to content) */
+.dash-grid > .widget.kind-chart { min-height: 440px; }
+.price-chart { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 4px 8px 8px; }
+.price-chart-meta { font: 600 10px var(--mono); letter-spacing: 0.06em; opacity: 0.65; padding: 2px 0 6px; }
+.price-chart-canvas { flex: 1; min-height: 340px; }
+.studio-cell .price-chart-canvas { min-height: 0; }  /* a Studio cell sets the height */
+.dash-grid > .widget.kind-correlation { min-height: 520px; }
+.corr-heatmap { padding: 4px 8px 8px; overflow: auto; flex: 1; min-height: 0; }
+.corr-heatmap-canvas { width: 100%; }
 .readout .ext-link { color: var(--amber); text-decoration: none; white-space: nowrap; font-weight: 600; }
 .readout .ext-link:hover { text-decoration: underline; }
 .widget-feed { list-style: none; margin: 0; padding: 4px 0; }
@@ -1682,7 +1722,12 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
   .dash-grid.lane-travel-conditions {
     grid-template-columns: repeat(2, 1fr);
     grid-auto-flow: row;      /* dense backfill is a wide-canvas trick — keep reading order */
-    grid-auto-rows: auto;
+    /* max-content, NOT auto: the grid container has a definite height (the
+       .dash flex chain), and an `auto` track in a definite-height grid CLAMPS to the container
+       — a 12,000px projections panel got a 511px row and the overflow:hidden widget clipped
+       everything below the fold with no scroller in reach. Measured by DOM mutation:
+       auto → 511px row; max-content → 12,163px. "One natural-height column" needs max-content. */
+    grid-auto-rows: max-content;
   }
   .dash-grid .widget {
     grid-column: 1 / -1 !important;  /* every span-N flattens to full-width... */
@@ -1765,7 +1810,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
   html.pwa .console { height: 100dvh; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
 }
 
-/* the trap-map ladder bank — v3 CHUNKY (the damage-meter pass):
+/* the trap-map ladder bank, v3 (chunky bars):
    dense stacks of fat accent-gradient bars; ladder order preserved; near-zero dead canvas */
 .ladder-bank { display: flex; flex-direction: column; gap: 6px; height: 100%; overflow: auto; }
 .ladder-committed { font: 600 10px var(--mono); letter-spacing: 0.08em; color: var(--ink-dim); }
@@ -2170,7 +2215,11 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
    tooltip (fixed positioning — immune to widget overflow — the in-tile clipping fix). The
    tooltip panel is self-contained DARK (its own bg, like the noir SVGs) so it reads identically
    on every console theme. Rarity palette = the canonical loot hexes (instantly readable). */
-.projections { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+/* flex:1 + min-height:0, NOT height:100% — a percentage height resolves against the WHOLE
+   widget box, so the panel overflowed the widget by the header's height and the last ~14px
+   of the scrolled list sat under the overflow:hidden edge (measured by DOM probe:
+   last tile bottom 972 vs widget bottom 958). A flex child fills exactly the remaining space. */
+.projections { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
 .projections-chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .projection-chip {
   font-size: 11px; letter-spacing: 0.06em; padding: 2px 8px; border-radius: 3px;
@@ -2186,6 +2235,12 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 }
 .projection-chip.rarity-all { color: var(--ink-dim); }
 .projection-chip.rarity-all.active { color: var(--ink-strong); }
+/* The scroll container for the tri-pane (the no-scrollbar bug, found at 133 bank entries):
+   .widget is overflow:hidden at a definite height, .projections is height:100% — nothing in
+   that chain scrolled, so every tile below the fold was unreachable. flex:1 + min-height:0 lets
+   the body take the remaining height under the fixed chip row; overflow-y:auto scrolls it.
+   Right padding keeps the scrollbar off the tile edges. */
+.projections-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .projections-pane { display: flex; flex-direction: column; gap: 8px; }
 .projections-pane + .projections-pane { margin-top: 14px; border-top: 1px solid var(--etch); padding-top: 12px; }
 .projections-pane-title {
@@ -2281,7 +2336,7 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
    Same loot language (rarity accents, the shared .item-tip), holdings-flavored cards: position-size
    order, value + G/L line, and the two-level appraisal read (ilvl now · entry). Unappraised
    rows (fund structures / registry gaps) stay visible but dim — honesty over polish. */
-.holdings { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.holdings { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; } /* same fix as .projections */
 .holdings-summary {
   display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-dim);
   padding-bottom: 2px;
@@ -2326,8 +2381,10 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
    items have min-size 0 — scorecards clipped mid-glyph at 119px tracks while their content ran
    ~680px). Flattened, the tile is as tall as its content, period: nothing clips. */
 @media (max-width: 720px) {
-  .scorebook, .projections, .holdings { height: auto; }
+  .scorebook, .projections, .holdings { height: auto; flex: none; }
   .scorebook-grid, .projections-grid, .holdings-grid { flex: none; }
+  /* flattened, the tile is content-tall — the body must not become a nested scroller */
+  .projections-body { flex: none; overflow: visible; padding-right: 0; }
 }
 @media (max-width: 600px) {
   /* one card per row — 2-up at 390px was ~180px slivers */
@@ -2339,26 +2396,197 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
   .news-detail { max-height: 48vh; border-top: var(--hairline); }
 }
 
+/* ── Pool + Ladders (the levels.fyi surfaces in the Career group) ─────────────
+   Both compose the existing loot grammar: PoolTiles reuses .projections/.projection-tile/.item-tip,
+   LaddersGrid reuses .holdings/.holding-card. Only the deltas live here. Base rules HERE, the phone
+   flatten in the @media block directly below (the cascade rule). */
+.pool-header {
+  display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-dim);
+  text-transform: capitalize;
+}
+.pool-anchor { margin-left: auto; color: var(--ink-strong); text-transform: none; }
+.pool-bench {
+  font-size: 9.5px; letter-spacing: 0.08em; padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--etch); color: var(--ink-dim); margin-left: 6px;
+}
+/* the tile head carries a long company name + a chip + the ilvl: the ilvl never wraps mid-token */
+.pool-tile .projection-ilvl { white-space: nowrap; }
+.pool-tile .projection-head { flex-wrap: wrap; row-gap: 2px; }
+/* a screen-gated tile: no rarity accent, dimmed, the flag on the sub line */
+.rarity-gated { --rarity: var(--ink-faint); }
+/* an unranked tile: the base number is not the band — neutral accent, the median as
+   context, a "no band row" mark on the sub line; never in the poor band */
+.rarity-unranked { --rarity: var(--ink-faint); }
+.projection-tile.rarity-unranked { border-left-color: var(--rarity); border-left-style: dotted; }
+.projection-tile.rarity-unranked .projection-sym { color: var(--ink-dim); }
+.projection-chip.rarity-unranked { color: var(--ink-dim); border-color: var(--ink-faint); }
+.pool-unranked {
+  font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-dim);
+  border: 1px dotted var(--ink-faint); border-radius: 3px; padding: 0 4px; margin-left: 6px;
+}
+.pool-tile.gated { opacity: 0.62; border-left-style: dashed; }
+.projection-year b { color: var(--ink-strong); }
+.pool-diff { margin: 0; font-size: 11px; color: var(--ink-dim); }
+/* the merged pool's source / cut / level filter chips + the per-tile SOURCE chip */
+.pool-filters { gap: 6px; }
+.pool-filter { color: var(--ink-dim); border-color: var(--etch); text-transform: none; }
+.pool-filter.active { color: var(--ink-strong); border-color: var(--ink-strong); }
+.pool-filter-sep { width: 1px; height: 16px; background: var(--etch); align-self: center; }
+.pool-source {
+  font-size: 9.5px; letter-spacing: 0.08em; padding: 1px 5px; border-radius: 3px; margin-right: 6px;
+  border: 1px solid var(--etch); color: var(--ink-dim); text-transform: uppercase;
+}
+.pool-source-ladder { border-color: #0070dd; color: #0070dd; }
+.pool-basis { color: #ffd100; font-size: 11px; }
+/* the item card's modifier lines — ENCHANTMENTS GREEN, DEBUFFS RED. The
+   card is the self-contained dark panel (.item-tip), so these are fixed inks that pass contrast
+   on that panel in every console theme — the same pair .item-tip .pos/.neg already use. */
+.pool-mods { list-style: none; margin: 6px 0 2px; padding: 0; font-size: 11.5px; }
+.pool-mods li { display: flex; gap: 6px; align-items: baseline; color: #e8e8e8; }
+.pool-mods li.enchant { color: #1eff00; }
+.pool-mods li.debuff { color: #ff5a5a; }
+.pool-mods li.setbonus { color: #ffd100; }
+.pool-mod-val { min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.pool-mod-how { margin-left: auto; font-style: normal; font-size: 10px; color: #9aa0b0; }
+.pool-mix { color: #9aa0b0; font-size: 11px; }
+.pool-tip .item-tip-source { white-space: normal; }
+
+.ladders-report {
+  border: 1px solid var(--etch); border-radius: 5px; padding: 8px 10px; background: var(--graphite-1);
+  font-size: 11.5px;
+}
+.ladders-report-head { display: flex; gap: 12px; flex-wrap: wrap; color: var(--ink-strong); font-weight: 600; }
+.ladders-report-pct { margin-left: auto; font-weight: 400; color: var(--ink-dim); }
+.ladders-report-details { margin-top: 6px; color: var(--ink-dim); }
+.ladders-report-details summary { cursor: pointer; font-size: 11px; }
+.ladders-report-read { margin: 4px 0 0; padding-left: 16px; color: var(--ink-dim); }
+/* the percentile strip: p25→p90 as a band on a shared dollar axis, the median +
+   p75 ticks, the Staff/Principal median ticks, the anchor marker — the anchor read as a picture */
+.pstrip-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 10px; align-items: center; margin-top: 8px; }
+.pstrip-label { color: var(--ink-strong); font-weight: 600; font-size: 11px; }
+.pstrip-axis { position: relative; height: 18px; border-radius: 3px; background: color-mix(in srgb, var(--etch) 60%, transparent); }
+.pstrip-band { position: absolute; top: 4px; height: 10px; border-radius: 2px; background: color-mix(in srgb, var(--ink-dim) 45%, transparent); }
+.pstrip-tick { position: absolute; top: 2px; width: 2px; height: 14px; background: var(--ink-strong); }
+.pstrip-p75 { opacity: 0.5; }
+.pstrip-level { background: #0070dd; top: 0; height: 18px; }
+.pstrip-level span, .pstrip-anchor span {
+  position: absolute; left: -2px; font-size: 9px; letter-spacing: 0.04em; white-space: nowrap; color: var(--ink-dim);
+}
+.pstrip-level span { top: -12px; }            /* level ticks label ABOVE the axis */
+.pstrip-anchor { position: absolute; top: -3px; width: 3px; height: 24px; background: #ff8000; border-radius: 1px; }
+.pstrip-anchor span { top: 22px; color: #ff8000; font-weight: 600; }   /* the anchor labels BELOW */
+.pstrip-row { margin: 14px 0 18px; }
+.pstrip-nums { font-size: 10px; color: var(--ink-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ladders-sort { margin-left: auto; }
+.ladders-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.ladder-card { cursor: pointer; --bars-col: 54%; }
+.ladder-card.stale { opacity: 0.7; }
+.ladder-sub { font-size: 11.5px; color: var(--ink-dim); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+/* the rungs: one bar per level, filled in its rarity color, sqrt-scaled within the card, the anchor
+   as one vertical line across the whole ladder; band rows get the bright outline */
+.ladder-bars { position: relative; display: flex; flex-direction: column; gap: 3px; margin: 6px 0 4px; padding-top: 12px; }
+/* the anchor line lives in the BARS column only — it never crosses a label */
+.ladder-anchor {
+  position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed #ff8000; opacity: 0.85; pointer-events: none;
+}
+.ladder-anchor span { position: absolute; top: -2px; left: 4px; font-size: 9px; color: #ff8000; letter-spacing: 0.04em; }
+.ladder-rung {
+  position: relative; display: grid; grid-template-columns: var(--bars-col) 1fr; column-gap: 8px; align-items: center;
+  height: 18px; width: 100%; background: none; border: 0; padding: 0; text-align: left; color: var(--ink);
+  cursor: pointer; font: inherit;
+}
+.ladder-rung-bar {
+  display: block; height: 12px; border-radius: 2px; background: var(--rarity, var(--ink-dim));
+  opacity: 0.85; flex: none; transition: width 120ms ease;
+}
+.ladder-rung:hover .ladder-rung-bar, .ladder-rung:focus-visible .ladder-rung-bar { opacity: 1; box-shadow: 0 0 8px var(--rarity); }
+.ladder-rung.band .ladder-rung-bar { outline: 2px solid var(--ink-strong); outline-offset: 1px; }
+.ladder-rung-label { font-size: 11px; white-space: nowrap; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; }
+.ladder-rung-label b { color: var(--rarity, var(--ink-strong)); font-weight: 700; }
+.ladder-rung-label em { font-style: normal; font-size: 10.5px; }
+.ladder-rung-label .pos { color: var(--pos); }
+.ladder-rung-label .neg { color: var(--neg); }
+.ladder-yoe { font-style: normal; color: var(--ink-faint); font-size: 10px; }
+.ladder-foot { font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
+/* the band basis: a mapped/titled band reads plain; a heuristic one is marked */
+.ladder-basis { color: var(--ink-dim); }
+.ladder-basis.basis-anchor-heuristic, .ladder-basis.basis-yoe, .ladder-basis.basis-next-above-staff { color: #e0b83a; }
+.rung-tip .item-tip-name { font-size: 13.5px; }
+@media (max-width: 720px) {
+  .pool, .ladders { height: auto; flex: none; }
+  .ladders-grid { grid-template-columns: 1fr; flex: none; }
+  .pool-anchor, .ladders-report-pct, .ladders-sort { margin-left: 0; }
+  .pstrip-row { grid-template-columns: 1fr; gap: 4px; margin-bottom: 18px; }
+  .pstrip-nums { margin-top: 16px; }   /* clear the anchor label that sits below the axis */
+  .ladder-card { --bars-col: 50%; }
+}
+
 /* ── Nudge cards (the Planning tab's proactive band) ───────────────────────────
    Card grid + the portal item-tooltip (reuses the .item-tip dark panel; .nudge-tip just sets the
    accent token + spacing). Base rules HERE, phone flatten in the @media block directly below —
    the cascade rule (component overrides live at/after the component's base CSS). */
-.nudges { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.nudges { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+/* every lane renders in full: the tile grows to its content (Planning's natural-height rows, below)
+   instead of scrolling inside a fixed height, which clipped the last lane behind the fold */
+.nudges-scroll { display: flex; flex-direction: column; gap: 10px; }
+/* Planning = three full-width tiles in reading order, each its natural height. max-content, not
+   auto: an `auto` track in the definite-height grid clamps to the viewport,
+   which squashed the cards and cut the radar off at a 900px window. */
+.dash-grid.lane-travel { grid-auto-rows: max-content; }
+.nudges-lane { display: flex; flex-direction: column; gap: 6px; }
+.nudges-lane-title {
+  margin: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--nudge-lane, var(--nudge)); border-bottom: 1px solid var(--etch); padding-bottom: 3px;
+}
 .nudges-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px;
-  align-content: start; flex: 1; min-height: 0;
+  align-content: start;
 }
+/* per-lane accents — semantic tokens (fixed hues on every theme), the lane's identity on the
+   card's left rule + the lane header; the weekend lane keeps the original --nudge green */
+.lane-weekend { --nudge-lane: var(--nudge); }
+.lane-games { --nudge-lane: #d63c5e; }
+.lane-long-lead { --nudge-lane: #3b7dd8; }
+.lane-horizon { --nudge-lane: #8b5cf6; }
+.lane-family { --nudge-lane: #d9822b; }
+.nudges-lane .nudge-card { border-left-color: var(--nudge-lane); }
+.nudges-lane .nudge-dest { color: var(--nudge-lane); }
+.nudges-lane .nudge-lw { color: var(--nudge-lane); border-color: var(--nudge-lane); }
 .nudge-card {
-  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px; text-align: left; overflow: hidden;
   background: var(--graphite-2); border: 1px solid var(--etch); border-left: 3px solid var(--nudge);
-  border-radius: 4px; padding: 10px 12px; color: var(--ink); font: inherit;
+  border-radius: 4px; color: var(--ink);
   transition: transform 80ms ease, box-shadow 80ms ease;
 }
-.nudge-card:hover, .nudge-card:focus-visible {
-  transform: translateY(-1px); border-color: var(--nudge);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--nudge) 30%, transparent);
+.nudge-card:hover, .nudge-card:focus-within {
+  transform: translateY(-1px); border-color: var(--nudge-lane, var(--nudge));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--nudge-lane, var(--nudge)) 30%, transparent);
 }
+.nudge-main {
+  display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer;
+  background: none; border: 0; border-radius: 0; padding: 10px 12px 4px; color: inherit; font: inherit;
+}
+.nudge-card-family .nudge-main { cursor: default; padding-bottom: 10px; }
+button.nudge-main:hover:not(:disabled), button.nudge-main:focus-visible { border: 0; color: inherit; }
+.nudge-thumb { margin: -10px -12px 4px; display: block; }
+.nudge-thumb .picker-cover { aspect-ratio: 16 / 5; }
 .nudge-head { display: flex; align-items: baseline; gap: 8px; }
+.nudge-indecision {
+  font-size: 9px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--amber); border: 1px solid var(--amber); border-radius: 3px; padding: 0 4px;
+}
+.nudge-why {
+  align-self: flex-start; margin: 0 12px 8px; padding: 1px 7px; font: 600 9.5px var(--mono);
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim);
+  background: none; border: 1px solid var(--etch); border-radius: 3px; cursor: pointer;
+}
+.nudge-why-rows { margin: 0 12px 10px; border-collapse: collapse; font-size: 11px; }
+.nudge-why-rows td { padding: 2px 0; color: var(--ink-dim); vertical-align: top; }
+.nudge-why-rows td + td { padding-left: 10px; text-align: right; font-variant-numeric: tabular-nums; }
+.nudge-why-rows .pos { color: var(--nudge); }
+.nudge-why-rows .neg { color: #d9534f; }
+.nudges-skipped { margin: 2px 0 0; font-size: 10.5px; color: var(--ink-faint); line-height: 1.5; }
+.nudges-skipped span { font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 4px; }
 .nudge-dest { font-size: 15px; font-weight: 700; color: var(--nudge); }
 .nudge-score {
   margin-left: auto; font-size: 11px; color: var(--ink-dim); border: 1px solid var(--etch);
@@ -2379,18 +2607,13 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
 
 @media (max-width: 720px) {
   /* break the fill-the-tile height chain when the layout flattens (the grid-squash class) */
-  .nudges { height: auto; }
+  .nudges { height: auto; flex: none; }
   .nudges-grid { flex: none; }
 }
 @media (max-width: 600px) {
   .nudges-grid { grid-template-columns: 1fr; }
 }
 
-/* the global `button:hover` amber border (0-2-1) outguns `.nudge-card:hover` (0-2-0) — restate
-   the nudge hover at matching specificity so the accent stays the nudge token, not the theme amber */
-button.nudge-card:hover:not(:disabled), button.nudge-card:focus-visible {
-  border-color: var(--nudge); color: var(--ink);
-}
 .nudge-tip-meta { color: #9aa0b0; font-size: 11.5px; margin-bottom: 4px; }
 
 /* the plan-gates board — ranked countdown meters for upcoming binaries:
@@ -2414,3 +2637,474 @@ button.nudge-card:hover:not(:disabled), button.nudge-card:focus-visible {
 .gates-date { font: 500 9px var(--mono); color: var(--ink-dim); }
 .gates-empty { display: grid; place-items: center; height: 100%; font: 500 11px var(--mono);
   color: var(--ink-dim); }
+
+/* ── Visit bank tiles (Travel ▸ Visits) ────────────────────────────────────────
+   Photo tiles over the shared .projections scaffold (chips row + scrolling body); the hover card is
+   the shared dark .item-tip with a per-kind accent. Base rules HERE, phone deltas directly below. */
+:root, [data-theme] { --bank-outing: #4fa3d1; --bank-restaurant: #d59a3a; --bank-outdoor: #c98a2b; }
+/* the paper theme's light face: darker inks so the chip text clears AA */
+:root[data-theme="paper"] { --bank-outing: #1f5f86; --bank-restaurant: #8a5a12; --bank-outdoor: #8a5a12; }
+.bank-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bank-kind {
+  font: inherit; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px;
+  background: none; border: 1px solid var(--etch); color: var(--ink-dim); cursor: pointer;
+}
+.bank-kind b { margin-left: 4px; }
+.bank-kind.active { color: var(--ink-strong); border-color: var(--ink-dim); background: var(--graphite-2); }
+.bank-visit { margin-left: auto; font-size: 11px; color: var(--ink-dim); text-decoration: none; }
+.bank-visit:hover { text-decoration: underline; color: var(--ink-strong); }
+.bank-chip, .bank-rain { text-transform: none; }
+.bank-rain.active { --rarity: var(--bank-outing); }
+.bank-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px;
+  align-content: start;
+}
+.bank-tile {
+  --accent: var(--bank-outing);
+  display: flex; flex-direction: column; text-align: left; cursor: pointer; padding: 0; overflow: hidden;
+  background: var(--graphite-2); border: 1px solid var(--etch); border-top: 3px solid var(--accent);
+  border-radius: 4px; color: var(--ink); font: inherit; transition: transform 80ms ease, box-shadow 80ms ease;
+}
+.bank-tile.kind-restaurant { --accent: var(--bank-restaurant); }
+/* the global `button:hover` border outguns a 0-1-0 tile hover — restate at matching specificity */
+.bank-tile:hover, .bank-tile:focus-visible {
+  transform: translateY(-1px); border-color: var(--accent); color: var(--ink);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.bank-img {
+  aspect-ratio: 16 / 9; width: 100%; background: var(--graphite-1, rgba(127, 127, 127, 0.12));
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.bank-img { position: relative; }
+.bank-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bank-img.large { aspect-ratio: 4 / 3; background: #000; }
+.bank-img.large img { object-fit: contain; }
+/* photo paging: arrows over the photo, a counter chip; fixed dark inks (they sit on a photo) */
+.bank-nav {
+  /* centered with top:calc, never a transform: the global button:active nudge is a transform, and
+     replacing a translateY(-50%) on mousedown jumps the arrow off the pointer — mouseup lands on
+     the photo and the click fires on the tile (the popup opened instead of paging) */
+  position: absolute; top: calc(50% - 15px); width: 30px; height: 30px; padding: 0;
+  border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.55); color: #fff;
+  font: 700 20px/28px var(--mono, monospace); cursor: pointer; opacity: 0; transition: opacity 120ms ease;
+}
+.bank-nav.prev { left: 6px; }
+.bank-nav.next { right: 6px; }
+.bank-img.large .bank-nav { top: calc(50% - 20px); width: 40px; height: 40px; font-size: 26px; line-height: 38px; }
+button.bank-nav:active:not(:disabled) { transform: none; }
+.bank-count {
+  position: absolute; right: 6px; bottom: 6px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 10.5px; letter-spacing: 0.04em;
+}
+.bank-tile:hover .bank-nav, .bank-tile:focus-within .bank-nav, .bank-img.large .bank-nav { opacity: 1; }
+button.bank-nav:hover:not(:disabled), button.bank-nav:focus-visible {
+  background: rgba(0, 0, 0, 0.8); color: #fff; border: none; opacity: 1;
+}
+@media (hover: none) { .bank-nav { opacity: 0.85; } }
+.bank-img-empty { font-size: 10.5px; color: var(--ink-faint); letter-spacing: 0.06em; }
+.bank-tile-body { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 10px; }
+.bank-tile-label { font-size: 13px; line-height: 1.3; color: var(--ink-strong); }
+.bank-tile-sub { font-size: 11px; color: var(--ink-dim); }
+.bank-tile-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.bank-tile-chips em {
+  font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 3px;
+  border: 1px solid var(--etch); color: var(--ink-dim);
+}
+.bank-tile-chips em.setting-outdoor { border-color: var(--bank-outdoor); color: var(--bank-outdoor); }
+.bank-tile-chips em.setting-indoor { border-color: var(--bank-outing); color: var(--bank-outing); }
+.bank-tip { --rarity: var(--bank-outing); }
+.bank-tip.kind-restaurant { --rarity: var(--bank-restaurant); }
+.bank-tip .item-tip-flavor { color: #e8d9a8; }
+.bank-popup { max-width: 640px; }
+.bank-popup-body { display: flex; flex-direction: column; gap: 10px; }
+.bank-popup-body .bank-img { border-radius: 4px; max-height: 300px; }
+.bank-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.bank-link {
+  font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 4px; text-decoration: none;
+  border: 1px solid var(--ink-dim); color: var(--ink-strong);
+}
+.bank-link:hover { background: var(--graphite-2); }
+.bank-why { margin: 0; color: var(--ink-strong); line-height: 1.45; }
+.bank-note { margin: 0; color: var(--ink-dim); line-height: 1.45; }
+.bank-fields { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 12px; }
+.bank-fields dt { color: var(--ink-dim); text-transform: capitalize; }
+.bank-fields dd { margin: 0; color: var(--ink); }
+@media (max-width: 720px) {
+  .bank-grid { flex: none; }
+  .bank-visit { margin-left: 0; flex-basis: 100%; }
+}
+@media (max-width: 600px) {
+  .bank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+}
+
+/* ── Visit schedule (Travel ▸ Visits) ─────────────────────────────────────────
+   A day-column time grid on desktop, stacked day cards on phone (CSS picks one); the bank chips
+   underneath share the tile popup. Lane color arrives as --lane on each block/chip. */
+.vsched-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.vsched-head .bank-visit { margin-left: 0; font-weight: 600; }
+.vsched-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10.5px; color: var(--ink-dim); }
+.vsched-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.vsched-legend i.diamond { transform: rotate(45deg) scale(0.8); }
+.vsched-note { font-size: 10.5px; color: var(--ink-faint); margin-left: auto; }
+.vsched-grid { display: grid; gap: 0 6px; align-items: start; }
+.vsched-corner { min-height: 1px; }
+.vsched-dayhead {
+  display: flex; flex-direction: column; gap: 4px; padding: 6px 6px 8px; border-bottom: 1px solid var(--etch);
+  font-size: 11px; min-width: 0;
+}
+.vsched-dayhead strong { font-size: 12px; color: var(--ink-strong); }
+.vsched-wx { font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vsched-wx.wet { color: var(--bank-outing); font-weight: 600; }
+.vsched-wx b { margin-right: 2px; }
+.vsched-dayhead.wet { box-shadow: inset 0 3px 0 var(--bank-outing); }
+.vsched-avail { display: flex; gap: 3px; align-items: center; }
+.vsched-avail i { display: block; height: 5px; flex: 1; border-radius: 2px; min-width: 14px; }
+.vsched-avail em { font-style: normal; font-size: 10.5px; color: var(--ink-dim); margin-left: 6px; flex: 4; }
+.vsched-allday {
+  font-size: 10.5px; padding: 1px 5px; border: 1px solid var(--ink-faint); border-left-width: 3px; border-radius: 3px;
+  color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vsched-allday.item { cursor: pointer; }
+.vsched-axis { position: relative; }
+.vsched-axis span { position: absolute; right: 4px; transform: translateY(-50%); font-size: 9.5px; color: var(--ink-faint); }
+.vsched-col { position: relative; border-left: 1px solid var(--etch); border-right: 1px solid var(--etch); }
+.vsched-hline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--etch); }
+.vsched-evening { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--ink-faint) 10%, transparent); }
+.vsched-item {
+  position: absolute; left: 3px; right: 3px; overflow: hidden; cursor: pointer; padding: 2px 5px;
+  border-radius: 4px; border: 1px solid var(--lane); border-left-width: 4px;
+  background: color-mix(in srgb, var(--lane) 20%, var(--graphite-2)); color: var(--ink-strong);
+  display: flex; flex-direction: column; gap: 1px; z-index: 1;
+}
+.vsched-item.penciled { border-style: dashed; border-left-style: solid; }
+.vsched-item:hover, .vsched-item:focus-visible { z-index: 3; box-shadow: 0 0 10px color-mix(in srgb, var(--lane) 45%, transparent); }
+.vsched-item-time { font-size: 9.5px; color: var(--ink-dim); }
+.vsched-item-label { font-size: 11px; line-height: 1.25; font-weight: 600; }
+.vsched-item:not(.compact) .vsched-item-label { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+.vsched-item.compact { flex-direction: row; align-items: center; gap: 6px; white-space: nowrap; }
+.vsched-item.compact .vsched-item-time { flex: none; }
+.vsched-item.compact .vsched-item-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vsched-tick {
+  position: absolute; left: 0; right: 0; height: 0; z-index: 0;
+  border-top: 2px solid color-mix(in srgb, var(--cat, var(--ink-dim)) 55%, transparent);
+}
+.vsched-allday b { margin-right: 4px; font-weight: 700; }
+.vsched-list { display: none; }
+.vsched-bank { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--etch); display: flex; flex-direction: column; gap: 8px; }
+.vsched-band { font: inherit; font-size: 11px; padding: 2px 6px; }
+.vsched-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vsched-chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; letter-spacing: 0;
+  padding: 3px 8px; border-radius: 12px; background: var(--graphite-2); border: 1px solid var(--etch); color: var(--ink);
+}
+.vsched-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--lane); }
+.vsched-chip em { font-style: normal; font-size: 10px; color: var(--ink-dim); }
+.vsched-chip.planned { opacity: 0.6; }
+.vsched-chip .planned-tag { color: var(--pos); }
+button.vsched-chip:hover:not(:disabled), button.vsched-chip:focus-visible { border-color: var(--lane); color: var(--ink-strong); }
+@media (max-width: 720px) {
+  .vsched-grid { display: none; }
+  .vsched-list { display: flex; flex-direction: column; gap: 8px; }
+  .vsched-card { border: 1px solid var(--etch); border-radius: 6px; padding: 8px 10px; background: var(--graphite-2); }
+  .vsched-card.wet { border-top: 3px solid var(--bank-outing); }
+  .vsched-card header { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 6px; }
+  .vsched-card header .vsched-avail { flex-basis: 100%; }
+  .vsched-card-row { display: flex; gap: 8px; font-size: 12px; padding: 4px 0 4px 8px; border-left: 3px solid var(--lane, var(--etch)); margin: 3px 0; }
+  .vsched-card-row span { flex: none; width: 52px; color: var(--ink-dim); font-size: 11px; }
+  .vsched-card-row.marker { border-left-color: var(--cat, var(--ink-dim)); color: var(--ink-dim); }
+  .vsched-card-row.item { cursor: pointer; color: var(--ink-strong); }
+  .vsched-card-row.penciled { border-left-style: dashed; }
+  .vsched-card-row.free { color: var(--ink-faint); border-left-color: transparent; }
+}
+
+/* ── Trip / visit picker (Travel ▸ Visits, Trips) ─────────────────────────────
+   A sideways strip of cover tiles; the active one drives the tab's schedule + bank widgets. */
+.picker { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.picker-strip { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
+.picker-tile {
+  flex: 0 0 220px; display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden;
+  scroll-snap-align: start; cursor: pointer; font: inherit; letter-spacing: 0;
+  background: var(--graphite-2); border: 1px solid var(--etch); border-radius: 6px; color: var(--ink);
+}
+.picker-tile.past { opacity: 0.82; }
+.picker-tile.empty .picker-cover { filter: grayscale(1); opacity: 0.6; }
+.picker-tile.active { border-color: var(--bank-outing); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bank-outing) 45%, transparent); opacity: 1; }
+button.picker-tile:hover:not(:disabled), button.picker-tile:focus-visible { border-color: var(--bank-outing); color: var(--ink); }
+.picker-cover { aspect-ratio: 16 / 7; background: var(--graphite-1); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.picker-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.picker-cover span { font-size: 10.5px; color: var(--ink-faint); }
+.picker-body { display: flex; flex-direction: column; gap: 2px; padding: 7px 9px 9px; }
+.picker-body strong { font-size: 12px; line-height: 1.3; color: var(--ink-strong); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.picker-when { font-size: 10.5px; color: var(--ink-dim); }
+.picker-sum { font-size: 10.5px; color: var(--ink-dim); }
+.picker-tile.empty .picker-sum { font-style: italic; color: var(--ink-faint); }
+.picker-divider {
+  flex: none; align-self: stretch; display: flex; align-items: center; writing-mode: vertical-rl;
+  font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
+  border-left: 1px dashed var(--etch); padding-left: 6px;
+}
+.picker-foot { display: flex; gap: 12px; font-size: 11px; color: var(--ink-dim); }
+.picker-foot a { color: var(--ink-dim); margin-left: auto; }
+.dash-grid > .widget.kind-picker { min-height: 250px; }
+@media (max-width: 600px) { .picker-tile { flex-basis: 170px; } }
+
+/* bank popup: a week of hours, today's line marked */
+.bank-hours { display: flex; flex-direction: column; gap: 1px; }
+.bank-hours .today { font-weight: 700; color: var(--ink-strong); }
+.bank-hours .today::after { content: "  · today"; font-weight: 400; color: var(--ink-dim); }
+
+/* ── Planning: on the calendar ────────────────────────────────────────────────
+   One card per live trip/visit (cover · kind/status/decision chips · name · window · who) with the
+   countdown on the right; a compact "someday" group closes the row. Cards reuse .picker-cover. */
+.cal-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; padding: 2px 0 4px; }
+.cal-card {
+  display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto 1fr; text-align: left;
+  padding: 0; overflow: hidden; cursor: pointer; font: inherit; color: var(--ink);
+  background: var(--graphite-2); border: 1px solid var(--etch); border-radius: 4px;
+}
+.cal-card .picker-cover { grid-column: 1 / -1; aspect-ratio: 16 / 6; }
+button.cal-card:hover:not(:disabled), button.cal-card:focus-visible { border-color: var(--amber); color: var(--ink); }
+.cal-card-body { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 10px; min-width: 0; }
+.cal-card-top { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
+.cal-card-top em {
+  font-size: 9px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--etch); border-radius: 3px; padding: 0 4px; color: var(--ink-dim);
+}
+.cal-kind-trip { color: #3b7dd8 !important; border-color: #3b7dd8 !important; }
+.cal-kind-visit { color: #d9822b !important; border-color: #d9822b !important; }
+.cal-card-top .cal-decision { color: var(--amber); border-color: var(--amber); }
+.cal-name { font-size: 14px; line-height: 1.25; color: var(--ink-strong); }
+.cal-anchor { font-size: 11px; color: var(--ink-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cal-window { font-size: 12px; color: var(--ink); }
+.cal-who { font-size: 10.5px; color: var(--ink-faint); }
+.cal-countdown {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8px 14px 10px; border-left: 1px solid var(--etch); min-width: 64px;
+}
+.cal-countdown b { font-size: 26px; line-height: 1; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.cal-countdown small { font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); margin-top: 3px; }
+.cal-someday {
+  display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;
+  border: 1px dashed var(--etch); border-radius: 4px; align-self: start;
+}
+.cal-someday-title { font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+.cal-someday-chip {
+  display: flex; flex-direction: column; text-align: left; gap: 1px; padding: 4px 7px; cursor: pointer;
+  font: inherit; color: var(--ink); background: var(--graphite-2); border: 1px solid var(--etch); border-radius: 3px;
+}
+.cal-someday-chip strong { font-size: 12px; }
+.cal-someday-chip span { font-size: 10.5px; color: var(--ink-dim); }
+
+/* ── Planning: the open decision ──────────────────────────────────────────────
+   The radar at a readable size beside its ranked list; a row's hover brings its trace forward. */
+.decision { display: flex; flex-direction: column; gap: 6px; padding: 2px 4px 6px; }
+.decision-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.decision-head strong { font-size: 15px; color: var(--ink-strong); }
+.decision-head span { font-size: 11.5px; color: var(--ink-dim); }
+.decision-head a { margin-left: auto; font-size: 11px; color: var(--ink-dim); }
+.decision-body { display: grid; grid-template-columns: minmax(320px, 520px) minmax(260px, 1fr); gap: 14px; align-items: center; }
+.decision-radar .viz-canvas { height: auto !important; padding: 0; overflow: visible; }
+.dash-grid .decision-radar .radar-stage .viz-svg, .decision-radar .viz-svg { width: 100%; height: auto; max-height: 440px; }
+.decision-radar .radar-dim { opacity: 0.18; transition: opacity 120ms ease; }
+.decision-radar .radar-hot { opacity: 1; }
+.decision-rank { list-style: none; counter-reset: rank; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.decision-rank li {
+  counter-increment: rank; display: grid; grid-template-columns: 18px 10px 1fr auto; grid-template-rows: auto auto;
+  column-gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--etch); border-radius: 4px;
+  background: var(--graphite-2); cursor: default; outline: none;
+}
+.decision-rank li::before { content: counter(rank); grid-row: 1 / 3; font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.decision-rank li.hot, .decision-rank li:focus-visible { border-color: var(--amber); }
+.decision-rank .swatch { width: 10px; height: 10px; border-radius: 2px; grid-row: 1 / 3; }
+.decision-label { font-size: 13px; font-weight: 600; color: var(--ink-strong); }
+.decision-total { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-strong); grid-row: 1 / 3; grid-column: 4; }
+.decision-axes { grid-column: 3; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10.5px; }
+.decision-axes .pos { color: var(--nudge); }
+.decision-axes .neg { color: #d9534f; }
+.decision-foot { margin: 0; font-size: 10.5px; color: var(--ink-faint); }
+@media (max-width: 720px) {
+  .decision-body { grid-template-columns: 1fr; }
+  .dash-grid .decision-radar .radar-stage .viz-svg { max-height: 340px; }
+}
+@media (max-width: 600px) {
+  .cal-cards { grid-template-columns: 1fr; }
+}
+
+/* ── Inbox v2: the status bar's watchman chips, story rows, the article reader ─────────────────────
+   The Watchmen panel is gone: each watchman is a chip in the status bar (popover = its vitals), so the
+   list and the reader own the full height below. */
+.statusbar { flex-wrap: wrap; row-gap: 6px; }
+.status-overall { font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); flex: none; }
+.status-overall.over-red { color: var(--sig-alert); }
+.wm-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.wm-chip-wrap { position: relative; }
+.wm-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 3px 9px; font: inherit; font-size: 10.5px;
+  border: var(--hairline); border-radius: 12px; background: var(--graphite-0); color: var(--ink); cursor: pointer;
+}
+.wm-chip .vital-led { width: 7px; height: 7px; }
+.wm-chip.wm-red { border-color: var(--sig-alert); background: color-mix(in srgb, var(--sig-alert) 12%, var(--graphite-0)); }
+.wm-name { font-weight: 700; letter-spacing: 0.04em; }
+.wm-word { color: var(--sig-alert); font-size: 9.5px; letter-spacing: 0.12em; }
+.wm-meta { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.wm-chip .cadence { gap: 2px; }
+.wm-chip .cadence .tick { width: 3px; height: 10px; }
+.wm-pop {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 260px; padding: 10px 12px;
+  background: var(--graphite-1); border: var(--hairline); border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.wm-pop-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.wm-pop-head strong { font-size: 12px; }
+.wm-pop-head .vital-status { margin-left: auto; font-size: 9.5px; letter-spacing: 0.14em; }
+.wm-pop-grid { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 14px; margin: 0 0 8px; }
+.wm-pop-grid dt { color: var(--ink-faint); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+.wm-pop-grid dd { margin: 0; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.wm-pop-cadence { display: flex; align-items: flex-end; gap: 8px; font-size: 9px; letter-spacing: 0.12em;
+                  text-transform: uppercase; color: var(--ink-faint); }
+.wm-pop-flags { margin: 8px 0 0; font-size: 10.5px; color: var(--ink-dim); line-height: 1.4; }
+
+/* the list: wire rows read as news — ticker chips · headline · outlet · publish age */
+.feed li.wire-row { gap: 8px; }
+.row-tickers { display: inline-flex; gap: 3px; flex: none; }
+.row-tickers b {
+  font-size: 9.5px; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 2px;
+  background: var(--graphite-0); border: var(--hairline); color: var(--ink);
+}
+.row-outlet { flex: none; max-width: 22%; color: var(--ink-dim); font-size: 10.5px; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+.feed li.filtered .row-title { text-decoration: line-through; text-decoration-color: var(--ink-faint); }
+.band-foot {
+  display: block; width: 100%; margin: 2px 0 0; padding: 6px 12px; text-align: left;
+  font: inherit; font-size: 10px; letter-spacing: 0.06em; color: var(--ink-faint);
+  background: none; border: 0; border-top: 1px dashed rgba(var(--etch-rgb), 0.12); cursor: pointer;
+}
+button.band-foot:hover:not(:disabled) { color: var(--ink); border-color: rgba(var(--etch-rgb), 0.2); }
+
+/* the reader: a catalyst opens like an article */
+.reader { display: flex; flex-direction: column; gap: 10px; user-select: text; }
+.reader-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; font-size: 11px; }
+.reader-outlet { font-weight: 700; color: var(--ink); letter-spacing: 0.02em; }
+.reader-author, .reader-when { color: var(--ink-dim); }
+.reader-title { margin: 0; font: 700 17px/1.35 var(--mono); color: var(--ink-strong, var(--ink)); }
+.reader-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ticker-chip, .tag-chip, .filtered-chip {
+  font-size: 10px; padding: 1px 7px; border-radius: 10px; border: var(--hairline); color: var(--ink-dim);
+}
+.ticker-chip { color: var(--ink); font-weight: 700; letter-spacing: 0.06em; background: var(--graphite-0); }
+.filtered-chip { color: var(--sig-warn); border-color: var(--sig-warn); }
+.reader-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.open-original {
+  padding: 6px 12px; border-radius: 3px; font-weight: 700; font-size: 11.5px; letter-spacing: 0.04em;
+  color: var(--graphite-0, #fff); background: var(--amber); text-decoration: none;
+}
+.open-original em { font-style: normal; font-weight: 400; opacity: 0.8; margin-left: 4px; }
+.open-original:hover { filter: brightness(1.08); }
+.reader-actions .reader-raw { margin-left: auto; font-size: 10px; }
+.reader-image { width: 100%; max-height: 360px; object-fit: cover; border-radius: 4px; border: var(--hairline); }
+.reader-summary { margin: 0; font-size: 13px; line-height: 1.6; color: var(--ink); }
+.reader-empty, .reader-also { margin: 0; font-size: 11px; color: var(--ink-faint); }
+.reader-back { align-self: flex-start; margin: -4px 0 10px; font-size: 10.5px; }
+
+/* phone: the list OR the reader, full width */
+.split.split-compact { flex-direction: column; padding: 8px 8px 0; }
+.split.split-compact > .feed, .split.split-compact > .detail { flex: 1; min-height: 0; }
+.split.split-compact .row-outlet { display: none; }
+.news-detail-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 4px; margin: 6px 0 10px;
+                     border: var(--hairline); }
+
+/* Line chart: the plot box is sized by its container and the SVG fills it absolutely, so the
+   measured viewBox can never feed back into the box's height (a content-height parent otherwise
+   grows on every measure — the expanded view's runaway stretch). Where the widget has a definite
+   height (a multi-row tile, a Studio cell, the expanded view) the canvas fills the body UNDER the
+   header — height:100% of the widget pushed the x-axis labels out of the tile. The hint is a plain
+   row below the plot, never over the axis. */
+.line-canvas { display: flex; flex-direction: column; }
+.line-canvas .line-plot { position: relative; flex: 1; min-height: 180px; }
+.line-canvas .line-plot .viz-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.line-canvas .viz-hint { position: static; margin: 4px 0 2px 12px; }
+.dash-grid .widget:not(.rows-1) .viz-canvas.line-canvas:not(.donut-bank),
+.studio-cell .widget .viz-canvas.line-canvas:not(.donut-bank),
+.dash-expanded .widget .viz-canvas.line-canvas:not(.donut-bank) { flex: 1 1 0; min-height: 0; height: auto; }
+.viz-stage .line-canvas { flex: 1; min-height: 0; }
+
+/* ── Career ▸ Openings: role items on the Pool's tile grammar ─────────────────────────────────────
+   The tile is a pool tile (rarity border, ilvl chip) carrying a title line; the shape chip is tinted
+   by its lane (in / neutral / off). Off-lane panes read quieter so the eye lands on on-profile. */
+.role-tile { cursor: pointer; display: flex; flex-direction: column; gap: 3px; text-align: left; }
+.role-tile:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+.role-title {
+  font-size: 12.5px; line-height: 1.3; color: var(--ink-strong);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.role-tile .projection-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.role-new { color: var(--pos); border-color: var(--pos); }
+.role-lane {
+  font-size: 9.5px; letter-spacing: 0.06em; padding: 0 4px; border-radius: 3px; border: 1px solid var(--etch);
+}
+.role-lane.lane-in { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 55%, transparent); }
+.role-lane.lane-off { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 55%, transparent); }
+.role-loc { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-salary { color: var(--ink); }
+.role-profile {
+  margin-left: auto; font: inherit; font-size: 10px; color: var(--ink-dim); background: none;
+  border: 1px solid var(--etch); border-radius: 3px; padding: 0 5px; cursor: pointer;
+}
+.role-profile:hover, .role-profile:focus-visible { color: var(--amber); border-color: var(--amber); }
+.role-pane.fit-off-lane .role-tile { opacity: 0.72; }
+.role-more { margin: 8px 0 2px; }
+.pool-filter.role-company { color: var(--amber); border-color: var(--amber); }
+.pool-filter.fit-on-profile.active { color: var(--pos); border-color: var(--pos); }
+.pool-filter.fit-off-lane.active { color: var(--neg); border-color: var(--neg); }
+/* the Pool tile's way into Openings, filtered to the company */
+.pool-openings {
+  font-size: 9.5px; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 3px; margin-left: 6px; cursor: pointer;
+  color: var(--amber); border: 1px solid rgba(var(--amber-rgb), 0.5);
+}
+.pool-openings:hover, .pool-openings:focus-visible { background: var(--amber-dim); }
+
+/* ── Career ▸ Campaign: in-flight cards + the calendar ─────────────────────────────────────────── */
+.campaign { display: flex; flex-direction: column; gap: 6px; padding: 2px 2px 6px; }
+.camp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.camp-card {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 9px 11px 10px; font: inherit;
+  color: var(--ink); background: var(--graphite-2); border: 1px solid var(--etch); border-radius: 4px;
+  border-left: 3px solid var(--amber); cursor: pointer;
+}
+.camp-card[aria-disabled], .camp-milestone[aria-disabled] { cursor: default; }
+button.camp-card:hover:not(:disabled), button.camp-card:focus-visible { border-color: var(--amber); }
+.camp-card.stale { opacity: 0.55; border-left-color: var(--etch); }
+.camp-card.drift { border-left-color: var(--amber); border-style: dashed; border-left-style: solid; }
+.camp-top { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
+.camp-top em {
+  font-size: 9px; font-style: normal; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--etch); border-radius: 3px; padding: 0 4px; color: var(--ink-dim);
+}
+.camp-top .camp-stage { color: var(--ink-strong); }
+.camp-top .screen-gray { color: var(--grade-ok, var(--amber)); }
+.camp-top .screen-out { color: var(--neg); border-color: var(--neg); }
+.camp-top .camp-drift { color: var(--amber); border-color: var(--amber); }
+.camp-top .camp-stale { color: var(--ink-faint); border-style: dashed; }
+.camp-company { font-size: 15px; color: var(--ink-strong); }
+.camp-role { font-size: 12px; color: var(--ink); }
+.camp-next { font-size: 12.5px; color: var(--amber); font-variant-numeric: tabular-nums; }
+.camp-step { font-size: 11.5px; color: var(--ink-dim); }
+.camp-meta { font-size: 10.5px; color: var(--ink-faint); }
+.camp-milestone { grid-template-rows: auto; }
+.camp-note { margin: 2px 0; font-size: 11px; color: var(--ink-faint); }
+.camp-kind-screen, .camp-kind-interview { color: var(--amber) !important; border-color: var(--amber) !important; }
+.camp-kind-floor, .camp-kind-edge { color: var(--neg) !important; border-color: var(--neg) !important; }
+.dash-grid > .widget.kind-roles { min-height: 640px; }
+.dash-grid > .widget.kind-campaign { min-height: 420px; }
+
+/* the role card's expected-comp block: the likely rung's median, its neighbors, the basis */
+.role-comp { margin: 6px 0 4px; padding: 6px 0 4px; border-top: 1px solid rgba(255,255,255,0.12); border-bottom: 1px solid rgba(255,255,255,0.12); }
+.role-comp-head { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd100; }
+.role-comp-median { font-size: 15px; font-weight: 700; color: #fff; }
+.role-comp-median .pos { color: #1eff00; font-size: 11px; font-weight: 400; margin-left: 6px; }
+.role-comp-median .neg { color: #ff5a5a; font-size: 11px; font-weight: 400; margin-left: 6px; }
+.role-est { color: var(--ink-dim); font-style: italic; }
+
+/* VIZ ▸ travel · LIVE: a visit/trip schedule at full canvas — the Visits widget's component, themed */
+.viz-visit-schedule { padding: 4px 6px 12px; }
+.viz-visit-schedule .vsched-grid { min-width: 0; }

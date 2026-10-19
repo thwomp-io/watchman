@@ -17,6 +17,11 @@ class Opening(BaseModel):
     department: str = ""
     updated: str = ""  # provider's updated/published stamp, as given
     source: str  # greenhouse | ashby
+    # Delta mode: set when the scan is compared against the earlier persisted scans (the twins in
+    # discoveries/). `first_seen` = the date of the earliest scan that carried this posting URL;
+    # `new` = no earlier scan carried it. None = not yet compared (a live scan without --new).
+    first_seen: str = ""
+    new: bool | None = None
 
 
 class CompanyScan(BaseModel):

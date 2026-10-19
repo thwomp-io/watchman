@@ -34,7 +34,7 @@ describe("GatesBoard", () => {
   });
 
   it("renders TODAY for day-zero gates", () => {
-    render(<GatesBoard data={{ ...fixture, gates: [{ kind: "macro", label: "FOMC decision", date: "2026-01-15", days: 0, confirmed: true }] }} />);
+    render(<GatesBoard data={{ ...fixture, gates: [{ kind: "macro", symbol: null, label: "FOMC decision", date: "2026-01-15", days: 0, confirmed: true }] }} />);
     expect(screen.getByText("TODAY")).toBeInTheDocument();
   });
 

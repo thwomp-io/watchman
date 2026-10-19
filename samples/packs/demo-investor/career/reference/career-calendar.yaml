@@ -1,0 +1,6 @@
+# The career calendar — operator-authored milestones the Campaign tab counts down to (fictional sample).
+# A light watch: not searching, one yearly check-in on whether anything should change.
+milestones:
+  - {date: "2030-06-30", label: "Annual career review", kind: review}
+notes:
+  - "Sample persona — the dates and amounts are illustrative."

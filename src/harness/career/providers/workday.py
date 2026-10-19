@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 
-from harness._http import post_with_retry
+import httpx
+
+from harness._http import describe_http_error, post_with_retry
 from harness.career.models import Opening
 from harness.errors import ProviderError
 
@@ -35,7 +37,10 @@ def fetch_workday(
                 "searchText": term,
                 "appliedFacets": {},
             }
-            resp = post_with_retry(url, json_body=payload)
+            try:
+                resp = post_with_retry(url, json_body=payload)
+            except httpx.HTTPError as e:
+                raise ProviderError(f"workday {tenant}/{site}: {describe_http_error(e)}") from e
             if resp.status_code != 200:
                 raise ProviderError(f"workday {tenant}/{site}: HTTP {resp.status_code}")
             try:

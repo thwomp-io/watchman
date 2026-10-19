@@ -17,7 +17,7 @@ _LEGACY_ENV = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
 
 
 def _run_under_cp1252(code: str) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(# noqa: S603 — fixed argv, test-controlled input
+    return subprocess.run(  # noqa: S603 — fixed argv, test-controlled input
         [sys.executable, "-c", code],
         capture_output=True,
         env=_LEGACY_ENV,

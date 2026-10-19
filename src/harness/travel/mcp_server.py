@@ -122,6 +122,49 @@ def find_hotels(
 
 
 @mcp.tool()
+def explore_destinations(
+    origins: str = "",
+    month: int = 0,
+    duration: str = "week",
+    depart: str = "",
+    return_date: str = "",
+    travel_class: str = "economy",
+    stops: str = "any",
+    max_price: int | None = None,
+    to: str = "",
+    limit: int = 25,
+    refresh: bool = False,
+) -> dict[str, Any]:
+    """Where can we fly, and for how much (Google Travel Explore via SerpAPI): destinations with the
+    cheapest PER-PERSON fare from each origin (default home airport + hub), merged, cheapest first.
+    Exact dates (`depart` + optional `return_date`, YYYY-MM-DD) or flexible (`month` 1-12, 0 = next six
+    months; `duration` weekend|week|two-weeks). `stops` any|nonstop|1|2; `to` = a region
+    (caribbean|mexico|hawaii|central-america|south-america|europe|asia|japan|canada), a Google /m/ id,
+    or one airport IATA (default: Google's mostly-North-American picks). The avoid list is
+    excluded; corpus-profiled destinations carry their slugs.
+    **Quota: 1 SerpAPI search per origin** (24h cache) — use deliberately.
+    Returns {origins, dates, searches, cache_hits, notes, destinations:[{name, country, latitude,
+    longitude, corpus, fares:[{origin, price_usd, start_date, end_date, airport, stops,
+    flight_minutes, airline, link, hotel_price_usd}]}]}."""
+    return _svc().explore_destinations(
+        origins=[o.strip() for o in origins.split(",") if o.strip()] or None,
+        outbound=date.fromisoformat(depart) if depart else None,
+        return_=date.fromisoformat(return_date) if return_date else None,
+        month=month, duration=duration, travel_class=travel_class, stops=stops,
+        max_price=max_price, to=to or None, limit=limit, refresh=refresh,
+    ).model_dump(mode="json")
+
+
+@mcp.tool()
+def serpapi_quota() -> dict[str, Any]:
+    """The SerpAPI budget (searches left, usage, renewal date). Free — does not spend quota."""
+    from harness.travel.config.settings import get_settings
+    from harness.travel.providers.serpapi_explore_provider import account_quota
+
+    return account_quota(get_settings().serpapi_key)
+
+
+@mcp.tool()
 def read_preferences() -> dict[str, Any]:
     """Return the parsed travel-preferences digest (avoided airlines, lodging bar, home-airport pref)."""
     d = _svc().read_preferences()
@@ -195,6 +238,33 @@ def travel_active_decision() -> dict[str, Any]:
 
 
 @mcp.tool()
+def travel_bank(visit: str | None = None, kind: str = "all", scope: str = "visit") -> dict[str, Any]:
+    """A visit's idea bank as tiles: outings (schedule.json .bank) + restaurants
+    (restaurants.json) merged into one item list — label, group, area, drive_min, indoor, rating,
+    price, vault-relative image, links (maps/website/tickets/reservations), unmodeled keys in
+    `extra`. Default visit = the soonest live visit whose folder carries a bank; `kind` =
+    outings | restaurants | all. An honest empty shape when no live visit has a bank."""
+    return _svc().visit_bank(visit, kind, scope=scope).model_dump(mode="json")
+
+
+@mcp.tool()
+def travel_schedule(visit: str | None = None, weather: bool = True, scope: str = "visit") -> dict[str, Any]:
+    """A visit's schedule day by day: one entry per date with the planned items (each linked to
+    its bank entry when it names one), pinned markers, who's around (availability groups), and
+    the home-locale forecast with wet days flagged on the conditions thresholds — plus the
+    visit's bank. Default visit = the soonest live visit whose folder carries schedule.json."""
+    return _svc().visit_schedule(visit, weather=weather, scope=scope).model_dump(mode="json")
+
+
+@mcp.tool()
+def travel_banks(scope: str = "visit") -> dict[str, Any]:
+    """Every visit (scope="visit") or trip (scope="trip") as a picker entry: live soonest-first,
+    then past most-recent, each with cover photo, dates, countdown and counts (outings,
+    restaurants, photos, scheduled items); `default` = the one the console shows first."""
+    return _svc().trip_banks(scope).model_dump(mode="json")
+
+
+@mcp.tool()
 def travel_nudge(
     weeks: int = 26, top: int = 5, live: bool = True, include_taken: bool = False
 ) -> dict[str, Any]:
@@ -211,6 +281,8 @@ def travel_nudge(
         "nudges": [n.model_dump(mode="json") | {"line": n.line} for n in result["nudges"]],
         "skipped": result["skipped"],
         "note": result["note"],
+        "lanes": result["lanes"],
+        "decision_trip": result["decision_trip"],
     }
 
 
@@ -261,12 +333,23 @@ def travel_calendar(
 
 
 @mcp.tool()
-def list_trips(include_past: bool = False) -> list[dict[str, str]]:
+def list_trips(include_past: bool = False, someday: bool = False) -> list[dict[str, str]]:
     """The travel horizon — every upcoming trip + visit from the corpus `trip:` frontmatter blocks
     (corpus/travel/{trips,visits}/), countdown-ordered soonest-first. Each row: {when, date, status,
     kind (trip|visit), destination, anchor, who}. `include_past` appends completed/cancelled history
-    (most-recent first). The command-center spine — read-only, deterministic (no tag-guessing)."""
+    (most-recent first). `someday=True` returns the parked ideas (status `idea`) instead — never part
+    of the horizon. The command-center spine — read-only, deterministic (no tag-guessing)."""
+    if someday:
+        return _svc().trip_pipeline(date.today(), phase="someday")
     return _svc().trip_pipeline(date.today(), include_past=include_past)
+
+
+@mcp.tool()
+def travel_upcoming() -> dict[str, Any]:
+    """What's on the calendar: one card per live trip or visit, soonest first — {slug, kind, name,
+    window, days, when, who, status, cover, doc, decision}; undated live items and parked ideas
+    under `someday`. The Planning tab's top band."""
+    return _svc().planning_calendar().model_dump(mode="json")
 
 
 @mcp.tool()
@@ -417,11 +500,11 @@ def get_ferry(
     all_today: bool = False,
 ) -> dict[str, Any]:
     """Washington State Ferries from WSDOT (keyed-free). With `route` (a 'Departing-Arriving'
-    terminal pair, e.g. 'Seattle-Bainbridge Island'): today's sailing times for that route, plus — if `space`
+    terminal pair, e.g. 'Edmonds-Kingston'): today's sailing times for that route, plus — if `space`
     — the departing terminal's live drive-up space ('will it be full'), and — if `vessels` — the boats
     serving it (position/ETA/in-service). Without `route`: `space` returns every terminal's live space,
     `vessels` every vessel. `all_today` includes already-departed sailings. Times are ISO-8601 UTC
-    (convert to Pacific for display). Returns {route, sailings:[...], space:[...], vessels:[...]}.
+    (convert to local time for display). Returns {route, sailings:[...], space:[...], vessels:[...]}.
     The ferry-dependent-itinerary layer for the WA-regional ferry network."""
     return (
         _svc()

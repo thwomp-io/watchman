@@ -13,7 +13,9 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from harness._http import get_with_retry
+import httpx
+
+from harness._http import describe_http_error, get_with_retry
 from harness.career.models import Opening
 from harness.errors import ProviderError
 
@@ -24,10 +26,13 @@ _NUM = 50
 def fetch_eightfold(company: str, host: str, domain: str, terms: list[str]) -> list[Opening]:
     seen: dict[str, Opening] = {}
     for term in terms or [""]:
-        resp = get_with_retry(
-            _JOBS_URL.format(host=host),
-            params={"domain": domain, "start": 0, "num": _NUM, "query": term},
-        )
+        try:
+            resp = get_with_retry(
+                _JOBS_URL.format(host=host),
+                params={"domain": domain, "start": 0, "num": _NUM, "query": term},
+            )
+        except httpx.HTTPError as e:
+            raise ProviderError(f"eightfold {host}: {describe_http_error(e)}") from e
         if resp.status_code != 200:
             raise ProviderError(f"eightfold {host}: HTTP {resp.status_code}")
         try:

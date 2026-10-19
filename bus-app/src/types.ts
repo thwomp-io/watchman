@@ -129,6 +129,12 @@ export interface NewsItem {
   summary: string; // RSS body (content:encoded else description), raw/HTML; "" when headline-only
   category: string; // "markets" | "geopolitics" | "thesis" (feeds.yaml) — drives the chips
   holdings_hit: string[]; // held/watchlist symbols named in the title — the relevance badge + "my book" filter
+  // what the feed ships beyond the headline (absent on older payloads)
+  image_url?: string;
+  author?: string;
+  tags?: string[];
+  publisher?: string; // the outlet behind a Google News link
+  resolved_url?: string;
 }
 export interface WireDigest {
   items: NewsItem[];
@@ -155,6 +161,7 @@ export interface Widget {
   // seed at refresh (lock-step with the real book); `symbols` is the offline/error fallback.
   symbols_from?: string;
   columns?: string[]; // table widgets: explicit column subset/order (else first-8 auto-derived)
+  tickers?: string[]; // ticker widgets: rail symbols in display order (not `symbols`: that parameterizes)
   rows?: number; // grid-row span — a tall centerpiece panel (default 1)
   // Dashboard Studio: explicit grid placement in grid units (x = col start,
   // y = row start, w/h = spans). Absent = legacy span/rows dense-flow placement. Mirrors the rust
@@ -176,6 +183,8 @@ export interface Dashboard {
   group?: string; // nav grouping — dashboards sharing a group render as subtabs under it
   // Dashboard Studio: "default" (seeded, safe to migrate) | "user" (Studio-edited — never reseeded).
   owner?: string;
+  // Subtab position within its group (lower first; absent = after the ordered ones, lane order).
+  order?: number;
   widgets: Widget[];
 }
 

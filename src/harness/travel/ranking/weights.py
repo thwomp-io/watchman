@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-import yaml
 from pydantic import BaseModel, Field
 
 from harness.travel.config.settings import get_settings
+from harness.yamlio import load_yaml
 
 
 class FlightWeights(BaseModel):
@@ -73,6 +73,23 @@ class FollowedTeam(BaseModel):
     sport: str = "Football"  # genre tag
 
 
+class CenterpieceMarket(BaseModel):
+    """One team the game-first nudge pass follows: where its games are searched and which
+    destination card they land on. `city` is the Ticketmaster search city (the venue's city — a
+    team's arena can sit outside the metro's name, e.g. Inglewood); `nudge_as` is the registry slug
+    whose card the game rides. `weight: soft` scales the game's pull down (a team the user cares less
+    about — still surfaced, never filtered). `follow_away` fetches the team's full schedule by name
+    instead of by city: away games land on whichever market's city hosts them, and a home game in a
+    family window rides that family card's text."""
+
+    team: str  # the name as it appears in listings ("Warriors", "Bulls", "Cowboys")
+    league: str = "NBA"  # the Ticketmaster subgenre the games are filtered to
+    city: str
+    nudge_as: str
+    weight: Literal["normal", "soft"] = "normal"
+    follow_away: bool = False
+
+
 class EventWeights(BaseModel):
     """Sports/event-interest tiering. The `centerpiece_subgenres` (default NBA + NFL) are the leagues
     a game can justify building a trip around; every other league/event (MLB, soccer, F1, concerts,
@@ -83,6 +100,8 @@ class EventWeights(BaseModel):
 
     centerpiece_subgenres: list[str] = Field(default_factory=lambda: ["NBA", "NFL"])
     followed_teams: list[FollowedTeam] = Field(default_factory=list)
+    # the game-first nudge pass: teams whose games become GAME WEEKENDS cards (empty = no lane)
+    centerpiece_markets: list[CenterpieceMarket] = Field(default_factory=list)
 
     def tier_for(self, subgenre: str) -> Literal["centerpiece", "perk"]:
         tags = {s.strip().upper() for s in self.centerpiece_subgenres}
@@ -152,6 +171,35 @@ class NudgeWeights(BaseModel):
     weather_clear: float = 8.0  # in-horizon forecast mostly dry/mild
     weather_wet: float = -8.0  # in-horizon forecast mostly wet
 
+    # --- the horizon axis: three lanes beside the weekend engine ---
+    # FAMILY windows: holidays (name substrings, case-insensitive) the user spends at/with home —
+    # never nudged as escapes. Empty by default (the engine is generalized; the preference is the
+    # user's, authored in the corpus weights). `family_note` is the one practical line a family
+    # window surfaces when set (logistics, not a destination); unset = the window is just skipped.
+    family_windows: list[str] = Field(default_factory=list)
+    family_note: str = ""
+    # LONG-LEAD lane: 5-9-night blocks 3-12 months out (holiday-anchored weeks + open weeks). The
+    # per-night friction forgiveness already lets long-haul compete; the reach bonus is what makes
+    # the lane FOR the far destinations — without it the home-airport ring wins every week block too.
+    long_lead_min_days: int = 90
+    long_lead_max_days: int = 365
+    long_lead_top: int = 3
+    games_top: int = 8  # GAME WEEKENDS lane: cards surfaced (one per city, its best game weekend)
+    games_soft_factor: float = 0.6  # a `weight: soft` market's game counts this share of a centerpiece
+    games_per_window: int = 2  # at most this many game cards share one weekend (opening night
+    #                            otherwise fills the lane — every market plays it)
+    long_lead_reach: float = 10.0  # flight beyond short_flight_hours: "far enough to need a week"
+    long_lead_far_reach: float = 5.0  # extra beyond far_reach_hours (the 10h-class build-towards)
+    far_reach_hours: float = 6.0
+    # HORIZON lane: the worth-a-look cards — season-shaped, not date-shaped. Novelty (never on
+    # the trip calendar) + reach + screen-CALIBRATION (an in-screen destination scores UP here,
+    # surfaced with its data in a calibration line rather than hidden — the opposite sign
+    # from the weekend lane's mild penalty).
+    horizon_cards: int = 2
+    horizon_novelty: float = 15.0
+    horizon_reach: float = 10.0
+    horizon_calibration: float = 5.0
+
     def flight_penalty_per_hour(self, nights: int) -> float:
         if nights <= 2:
             return self.flight_penalty_per_hour_2n
@@ -208,5 +256,5 @@ def load_weights(path: Path | None = None) -> WeightConfig:
     # still wins (the no-pack default of `weights_path` is the packaged file, so callers passing
     # nothing are unchanged when no pack is loaded).
     path = path or get_settings().weights_path
-    data = yaml.safe_load(path.read_text())
+    data = load_yaml(path.read_text())
     return WeightConfig.model_validate(data)

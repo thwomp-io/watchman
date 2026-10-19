@@ -1,4 +1,4 @@
-// Interactive food bank (v2) — the `food-bank` type ({title,
+// Interactive food bank — the `food-bank` type ({title,
 // groups:[{key, label}], restaurants:[{name, group, area?, cuisine?, price?, status?, meals?,
 // hostfit?, confirm?, note?, links?:[{label,url}], ...}]}). Grouped card grid; hover a card →
 // the glance tip (fit line + source links, sticky via the hover-bridge); click → the full

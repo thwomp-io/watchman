@@ -3,7 +3,7 @@
 Two kinds, each sole + behind its protocol: **market data** (Alpaca — free tier: real-time IEX +
 15-min-delayed SIP) and **fundamentals** (EDGAR — keyless, UA-only). The factories keep call sites
 provider-agnostic so a viable alternative could slot in later without touching the service or
-adapters. READ-ONLY by design — no execution/trading provider here
+adapters. READ-ONLY by design — no execution/trading provider here.
 """
 
 from __future__ import annotations

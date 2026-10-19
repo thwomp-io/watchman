@@ -34,10 +34,15 @@ The harness is one engine behind three surfaces. Know which to reach for:
    command-by-command; you help the user read it. Its zones:
    - **INBOX** — notifications from the standing agents (day moves, order-fill proximity, scan deltas,
      macro-event proximity, filings), triaged into severity bands; an `info` context-stream skims beneath
-     the actionable ones. Each signal can deep-link to the relevant doc / chart / dashboard.
+     the actionable ones. Each signal can deep-link to the relevant doc / chart / dashboard. The status bar
+     on top carries each standing agent as a chip (red = degraded; click for its vitals). The catalyst wire
+     reads like a news list — one row per story with every ticker it was filed under, the outlet, the
+     publish age — and an opened catalyst reads like an article: outlet, publish time, **Open original** to
+     the publisher's page, the lead image, the summary (marked read on open; j/k to move). Quote and
+     option-chain pages are filtered out at ingest and counted in the band's footer, never silently lost.
    - **DASH** — the lane dashboards (grouped tabs: Finance ▸ Core / Market / Tickets / News / Compare /
-     Prints / Projections / Holdings / Plans · Travel ▸ Planning / Landscape / Conditions / Calendar /
-     Big Calendar / Visits · Career · Ops ▸ Backlog). Data widgets self-refresh off `hn <lane> … --json`;
+     Prints / Projections / Holdings / Plans · Travel ▸ Planning / Trips / Visits / Calendar /
+     Big Calendar / Landscape / Conditions · Career · Ops ▸ Backlog). Data widgets self-refresh off `hn <lane> … --json`;
      narrative panels read agent-written docs off disk. No model is ever in the render loop (see the
      determinism discipline below).
    - **VIZ** — interactive D3 over the corpus's own viz-data JSONs (positioning scatters, matrices,
@@ -131,4 +136,4 @@ and the console picks it up — you never wire yourself into the render loop.
    shortlist`; `hn travel trips`. Read the INBOX; open a VIZ; browse the VAULT.
 3. **Then operate:** answer the user's questions with the right one or two verbs, interpret the output,
    and — when they want their *own* data — hand off to the corpus-operator skill to build their pack.
-   See the repo `README` for the full lane/verb surface and `docs/` for the per-lane guides.
+   Run `hn --help` for the full lane/verb surface and see `docs/` for the per-lane guides.

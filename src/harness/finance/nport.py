@@ -8,7 +8,7 @@ reference yaml (finance/reference/<fund>-holdings.yaml) while PRESERVING per-nam
 (sector / us / note) — plus a roster diff vs the prior file (entries/exits/weight shifts = the
 manager's hand made visible — e.g. a top holding's weight shifting sharply between filings).
 
-UA posture (probed 2026-07-13): efts.sec.gov accepts the harness's non-PII UA; **www.sec.gov/Archives
+UA posture: efts.sec.gov accepts the harness's non-PII UA; **www.sec.gov/Archives
 WAF-requires an email-style contact UA** (SEC fair-access policy). Shipping a contact would violate
 the non-PII default (cf. news_provider's same finding), so the archive fetch reads
 ``HARNESS_SEC_CONTACT`` from the environment (the gitignored .env is its home, same as the Alpaca
@@ -67,7 +67,7 @@ def _sec_contact_headers() -> dict[str, str]:
     if not contact:
         raise ProviderError(
             "SEC archive fetches require an email-contact User-Agent (SEC fair-access policy; "
-            "www.sec.gov WAF-blocks anonymous UAs — probed 2026-07-13). Set HARNESS_SEC_CONTACT "
+            "www.sec.gov WAF-blocks anonymous UAs). Set HARNESS_SEC_CONTACT "
             "in the harness .env (gitignored): HARNESS_SEC_CONTACT=<your contact address>. "
             "The contact is sent ONLY to www.sec.gov, never shipped."
         )

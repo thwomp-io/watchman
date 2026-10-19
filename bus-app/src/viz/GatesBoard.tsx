@@ -12,13 +12,9 @@
 import type React from "react";
 import { useCatColors } from "./common";
 
-export interface GateItem {
-  kind: string; symbol?: string | null; label: string;
-  date?: string | null; days?: number | null; confirmed?: boolean;
-}
-export interface GatesData {
-  as_of: string; horizon_days: number; gates: GateItem[]; notes?: string[];
-}
+import type { GateItem, GatesBoard as GatesData } from "../generated/contracts";
+
+export type { GateItem, GatesData };
 
 const FILL_FLOOR = 0.3; // min bar-length share — every gate reads as a block, never a sliver
 const HOT_DAYS = 2;     // ≤ this many days out = hot (glow + amber count)

@@ -18,7 +18,9 @@ samples/packs/
     finance/           # per-lane data; present only for the lanes this pack provides
       portfolio.yaml
     travel/            # (e.g.) weights.yaml, preferences.md, destinations/…
-    career/            # (e.g.) watchlist.yml, …
+    career/            # (e.g.) watchlist.yml, comp/ (ladders), pool/ (surveys), reference/ (catalogue)
+    config/harness.yaml  # the persona's overlay (display names, home city, the comp anchor)
+    dashboards/        # the persona's whole console (one JSON per tab; regenerated from the compiled defaults)
 ```
 
 - **`pack.yaml`** declares the pack's identity, the `lanes` it provides, and whether it's the `default`.

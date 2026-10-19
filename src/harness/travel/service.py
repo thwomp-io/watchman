@@ -3,21 +3,30 @@
 from __future__ import annotations
 
 import time
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+from harness.paths import cache_file, harness_cache_dir
+from harness.travel import bank as _bank
+from harness.travel.bank import VisitBank
 from harness.travel.conditions import ConditionsReport, compute_flags
 from harness.travel.config.settings import get_settings
 from harness.travel.corpus.reader import CorpusReader, PreferencesDigest, TripPlan, _resolve_folder_note
 from harness.travel.corpus.reference import read_reference
-from harness.travel.media import build_contact_sheet, dest_dir_parts, store_image
+from harness.travel.imaging import ShrinkReport, shrink_tree
+from harness.travel.media import archive_photo, build_contact_sheet, dest_dir_parts, store_image
 from harness.travel.models import (
+    DONE_STATUSES,
+    PARKED_STATUSES,
     AirQualityReport,
     CityEvents,
     CountryFacts,
     Eatery,
     EventResult,
+    ExploreDestination,
+    ExploreQuery,
+    ExploreSearch,
     FerryReport,
     FlightOffer,
     FlightQuery,
@@ -27,6 +36,7 @@ from harness.travel.models import (
     GeoLocation,
     HighwayAlert,
     Holidays,
+    HotelOffer,
     HotelQuery,
     HotelSearch,
     ImageResult,
@@ -38,6 +48,7 @@ from harness.travel.models import (
     TravelTime,
     Trip,
     WeatherForecast,
+    is_live,
 )
 from harness.travel.providers import (
     get_air_quality_provider,
@@ -56,6 +67,69 @@ from harness.travel.providers.geocoding import geocode, geocode_label
 from harness.travel.providers.wsdot_provider import normalize_road
 from harness.travel.ranking.ranker import rank_candidates
 from harness.travel.ranking.weights import WeightConfig, load_weights
+from harness.travel.schedule import VisitSchedule
+
+
+def _hero_image(doc: Path) -> str | None:
+    """The first image a trip/visit note embeds (`![[travel/…/x.jpg…]]`) — its curated hero, the
+    picker's cover. None when the note embeds no image."""
+    import re as _re
+
+    try:
+        text = doc.read_text()
+    except OSError:
+        return None
+    m = _re.search(r"!\[\[([^\]|#]+\.(?:jpe?g|png|webp))", text, _re.IGNORECASE)
+    return m.group(1).strip() if m and ".." not in m.group(1) else None
+
+
+def _same_place(display: str, label: str) -> bool:
+    """A nudge destination and a decision-radar candidate name the same place — case-insensitive,
+    either containing the other ("Las Vegas" ~ "Las Vegas", "San Diego" ~ "San Diego (La Jolla)")."""
+    d, lbl = display.strip().lower(), label.strip().lower()
+    return bool(d and lbl) and (d == lbl or d in lbl or lbl in d)
+
+
+def _short_date(d: date) -> str:
+    """'Fri 1/8' — the compact window grammar of the Planning cards."""
+    return f"{d.strftime('%a')} {d.month}/{d.day}"
+
+
+def _trip_name(t: Trip) -> str:
+    """A trip's short name for a header: its title's lead clause without the leading emoji
+    ("🏖 Beach weekend — Sat May 2 · …" → "Beach weekend"), else the anchor, else the slug."""
+    lead = (t.title or "").split(" — ")[0].split(" · ")[0]
+    start = next((i for i, ch in enumerate(lead) if ch.isalnum()), len(lead))
+    return lead[start:].strip() or t.anchor or t.slug
+
+
+def _rank_candidates(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """A compare radar's candidates ranked by their axis total (ties keep the authored order), each
+    with its strongest and weakest axis — the list beside the Planning radar, computed here so the
+    console never re-derives it."""
+    axes = [str(a) for a in data.get("axes") or []]
+    rows: list[dict[str, Any]] = []
+    for c in data.get("candidates") or []:
+        if not isinstance(c, dict):
+            continue
+        vals = [float(v) for v in c.get("values") or [] if isinstance(v, (int, float))]
+        if not vals or len(vals) != len(axes):
+            continue
+        hi, lo = vals.index(max(vals)), vals.index(min(vals))
+        total = sum(vals)
+        rows.append({
+            "label": str(c.get("label", "")),
+            "total": int(total) if total.is_integer() else round(total, 1),
+            "strongest": axes[hi],
+            "weakest": axes[lo],
+        })
+    rows.sort(key=lambda r: r["total"], reverse=True)
+    return rows
+
+
+def _auto(slug: str | None) -> str | None:
+    """The console's picker sends "auto" (or nothing) for 'the default visit/trip'."""
+    return None if slug is None or slug.strip() in ("", "auto") else slug.strip()
 
 
 class TravelService:
@@ -193,6 +267,75 @@ class TravelService:
             vacation_rentals=vacation_rentals,
         )
         return provider.search_hotels(query, refresh=refresh)
+
+    def explore_destinations(
+        self,
+        *,
+        origins: list[str] | None = None,
+        outbound: date | None = None,
+        return_: date | None = None,
+        month: int = 0,
+        duration: str = "week",
+        travel_class: str = "economy",
+        stops: str = "any",
+        max_price: int | None = None,
+        to: str | None = None,
+        limit: int = 25,
+        refresh: bool = False,
+    ) -> ExploreSearch:
+        """Where can we fly, and for how much: Google Travel Explore from each origin (default the
+        home airport + the hub), merged per destination, cheapest first. Fares are per person;
+        the avoid list is excluded in the request. Destinations with a profile in the corpus carry
+        its slug (matched by airport). 1 search per origin; a 24h cache makes re-views free."""
+        from harness.travel.providers.serpapi_explore_provider import build_serpapi_explore_provider
+
+        fw = self.weights.flight
+        origins = [o.upper() for o in (origins or [fw.home_airport, fw.comparison_airport]) if o]
+        if not origins:
+            raise ProviderError("no origin: pass --from or set flight.home_airport in weights.yaml")
+        provider = build_serpapi_explore_provider(get_settings().serpapi_key)
+        by_id: dict[str, ExploreDestination] = {}
+        notes: list[str] = []
+        unpriced = 0
+        for org in origins:
+            q = ExploreQuery(
+                origin=org, outbound_date=outbound, return_date=return_, month=month,
+                duration=duration, travel_class=travel_class, stops=stops, max_price=max_price,
+                to=to, exclude_airlines=list(fw.airline_avoid_iata),
+            )
+            try:
+                rows = provider.explore(q, refresh=refresh)
+            except ProviderError as e:
+                notes.append(str(e))
+                continue
+            for d in rows:
+                if d.fares[0].price_usd is None:
+                    unpriced += 1  # Google lists the place with no fare for these dates
+                    continue
+                key = d.destination_id or d.name
+                if key in by_id:
+                    by_id[key].fares.extend(d.fares)
+                else:
+                    by_id[key] = d
+        airports: dict[str, list[str]] = {}
+        for slug, iata in self.weights.destination_airports.items():
+            airports.setdefault(str(iata).upper(), []).append(slug)
+        for d in by_id.values():
+            d.fares.sort(key=lambda f: (f.price_usd or 0, origins.index(f.origin)))
+            d.corpus = sorted({s for f in d.fares for s in airports.get(f.airport.upper(), [])})
+        dests = sorted(by_id.values(), key=lambda d: (d.best.price_usd or 0.0) if d.best else 0.0)
+        if unpriced:
+            notes.append(f"{unpriced} listed place(s) across the origins had no fare for these dates "
+                         "(left out)")
+        if outbound:
+            dates = f"{outbound} → {return_}" if return_ else f"{outbound} one way"
+        else:
+            dates = f"{date(2000, month, 1):%b} · {duration}" if month else f"next 6 months · {duration}"
+        return ExploreSearch(
+            origins=origins, dates=dates, searches=provider.search_count,
+            cache_hits=provider.cache_hits, destinations=dests[:limit] if limit else dests,
+            notes=notes,
+        )
 
     def write_lodging_report(
         self,
@@ -363,10 +506,14 @@ class TravelService:
         *,
         classification: str | None = None,
         provider_name: str = "ticketmaster",
+        radius_mi: int = 0,
     ) -> list[CityEvents]:
         """Scan multiple cities for events in a window — the carved multi-city path (replaces
         ad-hoc scanning). Fails fast on a missing key (a config error, not per-city), but a per-city
-        transient error yields that city empty rather than killing the scan. Deduped per city."""
+        transient error yields that city empty rather than killing the scan. Deduped per city.
+        `radius_mi` > 0 searches a radius around each place's coordinates instead of matching the
+        city name (a suburb home base has no venues of its own); a place that won't geocode
+        falls back to the name match."""
         if not get_settings().ticketmaster_key:
             raise ProviderError(
                 "TICKETMASTER_KEY is not set — cannot scan events. Add it to .env "
@@ -375,8 +522,14 @@ class TravelService:
         provider = get_event_provider(provider_name)
         out: list[CityEvents] = []
         for city in cities:
+            near = None
+            if radius_mi > 0:
+                loc = geocode(city)
+                if loc is not None:
+                    near = (loc.latitude, loc.longitude, radius_mi)
             try:
-                found = provider.search_events(city, start, end, classification=classification)
+                found = provider.search_events(city, start, end, classification=classification,
+                                               near=near)
             except (ProviderError, RuntimeError):
                 found = []  # per-city transient — keep the rest of the scan
             out.append(CityEvents(city=city, events=self.dedupe_events(found)))
@@ -433,77 +586,252 @@ class TravelService:
         top: int = 5,
         live: bool = True,
         include_taken: bool = False,
+        lanes: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Windows × destinations → the top proactive nudges ("You could be in X on Y because Z").
+        """Windows × destinations → the proactive nudges, across the horizon axis.
 
-        Deterministic two-phase: STATIC scores every enumerated window ×
-        every nudge-registry destination from corpus + the free reference almanac; the top pairs then
-        earn the live ENRICH (Ticketmaster events per distinct city×window — free-tier; Open-Meteo
-        weather for windows inside the ~16-day forecast horizon). `live=False` skips the enrich
-        (offline/deterministic-only). Windows already occupied by a live trip are skipped (a booked
-        weekend needs no nudge) unless `include_taken`. Returns {nudges, windows, skipped, note} —
-        every nudge carries its full component breakdown (explainable by construction)."""
+        Four lanes, each a weight-shaped view of the same registry:
+          weekend   — STATIC scores every enumerated weekend × every registry destination from
+                      corpus + the free almanac; the top pairs earn the live ENRICH (Ticketmaster
+                      events per distinct city×window — free tier; Open-Meteo weather inside ~16d);
+          long-lead — 7-8-night blocks 3-12 months out (holiday-anchored + open weeks), scored
+                      with the reach bonus so the far destinations win the windows they need;
+                      events-enriched, no forecast (beyond the horizon by construction);
+          horizon   — season-shaped worth-a-look cards: never-tripped + screen-calibrated
+                      destinations, corpus-only;
+          family    — holidays the corpus names as family time: never escape-nudged; one
+                      authored practical card per family window when `family_note` is set.
+        `live=False` skips the enrich. Windows a live trip occupies are skipped unless
+        `include_taken`. `top` bounds the weekend lane; long-lead/horizon counts come from the
+        nudge weights. Returns {nudges, windows, skipped, note, lanes} — every nudge carries its
+        lane + full component breakdown (explainable by construction)."""
         from harness.travel import nudge as _n
 
+        nw = self.weights.nudge
+        want = set(lanes) if lanes else {"weekend", "games", "long-lead", "horizon", "family"}
         reference = read_reference(self.reader._root, self.weights.events.followed_teams)
-        windows = _n.enumerate_windows(reference, today, horizon_days=horizon_days)
+        weekends = _n.enumerate_windows(
+            reference, today, horizon_days=horizon_days, family_windows=nw.family_windows
+        )
+        blocks = _n.enumerate_blocks(
+            reference, today, min_days=nw.long_lead_min_days, max_days=nw.long_lead_max_days,
+            family_windows=nw.family_windows,
+        )
+        skipped: list[str] = []
+
+        # family windows are enumerated, never escape-scored — split them out of both shapes.
+        # ONE card per holiday: the weekend shape and the week block share an anchor (New Year's
+        # Day extends the 12/31 weekend AND anchors the 12/26 block) — keyed by anchor, weekend first
+        family_wins = [w for w in weekends if w.kind == "family"]
+        weekends = [w for w in weekends if w.kind != "family"]
+        fam_dates = {w.anchor_date for w in family_wins}
+        for w in blocks:
+            if w.kind == "family" and w.anchor_date not in fam_dates:
+                family_wins.append(w)
+                fam_dates.add(w.anchor_date)
+        blocks = [w for w in blocks if w.kind != "family"]
+        for w in family_wins:
+            skipped.append(f"{w.label} — family window ({w.anchor})")
 
         # A window a live trip already occupies is taken — nudging it would nag a done decision.
-        active = [
-            t
-            for t in self.reader.scan_trips()
-            if t.status not in ("completed", "cancelled") and t.start and t.end
-        ]
-        skipped: list[str] = []
-        if not include_taken:
-            open_windows = []
-            for w in windows:
+        trips = self.reader.scan_trips()
+        active = [t for t in trips if is_live(t.status) and t.start and t.end]
+
+        def _open(wins: list[_n.NudgeWindow]) -> list[_n.NudgeWindow]:
+            if include_taken:
+                return wins
+            kept = []
+            for w in wins:
                 hit = next(
                     (t for t in active if t.start and t.end and t.start <= w.end and w.start <= t.end),
                     None,
                 )
                 if hit is None:
-                    open_windows.append(w)
+                    kept.append(w)
                 else:
-                    skipped.append(f"{w.label} — {hit.slug} already on the calendar")
-            windows = open_windows
+                    skipped.append(f"{w.label} — {_trip_name(hit)} already on the calendar")
+            return kept
 
+        weekends, blocks = _open(weekends), _open(blocks)
+
+        # the game-first pre-pass: every followed market's games across the horizon (live only — it
+        # is a Ticketmaster read, cached for the day)
+        from harness.travel import games as _g
+
+        markets = self.weights.events.centerpiece_markets
+        games: list[_g.MarketGame] = []
+        games_note = ""
+        if live and markets and want & {"games", "family"}:
+            games, games_note = self._game_prepass(today, horizon_days)
         slugs = list(self.weights.destination_nudge) or list(self.weights.destination_airports)
-        pairs = [_n.score_static(slug, w, self.weights, reference) for w in windows for slug in slugs]
-        pairs.sort(key=lambda c: c.score, reverse=True)
-
-        note = ""
-        if live:
-            enrich = pairs[: max(top * 3, 12)]
-            note = self._nudge_enrich(enrich, today)
-            pairs.sort(key=lambda c: c.score, reverse=True)
-
-        # One nudge per destination AND per window keeps the digest varied (top pairs otherwise
-        # collapse into one strong destination × every window it wins).
-        out: list[_n.NudgeCandidate] = []
-        seen_slug: set[str] = set()
-        seen_window: set[str] = set()
         dest_root = self.reader._root / "destinations"
-        for cand in pairs:
-            wkey = cand.window.start.isoformat()
-            if cand.slug in seen_slug or wkey in seen_window:
-                continue
-            _n.assemble_reason(cand, self.weights)
+        seen_slug: set[str] = set()
+        out: list[_n.NudgeCandidate] = []
+
+        def _link(cand: _n.NudgeCandidate) -> None:
             # the console's vault deep-link: the destination folder-note, vault-relative
             doc_path = _resolve_folder_note(dest_root, cand.slug)
             if doc_path.exists():
                 cand.doc = f"travel/destinations/{doc_path.relative_to(dest_root)}"
-            out.append(cand)
-            seen_slug.add(cand.slug)
-            seen_window.add(wkey)
-            if len(out) >= top:
-                break
+                cand.image = _hero_image(doc_path) or ""
+
+        def _pick(pairs: list[_n.NudgeCandidate], limit: int) -> list[_n.NudgeCandidate]:
+            # One nudge per destination (across ALL lanes) AND per window keeps the digest varied
+            # (top pairs otherwise collapse into one strong destination × every window it wins).
+            chosen: list[_n.NudgeCandidate] = []
+            seen_window: set[str] = set()
+            for cand in pairs:
+                wkey = cand.window.start.isoformat()
+                if cand.slug in seen_slug or wkey in seen_window:
+                    continue
+                _n.assemble_reason(cand, self.weights)
+                _link(cand)
+                chosen.append(cand)
+                seen_slug.add(cand.slug)
+                seen_window.add(wkey)
+                if len(chosen) >= limit:
+                    break
+            return chosen
+
+        note = ""
+        notes: list[str] = []
+        if "weekend" in want:
+            pairs = [_n.score_static(s, w, self.weights, reference) for w in weekends for s in slugs]
+            pairs.sort(key=lambda c: c.score, reverse=True)
+            if live:
+                notes.append(self._nudge_enrich(pairs[: max(top * 3, 12)], today))
+                pairs.sort(key=lambda c: c.score, reverse=True)
+            out.extend(_pick(pairs, top))
+
+        if "games" in want and games:
+            # one card per city: its best game weekend that no weekend card already shows
+            def _overlaps(slug: str, w: _n.NudgeWindow) -> bool:
+                return any(c.slug == slug and c.window.start <= w.end and w.start <= c.window.end
+                           for c in out)
+
+            pool: list[_n.NudgeCandidate] = []
+            for g in games:
+                try:
+                    gd = date.fromisoformat(g.event.local_date)
+                except ValueError:
+                    continue
+                gw = _g.game_window(gd, weekends)
+                if gw is None or _overlaps(g.slug, gw):
+                    continue
+                pool.append(_g.game_candidate(g, gw, self.weights, reference))
+            # greedy by score: a city once, a weekend at most `games_per_window` times — so each city
+            # still gets its best OPEN game weekend, and the lane spreads across the season
+            used: set[str] = set()
+            per_window: dict[date, int] = {}
+            for cand in sorted(pool, key=lambda c: c.score, reverse=True):
+                if len(used) >= nw.games_top:
+                    break
+                # a weekend is its Saturday — a Thursday-stretched window is still that weekend
+                sat = cand.window.start + timedelta(days=(5 - cand.window.start.weekday()) % 7)
+                if cand.slug in used or per_window.get(sat, 0) >= nw.games_per_window:
+                    continue
+                used.add(cand.slug)
+                per_window[sat] = per_window.get(sat, 0) + 1
+                _link(cand)
+                out.append(cand)
+
+        if "long-lead" in want and nw.long_lead_top > 0:
+            pairs = [
+                _n.score_static(s, w, self.weights, reference, lane="long-lead")
+                for w in blocks
+                for s in slugs
+            ]
+            pairs.sort(key=lambda c: c.score, reverse=True)
+            if live:
+                # events only — the forecast can't reach a block; the enrich guards the horizon itself
+                notes.append(self._nudge_enrich(pairs[: max(nw.long_lead_top * 2, 6)], today))
+                pairs.sort(key=lambda c: c.score, reverse=True)
+            out.extend(_pick(pairs, nw.long_lead_top))
+
+        if "horizon" in want and nw.horizon_cards > 0:
+            # "tripped" = the destination shows up on ANY trip record (planned or done) — a
+            # display-name match against the trip's free-text destination, the corpus's own grain
+            seen_text = " ".join(f"{t.destination} {t.title} {t.slug}".lower() for t in trips)
+            cands = []
+            for s in slugs:
+                if s in seen_slug:
+                    continue
+                tripped = _n._display(s).lower() in seen_text or s in seen_text
+                c = _n.horizon_candidate(s, self.weights, today, tripped=tripped)
+                if c is not None:
+                    cands.append(c)
+            cands.sort(key=lambda c: c.score, reverse=True)
+            out.extend(_pick(cands, nw.horizon_cards))
+
+        if "family" in want:
+            for w in sorted(family_wins, key=lambda w: w.start):
+                card = _n.family_card(w, self.weights)
+                if card is None:
+                    continue
+                # a followed team's HOME game inside a family window rides the family card — it is
+                # never an escape nudge
+                home = [
+                    g for g in games
+                    if g.market.follow_away and g.home
+                    and w.start.isoformat() <= g.event.local_date <= w.end.isoformat()
+                ]
+                if home:
+                    card.events = [g.event for g in home]
+                    card.reason += "".join(
+                        f" · {_g.matchup(g.event, markets)} at {g.event.venue}, {_g.when_label(g.event)}"
+                        for g in home
+                    )
+                out.append(card)
+
+        # flag the nudges the open decision is already weighing (its radar candidates, by name)
+        decision = self.active_decision()
+        labels = [
+            str(c.get("label", "")) for c in decision.get("candidates", []) if isinstance(c, dict)
+        ]
+        for c in out:
+            if c.lane != "family":
+                c.in_decision = any(_same_place(c.display, lbl) for lbl in labels)
+
+        notes.append(games_note)
+        note = "; ".join(n for n in notes if n)
+        lanes_count: dict[str, int] = {}
+        for c in out:
+            lanes_count[c.lane] = lanes_count.get(c.lane, 0) + 1
         return {
             "nudges": out,
-            "windows": windows,
+            "windows": weekends + blocks,
             "skipped": skipped,
             "note": note,
+            "lanes": lanes_count,
+            "decision_trip": decision.get("trip", ""),
         }
+
+    def _game_prepass(self, today: date, horizon_days: int) -> tuple[list[Any], str]:
+        """Every followed market's centerpiece games over the horizon, each placed on the
+        registry card it rides — one Ticketmaster search per market, cached for the day. A market
+        whose search fails is named in the note (a partial result never reads as a clean empty)."""
+        from harness.travel import games as _g
+
+        markets = self.weights.events.centerpiece_markets
+        if not get_settings().ticketmaster_key:
+            return [], "game weekends skipped (TICKETMASTER_KEY is not set)"
+        provider = get_event_provider("ticketmaster")
+        cache = harness_cache_dir() / "games"
+        start, end = today, today + timedelta(days=horizon_days)
+        out: list[_g.MarketGame] = []
+        failed: list[str] = []
+        for m in markets:
+            try:
+                found = _g.fetch_market_games(provider, m, start, end, cache_dir=cache, today=today)
+            except ProviderError:
+                failed.append(m.team)
+                continue
+            for e in found:
+                g = _g.place_game(e, m, markets)
+                if g is not None and g.slug in self.weights.destination_nudge:
+                    out.append(g)
+        note = f"game weekends: no schedule for {', '.join(failed)}" if failed else ""
+        return out, note
 
     def _nudge_enrich(self, cands: list[Any], today: date) -> str:
         """Live enrich for the static top pairs: TM events per DISTINCT (city, window) + weather for
@@ -554,9 +882,8 @@ class TravelService:
         Honest empty radar shape when no live trip has a compare file."""
         import json as _json
 
-        done = {"completed", "cancelled"}
         live = sorted(
-            (t for t in self.reader.scan_trips() if t.status not in done), key=lambda t: t.sort_date
+            (t for t in self.reader.scan_trips() if is_live(t.status)), key=lambda t: t.sort_date
         )
         vault_root = self.reader._root.parent
         for t in live:
@@ -571,6 +898,15 @@ class TravelService:
             data = _json.loads(data_path.read_text())
             if isinstance(data, dict):
                 data.setdefault("trip", t.slug)
+                data["trip_name"] = _trip_name(t)
+                data["trip_kind"] = t.kind
+                data["start"] = t.start.isoformat() if t.start else None
+                data["end"] = t.end.isoformat() if t.end else None
+                data["window"] = (
+                    f"{_short_date(t.start)} → {_short_date(t.end)}" if t.start and t.end
+                    else (_short_date(t.start) if t.start else t.window)
+                )
+                data["ranked"] = _rank_candidates(data)
                 return data
         return {
             "title": "Active decision — no live trip carries a compare radar yet",
@@ -578,26 +914,255 @@ class TravelService:
             "candidates": [],
             "max": 5,
             "trip": "",
+            "ranked": [],
         }
 
+    def visit_bank(
+        self, slug: str | None = None, kind: str | None = None, *, scope: str = "visit"
+    ) -> VisitBank:
+        """The Visits/Trips tab's tile source: the soonest live visit (or trip, by `scope`) whose
+        folder carries an outings and/or restaurant bank — or `slug` — merged into one item
+        contract (`travel.bank`). Corpus-driven: no slug lives in dashboard config; the console's
+        picker passes one, or "auto" for the default."""
+        slug = _auto(slug)
+        vault_root = self.reader._root.parent
+        trip = _bank.resolve_visit(self.reader.scan_trips(), vault_root, slug, scope)
+        if trip is None:
+            if slug:
+                raise ValueError(f"no trip or visit named {slug!r}")
+            return _bank.empty_bank()
+        return _bank.build_bank(trip, vault_root, _bank.bank_kind(kind))
+
+    def visit_bank_enrich(
+        self, slug: str | None = None, *, scope: str = "visit", dry_run: bool = True,
+        refresh: bool = False, cached_only: bool = False,
+    ) -> dict[str, Any]:
+        """Hours, booking/order links, phone, coordinates and place ids for a bank's places
+        (`travel.bank_enrich`) — from the cache for free, one search per uncached place."""
+        from harness.travel import bank_enrich as _be
+        from harness.travel.providers.food_provider import SerpApiLocalFoodProvider
+
+        bank = self.visit_bank(slug, scope=scope)
+        if not bank.visit:
+            raise ValueError(f"no live {scope} carries a bank")
+        trip = next(t for t in self.reader.scan_trips() if t.slug == bank.visit)
+        place = self.weights.conditions.home if trip.kind == "visit" else trip.destination
+        loc = self.geocode_place(place) if place else None
+        center = (loc.latitude, loc.longitude) if loc else (0.0, 0.0)
+        provider = SerpApiLocalFoodProvider(get_settings().serpapi_key)
+        run = _be.enrich(
+            bank, self.reader._root.parent, provider, center, dry_run=dry_run, refresh=refresh,
+            cached_only=cached_only,
+        )
+        return run.as_dict()
+
+    def visit_bank_photos(
+        self,
+        slug: str | None = None,
+        kind: str | None = None,
+        *,
+        ids: set[str] | None = None,
+        per_item: int = 8,
+        refresh: bool = False,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
+        """Fetch per-item photo galleries for a visit's bank (`travel.bank_photos`): QUOTA — up to
+        2 SerpAPI searches per item (place lookup + gallery), fewer when the place is already in
+        the sidecar or the provider cache. `dry_run` prices it without spending."""
+        import httpx
+
+        from harness.travel import bank_photos as _bp
+        from harness.travel.media import _download_bytes
+        from harness.travel.providers.food_provider import SerpApiLocalFoodProvider
+
+        bank = self.visit_bank(slug, kind)
+        if not bank.visit:
+            raise ValueError("no live visit carries a bank")
+        home_locale = self.weights.conditions.home
+        loc = self.geocode_place(home_locale) if home_locale else None
+        if loc is None:
+            raise ValueError("conditions.home does not geocode — the place search needs a center")
+        provider = SerpApiLocalFoodProvider(get_settings().serpapi_key)
+        vault_root = self.reader._root.parent
+        with httpx.Client(follow_redirects=True) as client:
+            run = _bp.plan_and_fetch(
+                bank, vault_root, provider, (loc.latitude, loc.longitude),
+                lambda url: _download_bytes(url, "", client, 30.0),
+                kind=_bank.bank_kind(kind), ids=ids, per_item=per_item, refresh=refresh,
+                dry_run=dry_run,
+            )
+        return run.as_dict()
+
+    def visit_schedule(
+        self, slug: str | None = None, *, weather: bool = True, today: date | None = None,
+        scope: str = "visit",
+    ) -> VisitSchedule:
+        """The Visits tab's timeline source: the soonest live visit whose folder carries a
+        schedule.json (or `slug`), one column per date with items, markers, availability, the
+        home-locale forecast (clamped to the ~16-day horizon) and the visit's bank."""
+        from datetime import timedelta
+
+        from harness.travel import schedule as _sched
+
+        slug = _auto(slug)
+        vault_root = self.reader._root.parent
+        trip = _sched.resolve_visit(self.reader.scan_trips(), vault_root, slug, scope)
+        if trip is None:
+            if slug:
+                raise ValueError(f"no trip or visit named {slug!r}")
+            return _sched.empty_schedule(_bank.empty_bank())
+        bank = _bank.build_bank(trip, vault_root)
+        raw = _sched.read_schedule((vault_root / trip.doc).parent) or {}
+        start = _sched._date(raw.get("start")) or trip.start
+        end = _sched._date(raw.get("end")) or trip.end or start
+        today = today or date.today()
+        # a visit happens at home; a trip's weather is its destination's
+        home = self.weights.conditions.home if trip.kind == "visit" else (trip.destination or "")
+        forecast: dict[str, Any] = {}
+        note, place, punit, tunit = "", home, "inch", "°F"
+        if not weather or not home or start is None or end is None:
+            note = "" if not weather else "no forecast place (home locale / trip destination)"
+        else:
+            lo, hi = max(start, today), min(end, today + timedelta(days=15))
+            if lo > hi:
+                note = "past the ~16-day forecast horizon" if start > today else f"{trip.kind} is over"
+            else:
+                try:
+                    fc = self.get_weather(home, lo, hi)
+                    forecast = {d.date: d for d in fc.days}
+                    place, punit, tunit = fc.location, fc.precipitation_unit, fc.temperature_unit
+                    if hi < end:
+                        note = f"forecast through {hi.isoformat()} — later days are past the ~16-day horizon"
+                except ProviderError as err:
+                    note = f"forecast unavailable ({err})"
+        return _sched.build_schedule(
+            trip, vault_root, bank, forecast=forecast, weather_place=place, weather_note=note,
+            thresholds=self.weights.conditions.thresholds, precip_unit=punit, temp_unit=tunit,
+        )
+
+    def trip_banks(self, scope: str = "visit", today: date | None = None) -> _bank.TripBanks:
+        """Every folder-note visit (or trip) as a picker entry: live soonest-first, then past
+        most-recent; each with its dates, status, countdown, a cover photo and what it carries
+        (bank counts, schedule days). Entries with nothing yet stay listed — the picker says so."""
+        from harness.travel import schedule as _sched
+
+        today = today or date.today()
+        vault_root = self.reader._root.parent
+        trips = [t for t in self.reader.scan_trips() if t.kind == scope]
+        live = sorted((t for t in trips if is_live(t.status)), key=lambda t: t.sort_date)
+        parked = sorted((t for t in trips if t.status in PARKED_STATUSES), key=lambda t: t.sort_date)
+        past = sorted(
+            (t for t in trips if t.status in DONE_STATUSES), key=lambda t: t.sort_date, reverse=True
+        )
+        entries: list[_bank.TripEntry] = []
+        for t in live + parked + past:
+            folder = (vault_root / t.doc).parent
+            if folder.name != t.slug:
+                continue  # flat docs carry no banks
+            bank = _bank.build_bank(t, vault_root)
+            sched = _sched.read_schedule(folder) or {}
+            cover = self._cover(t, bank)
+            row = self._trip_row(t, today)
+            entries.append(_bank.TripEntry(
+                slug=t.slug, kind=t.kind, title=t.title or t.anchor or t.slug,
+                status=t.status, when=row["when"], date=row["date"],
+                start=t.start.isoformat() if t.start else None,
+                end=t.end.isoformat() if t.end else None,
+                destination=t.destination, doc=t.doc, cover=cover,
+                outings=sum(1 for i in bank.items if i.kind == "outing"),
+                restaurants=sum(1 for i in bank.items if i.kind == "restaurant"),
+                photos=sum(len(i.images) for i in bank.items),
+                scheduled=len([i for i in sched.get("items") or [] if isinstance(i, dict)]),
+                live=is_live(t.status),
+                phase="live" if is_live(t.status) else (
+                    "someday" if t.status in PARKED_STATUSES else "past"
+                ),
+            ))
+        has = [e for e in entries if e.outings or e.restaurants or e.scheduled]
+        # the same rule the bank/schedule verbs apply to "auto": soonest live with content, else
+        # the most recent past one with content (entries are already in that order)
+        return _bank.TripBanks(scope=scope, default=has[0].slug if has else None, entries=entries)
+
+    def _cover(self, t: Trip, bank: _bank.VisitBank | None = None) -> str | None:
+        """The picker's cover rule: the note's first embedded image, else a bank item's own photo
+        (a borrowed gallery last), else the folder's first asset."""
+        vault_root = self.reader._root.parent
+        doc = vault_root / t.doc
+        cover = _hero_image(doc)
+        if cover is not None or doc.parent.name != t.slug:
+            return cover
+        if bank is None:
+            bank = _bank.build_bank(t, vault_root)
+        cover = next((i.image for i in bank.items if i.image and not i.gallery_from), None)
+        if cover is None:
+            cover = next((i.image for i in bank.items if i.image), None)
+        if cover is None:
+            adir = doc.parent / "assets"
+            assets = sorted(adir.glob("*.jpg")) if adir.is_dir() else []
+            cover = f"{Path(t.doc).parent}/assets/{assets[0].name}" if assets else None
+        return cover
+
+    def planning_calendar(self, today: date | None = None) -> _bank.PlanningCalendar:
+        """The Planning tab's "on the calendar" band: one card per live trip or visit, soonest
+        first, each with its cover, window, countdown and whether its folder carries an open
+        decision. Undated live items and parked ideas go to `someday` — never counted down."""
+        today = today or date.today()
+        vault_root = self.reader._root.parent
+        trips = self.reader.scan_trips()
+        live = sorted((t for t in trips if is_live(t.status)), key=lambda t: t.sort_date)
+        parked = sorted((t for t in trips if t.status in PARKED_STATUSES), key=lambda t: t.sort_date)
+
+        def card(t: Trip, *, someday: bool) -> _bank.CalendarCard:
+            doc = vault_root / t.doc
+            folder_note = doc.parent.name == t.slug
+            if t.start and t.end and t.end != t.start:
+                window = f"{_short_date(t.start)} → {_short_date(t.end)}"
+            elif t.start:
+                window = _short_date(t.start)
+            else:
+                window = t.window or "undated"
+            return _bank.CalendarCard(
+                slug=t.slug, kind=t.kind, name=_trip_name(t), title=t.title or t.anchor or t.slug,
+                anchor=t.anchor, destination=t.destination, who=list(t.travelers), status=t.status,
+                start=t.start.isoformat() if t.start else None,
+                end=t.end.isoformat() if t.end else None,
+                window=window,
+                days=None if someday or t.start is None else (t.start - today).days,
+                when="someday" if someday else self._trip_row(t, today)["when"],
+                cover=self._cover(t), doc=t.doc,
+                decision=folder_note and (doc.parent / "visuals" / "compare-data.json").is_file(),
+            )
+
+        upcoming = [card(t, someday=False) for t in live if t.start is not None]
+        someday = [card(t, someday=True) for t in live if t.start is None]
+        someday += [card(t, someday=True) for t in parked]
+        return _bank.PlanningCalendar(as_of=today.isoformat(), upcoming=upcoming, someday=someday)
+
     # ---- trip pipeline (the command-center spine) ----
-    def trip_pipeline(self, today: date, *, include_past: bool = False) -> list[dict[str, str]]:
+    def trip_pipeline(
+        self, today: date, *, include_past: bool = False, phase: str = "live"
+    ) -> list[dict[str, str]]:
         """The whole travel horizon as dashboard-ready rows: every live trip/visit (and past ones
         with `include_past`), countdown-enriched and ordered live-soonest-first then past-most-recent.
+        `phase="someday"` returns the parked ideas instead (never part of the live horizon).
         Reads the `trip:` frontmatter via the corpus — deterministic, no tag-guessing."""
-        done = {"completed", "cancelled"}
         trips = self.reader.scan_trips()
-        live = sorted((t for t in trips if t.status not in done), key=lambda t: t.sort_date)
-        past = sorted((t for t in trips if t.status in done), key=lambda t: t.sort_date, reverse=True)
+        if phase == "someday":
+            parked = sorted((t for t in trips if t.status in PARKED_STATUSES), key=lambda t: t.sort_date)
+            return [self._trip_row(t, today) for t in parked]
+        live = sorted((t for t in trips if is_live(t.status)), key=lambda t: t.sort_date)
+        past = sorted(
+            (t for t in trips if t.status in DONE_STATUSES), key=lambda t: t.sort_date, reverse=True
+        )
         ordered = live + (past if include_past else [])
         return [self._trip_row(t, today) for t in ordered]
 
     @staticmethod
     def _trip_row(t: Trip, today: date) -> dict[str, str]:
-        if t.status == "completed":
-            when = "completed"
-        elif t.status == "cancelled":
-            when = "cancelled"
+        if t.status in DONE_STATUSES:
+            when = t.status
+        elif t.status in PARKED_STATUSES:
+            when = "someday"
         elif t.start is None:
             when = t.window or "planning"
         else:
@@ -1029,7 +1594,7 @@ class TravelService:
         only_remaining: bool = True,
         provider_name: str = "wsf",
     ) -> FerryReport:
-        """WSF ferry snapshot. With `route` ('Seattle-Bainbridge Island'): today's sailing times,
+        """WSF ferry snapshot. With `route` ('Edmonds-Kingston'): today's sailing times,
         plus (if `space`) the departing terminal's live drive-up space and (if `vessels`) the vessels
         serving it. Without `route`: `space` returns all terminals' live space, `vessels` returns all
         vessels. `route` alone implies schedule; pass `space`/`vessels` to enrich it."""
@@ -1057,6 +1622,7 @@ class TravelService:
         provider_name: str = "wikimedia",
         vault_root: Path | None = None,
         delay_s: float = 1.0,
+        keep_original: bool = False,
     ) -> list[ImageResult]:
         """For each subject (hotel / attraction / view), find an image and store it locally under
         the doc's assets/ dir. `dest` is a bare destination slug (→ travel/destinations/{slug}/assets,
@@ -1076,10 +1642,42 @@ class TravelService:
                 candidates = provider.search_images(subject, limit=1)
                 if not candidates:
                     continue
-                results.append(store_image(candidates[0], root, dest, subject))
+                results.append(
+                    store_image(candidates[0], root, dest, subject, keep_original=keep_original)
+                )
             except (ProviderError, RuntimeError):
                 continue  # throttled/transient — skip this subject, keep the rest
         return results
+
+    def shrink_images(
+        self, rel_dir: str, *, dry_run: bool = False, skip_png: bool = False,
+        vault_root: Path | None = None,
+    ) -> list[ShrinkReport]:
+        """Apply the vault image-size discipline to assets already on disk (in place, extensions
+        kept). `rel_dir` is vault-relative (e.g. `travel/destinations/x/food/2026-09-assets`)."""
+        root = (vault_root or get_settings().tracker_path) / rel_dir.strip("/")
+        if not root.is_dir():
+            raise ProviderError(f"not a directory under the vault: {rel_dir}")
+        return shrink_tree(root, dry_run=dry_run, skip_png=skip_png)
+
+    def archive_food_photos(
+        self, galleries: dict[str, list[str]], rel_dir: str, *, per_place: int = 2,
+        vault_root: Path | None = None,
+    ) -> dict[str, list[str]]:
+        """Store up to `per_place` gallery photos per place under `travel/{rel_dir}/` through the
+        size cap; returns vault-relative paths per place (embed-ready). A dead URL is skipped."""
+        root = vault_root or get_settings().tracker_path
+        out: dict[str, list[str]] = {}
+        for name, urls in galleries.items():
+            saved: list[str] = []
+            for i, url in enumerate(urls[:per_place], start=1):
+                try:
+                    p = archive_photo(url, root, rel_dir, f"{name}-{i}")
+                except (RuntimeError, OSError, ValueError):
+                    continue
+                saved.append(p.relative_to(root).as_posix())
+            out[name] = saved
+        return out
 
     def make_contact_sheet(
         self,
@@ -1103,7 +1701,7 @@ class TravelService:
             raise ValueError("make_contact_sheet: pass dest or paths")
         if not imgs:
             raise ValueError("make_contact_sheet: no images found")
-        out = Path.home() / ".cache" / "harness" / "contact-sheets" / f"{name or dest or 'sheet'}.png"
+        out = cache_file("contact-sheets", f"{name or dest or 'sheet'}.png")  # sealable (paths.py)
         return build_contact_sheet(imgs, out, cols=cols)
 
 
@@ -1143,3 +1741,27 @@ def _alert_matches(
         if near.lower() not in " ".join(parts).lower():
             return False
     return True
+
+
+def pick_offers(offers: list[HotelOffer], terms: list[str]) -> list[HotelOffer]:
+    """The properties whose names contain each term (case-insensitive), in the order asked. A term
+    that matches nothing, or more than one property, is an error naming what the list holds — a
+    report must carry exactly the properties chosen, never a silent substitute."""
+    out: list[HotelOffer] = []
+    for term in terms:
+        needle = term.strip().lower()
+        hits = [o for o in offers if needle in o.name.lower()]
+        if not hits:
+            names = ", ".join(o.name for o in offers[:25])
+            raise ValueError(
+                f"--pick '{term.strip()}' matches no property in this search — it holds: {names}"
+            )
+        if len(hits) > 1:
+            raise ValueError(
+                f"--pick '{term.strip()}' matches {len(hits)} properties "
+                f"({', '.join(o.name for o in hits)}) — use a longer fragment"
+            )
+        if hits[0] not in out:
+            out.append(hits[0])
+    return out
+

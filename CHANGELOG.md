@@ -3,6 +3,134 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-10-19
+
+This release adds the pocket agent: the console's CHAT tab and `hn pocket` let you talk to a sealed,
+read-only Claude Code agent running on your own machine from any device, and every sample pack ships
+a scripted demo conversation. It also redesigns the Career tabs (Campaign · Openings · Pool · Ladders,
+with expected comp per role), adds a follow-the-sun market board with a rates rail, a macro release
+calendar and a market-take writer, and draws live visit and trip schedules in VIZ.
+
+### Added
+- **Pocket agent** — `hn pocket` and the **CHAT** tab: one conversation with streamed replies, tool
+  activity folded into one expandable row, and a status card (model, context ring, 5-hour and 7-day
+  use with reset countdowns, cost estimate, the seal, a new-conversation button). A runner on the
+  serving machine answers each message with your installed Claude Code CLI inside a sealed
+  permission set: read and shell built-ins only, write tools denied by name, secret paths denied in
+  the rules and in the OS sandbox (no shell network), API keys stripped. It opens no port.
+  `hn pocket selftest` checks the seal statically and with a live probe; the runner serves nothing
+  while a check fails. Verbs: `run`, `selftest`, `status`, `send`, `tail`, `stop`, `reset`,
+  `show-command`. Every turn and refusal is a bus event. Setup and threat model: `docs/POCKET.md`.
+- **Pocket replay** — `hn pocket replay`: a scripted, model-free CHAT conversation run through the
+  real parser, labeled "scripted demo — no agent". Every sample pack ships `pocket/replay.json`.
+- **Market-take writer** — `hn finance take-write` (MCP `finance_take_write`): writes one new take
+  to `finance/market/takes/`, naming the file from the clock and owning the frontmatter; an existing
+  file or a symlink refuses the write. It is the only write tool the pocket agent can be granted.
+- **Career ▸ Campaign** — `hn career campaign`: conversations in flight (stage, next step, last
+  touch, stale flags) and career-calendar milestones with countdowns.
+- **Career ▸ Openings** — `hn career roles`: every matched opening as a role item, ranked by fit
+  (on-profile · adjacent · off-lane), then new, then item level. Each role shows its **expected
+  comp**: the likely level on the company's levels.fyi ladder, that level's median total comp, and
+  the neighbouring levels as the range. `hn career openings --new` marks openings first seen since
+  earlier scans; a board that errored once never reads as new or gone.
+- **Career ▸ Pool** — `hn career pool`: levels.fyi leaderboard cuts and cached ladders merged into
+  one tile per company, scored against your comp anchor with named modifiers from a corpus catalogue,
+  rarity colors, source/cut/level filters, a separate pane for companies your exclusion list
+  filters out (the `pool_flags` values listed under `pool_screen_out:` in the watchlist), and links
+  to each company's openings.
+  A company with no band row reads `unranked`, not poor.
+- **Career ▸ Ladders** — `hn career comp <company>`: a company's pay ladder from levels.fyi's
+  keyless markdown pages (median TC, YOE and pay mix per level, geo-pinned, cached a week, attributed).
+  `--all` feeds the tab, drawn as rarity-colored rung bars against your anchor; `--report [YYYY]`
+  adds the year-end pay report as a percentile strip; `--refresh-stale` is a paced, capped refresh
+  that stops on the first throttle. `--lca <employer>` queries the DOL LCA filed-wage disclosures.
+- **levels.fyi index** — `hn career levels-index`, `families`, `slugs`, `industries`: company slugs,
+  job families, locations and leaderboard grammar from the site's sitemaps.
+- **Apply pipeline** — `hn career posting <url>` captures a Greenhouse or Ashby posting and its
+  application form; `hn career apply <slug>` validates your answers and files against the form and
+  writes a fill sheet; `--fill` fills the hosted form in a visible browser and stops for you to click
+  Submit; `--submit --receipt` records the submission. Never touches EEO, consent or captcha controls.
+  `hn career schools <term>` lists the school names a Greenhouse form accepts.
+- **Global market board** — `hn finance global` adds a rates rail (3-month to 30-year yields, the
+  2-year note future) and the Treasury par-yield curve with 2s10s / 3m10s / 5s30s spreads, SKEW,
+  Bitcoin and ULSD. Every futures row quotes a named dated contract with roll-day notes; every cash
+  index row names its session (`LIVE` or the closed session's day) on the exchange's own clock. The Global
+  tab gains a ticker strip of commodities, yields, the dollar, VIX and Bitcoin.
+- **Macro calendar** — `hn finance calendar`: US economic releases with actual / consensus /
+  previous (Nasdaq), the FOMC calendar (Federal Reserve) and Treasury coupon auctions, cached. High-tier
+  releases join the gates board; pulse adds `macro_print` when a number is out.
+- **Wire reader** — `hn finance wire read <url> | --match TEXT`: the article body behind a wire
+  headline, with Google News links resolved to the publisher and paywalls labeled partial.
+- **Inbox and news redesign** — standing agents become status-bar chips; the catalyst wire reads one
+  row per story with ticker chips, outlet and age; a catalyst opens like an article (outlet, author,
+  lead image, **Open original**). Quote and option-chain pages are filtered at ingest (rules extend
+  in `feeds.yaml`). `hn finance wire audit` reports what each feed ships.
+- **Chart widgets** — a candlestick price chart with support/overhead levels (Core ▸ Position chart)
+  and a book correlation heatmap (`hn finance correlate --held`).
+- **Market rates rail** — `hn finance market` adds SHY / IEF / TLT / TIP with curve-shape and
+  breakeven facts, and KRE on the credit rail.
+- **Vest gates** — forward RSU vests rank on the `hn finance gates` board; the Plans tab gains a
+  vest-timeline widget.
+- **Visit and trip banks** — `hn travel bank`, `schedule`, `banks`: a visit's outings and restaurants
+  as photo tiles, a day-by-day schedule grid with weather and availability, and a picker that steers
+  both. A new **Trips** tab has the same shape. `hn travel bank-photos` adds photo galleries;
+  `hn travel bank-enrich` adds hours, reserve/order/menu links and phone from the provider cache.
+- **VIZ ▸ Travel ▸ LIVE** — every visit or trip with a schedule gets a full-size live schedule entry.
+- **Travel Planning, rebuilt** — `hn travel upcoming`: an "On the calendar" tile, the open decision's
+  radar beside its ranking, and trip nudges with thumbnails. Nudges gain long-lead, horizon, family
+  and game-weekend lanes (followed teams' home games on open weekends). The `idea` status parks a trip.
+- **Destination search** — `hn travel explore`: cheapest destinations from your origins via Google
+  Travel Explore, with fares, dates and hotel prices; `hn travel quota` reads the SerpAPI budget;
+  `hn travel hotels --pick "A,B"` shortlists named hotels in one search.
+- **Video reading** — `hn media transcript <url>` (timestamped transcript) and `hn media frames <url>`
+  (scene-change stills plus a contact sheet) for YouTube videos. Adds `yt-dlp` as a dependency; `frames`
+  also needs `ffmpeg` on the PATH.
+- **Backups** — `hn backup snapshot` builds an age-encrypted snapshot (git bundles, sqlite copies,
+  config tars) into a synced folder with retention; `hn backup status` is the health check.
+- **Bus retention** — `hn bus purge --policy default` ages out old read events and rotates logs.
+- **Image cap** — travel images are downscaled and EXIF/GPS-stripped on write (`hn travel shrink-images`).
+- Sample packs ship data for the Pool, Ladders and CHAT tabs. A dashboard's `order` field sets subtab
+  position.
+
+### Changed
+- `hn career render` writes one folder per design, the file named by your configured stem alone.
+- The role-shape classifier reads title, then domain word, then team, with off-lane buckets.
+- News scans run as a bounded, host-paced fan-out; earnings-date misses are cached
+  (`watch` about 40s → 8s warm).
+- README, architecture diagram and `docs/EXAMPLES.md` cover CHAT and the new Career tabs.
+- Windows installs come from the release `.exe` / `.msi` only. The winget package was never
+  accepted into the community repository, so the README no longer lists `winget install` and the
+  winget workflow is removed.
+
+### Fixed
+- `hn finance multiples` / `fundamentals` read SEC EDGAR filings correctly: total debt from one
+  balance-sheet date, derived Q4 TTM, revenue tag choice, stale share counts, EV with non-controlling
+  interest. `hn finance filing` reaches every document of a large filing.
+- `hn finance global` rejects a broken previous close after a long exchange holiday.
+- Feeds keep their newest items, not their first; headline times are UTC on every feed.
+- A ticker that is a YAML boolean word (`ON`, `NO`, `YES`) no longer vanishes from configs.
+- `hn finance correlate --factor` keeps the factor block when no basket member is in the matrix;
+  `hn finance bars` lists a broken support as overhead.
+- MCP `finance_wire` and `finance_watch_peek` cap results to fit the tool-result limit; the
+  installed MCP server no longer fails at import (`mcp` capped below 2).
+- One dead job board no longer aborts the openings scan.
+- Line charts label the X axis by month; the expanded chart fits the window; Projections scrolls on
+  desktop and phone; the schedule widget no longer clips short items.
+- `HARNESS_CACHE_DIR` and the sealed `.env` keep a demo console off your real caches and keys.
+
+### Security
+- The console door refuses hidden paths and non-text files on document reads, caps event listing at
+  500, and refuses request bodies over 64KB. `bus-app.json` is written owner-only (0600).
+- Dependency bumps for published advisories: `aiohttp` → 3.14.5, `anyio` → 4.15.1, `mcp` → 1.30.0,
+  `multidict` → 6.9.1, `pyjwt` → 2.15.1, `urllib3` → 2.8.0, `rustls` → 0.23.46, `quick-xml` → 0.41,
+  `js-yaml` → 5.4.2, `vite` → 8 (drops the dev-only `esbuild` advisory).
+- The desktop app moves to Tauri 2.12 and updater 2.14, and builds the updater without its `zip`
+  feature: the update artifact is the signed `.exe` installer, so the `zip` crate and its extraction
+  advisories (RUSTSEC-2026-0367/0368/0369) are gone from the build.
+- **Known, accepted advisory** (no fixed version published): `zbus_names` / `zvariant`
+  (RUSTSEC-2026-0370/0371/0372), Linux builds only, under the desktop notification and
+  single-instance plugins.
+
 ## [0.12.1] - 2026-08-25
 
 ### Security
@@ -25,8 +153,8 @@ concentration-unwind tab. Every bundled sample persona now ships data for every 
   a multiple band, provenance) against the live quote. Horizons past a year are marked `sketch`;
   params older than about a quarter flag `stale`; the disclaimer ships in the JSON. The
   **Finance ▸ Projections** tab renders one card per name (price, forward multiple, the 12-month
-  band, a tier bucketed by the modeled return) with the full per-horizon grid on hover. Names your
-  values screen excludes are listed below the rest, and on phones one tap opens the grid and a
+  band, a tier bucketed by the modeled return) with the full per-horizon grid on hover. Names on your
+  values screen (a personal exclusion list) are listed below the rest, and on phones one tap opens the grid and a
   second follows the link. Values-screen status rides the contract as an optional `screen_note`
   so screened names render marked, never hidden.
 - **Holdings** — `hn finance holdings`: the held book appraised through the same params —
@@ -94,8 +222,8 @@ gauges verb, and fixes a CSS regression that disabled the disabled-state styling
 
 ### Fixed
 - **Disabled-state CSS regression** — 11 `:not(:disabled)` selectors in the console stylesheet
-  had been corrupted to `:not(disabled)` by the release transform, so disabled buttons still
-  lit up on hover and depressed on click. The transform rule is fixed and the selectors ship
+  had been corrupted to `:not(disabled)` by a build step, so disabled buttons still
+  lit up on hover and depressed on click. The build step is fixed and the selectors ship
   intact again.
 
 ## [0.10.1] - 2026-07-27
@@ -138,7 +266,7 @@ solver, an interactive events calendar, and a second generation of the trip-plan
 ### Changed
 - **VAULT on phones** uses a master-detail layout (list, then document) — the side-by-side
   layout was unusable at phone widths.
-- **Trap-map ladder, third generation** — chunky rung bars, per-symbol lane accents (hot rungs
+- **Trap map redesign** (the price ladder of resting GTC buy orders) — chunky rung bars, per-symbol lane accents (hot rungs
   keep their lane color; heat rides an accent-colored glow), live strips, and distance chips.
 - The theme menu returned to the app baseplate alongside its Settings home.
 
@@ -194,7 +322,7 @@ console-wide quick-look popup. See [docs/BEADS.md](docs/BEADS.md) for the beads 
 - **Beads integration** (`hn beads board`): a read-only board over a beads project's
   `.beads/issues.jsonl` export — open/in-progress/shipped counts, the presence board (which agent
   is on what), an honest ready queue (blocking dependencies + defer dates respected), and the
-  export's age surfaced so the board never performs more freshness than its file has. Drives the
+  export's age shown on the board. Drives the
   new **Ops ▸ Backlog** tab; every sample persona ships a fictional backlog so it demos
   out-of-the-box.
 - **The Beads board viz** — the backlog as an interactive dependency graph: epics with their
@@ -225,7 +353,7 @@ console-wide quick-look popup. See [docs/BEADS.md](docs/BEADS.md) for the beads 
 
 ### Changed
 - Sample personas refreshed to exercise the full console: each ships a fictional beads backlog
-  (with a date anchor so the demo stays current forever), a Backlog dashboard, and richer resting
+  (with a date anchor so demo dates stay relative to today), a Backlog dashboard, and richer resting
   GTC ladders for the trap map.
 
 ## [0.7.1] - 2026-07-08
@@ -248,7 +376,7 @@ dates and analyst-consensus tracking.
 - **Web push to the phone** — bus events arrive as native banners on an installed PWA
   (iOS/Android), account-free and self-hosted: the Web Push protocol end-to-end (vendor relays see
   ciphertext only). Hard severity gate: only `alert`/`warn` push — the info wire and filings are a
-  skim surface by design and never buzz a pocket. A footer bell arms each device (with a TEST
+  skim surface and do not push. A footer bell arms each device (with a TEST
   button to verify end to end); `hn bus push-keys` shows the public key + device inventory. VAPID
   keys auto-generate on first use; dead subscriptions self-prune.
 - **Direct TLS on the served console** — `hn bus serve --tls-cert/--tls-key` terminates HTTPS in
@@ -403,8 +531,8 @@ A curated batch of finance-lane depth, a broad news wire, and a second bundled s
 
 ### Added
 - **finance `correlate`** — a daily-return correlation matrix across your holdings, each name's **beta to
-  a factor basket**, and the biggest **divergence days** — the hard-data answer to "is this actually a
-  diversifier, or more of the same bet?" (measure a diversification claim instead of asserting it).
+  a factor basket**, and the biggest **divergence days**, to check whether a holding actually diversifies the
+  portfolio.
 - **finance `market`** — a bird's-eye market-regime read (index breadth, the 11 SPDR sectors, semis,
   mega-cap dispersion) in one snapshot; drives the Market dashboard.
 - **finance `fed`** — the latest FOMC decision (statement, target-rate range, vote) from the Federal
@@ -438,7 +566,7 @@ Initial public release.
 ### Added
 - **`hn` CLI** with three read-only lanes:
   - **finance** — quotes, positions, net worth, SEC EDGAR fundamentals, multiples, news, research, watch,
-    and a values screen. Observation only; no trading.
+    and a values screen (a personal exclusion list). Observation only; no trading.
   - **career** — keyless openings scans (Greenhouse/Ashby) with posted comp, company profiles, and viz.
   - **travel** — flight ranking, hotels, events, traffic/ferries, keyless weather/air/quake senses, and
     destination viz.
@@ -449,6 +577,7 @@ Initial public release.
 - **Shared D3 viz engine** with a `noir` theme for public diagrams.
 - A single MCP surface composing the lanes' tools.
 
+[0.13.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.13.0
 [0.12.1]: https://github.com/thwomp-io/watchman/releases/tag/v0.12.1
 [0.12.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.12.0
 [0.11.0]: https://github.com/thwomp-io/watchman/releases/tag/v0.11.0

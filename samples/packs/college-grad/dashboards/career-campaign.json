@@ -1,0 +1,75 @@
+{
+  "lane": "career-campaign",
+  "title": "Campaign",
+  "group": "Career",
+  "owner": "default",
+  "order": 0,
+  "widgets": [
+    {
+      "id": "campaign",
+      "title": "In flight + the calendar",
+      "kind": "campaign",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "campaign",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "mail",
+      "title": "Recruiter mail — humans only",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "campaign",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "mail",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "date",
+        "class",
+        "company",
+        "from",
+        "subject"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

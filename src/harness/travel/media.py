@@ -16,10 +16,9 @@ import httpx
 from PIL import Image, ImageDraw, ImageFont
 
 from harness._http import get_with_retry
+from harness.travel.imaging import shrink_bytes
 from harness.travel.models import ImageCandidate, ImageResult
 
-_MAX_EDGE = 1280
-_JPEG_QUALITY = 82
 _SHEET_PAD = 12
 _SHEET_LABEL_H = 26
 _SHEET_BG = (245, 245, 247)
@@ -95,20 +94,32 @@ def store_image(
     *,
     client: httpx.Client | None = None,
     timeout: float = 30.0,
+    keep_original: bool = False,
 ) -> ImageResult:
     """Download the candidate's image, downscale/compress to JPEG, write under the doc's `assets/`
     dir, and return an embeddable ImageResult. `dest` resolves via `_assets_parts` — a bare slug
     maps to `travel/destinations/{slug}/assets`, a path under travel/ maps to `travel/{dest}/assets`."""
     raw = _download_bytes(candidate.image_url, candidate.source_url, client, timeout)
-    img = Image.open(io.BytesIO(raw)).convert("RGB")
-    img.thumbnail((_MAX_EDGE, _MAX_EDGE))
-
     parts = _assets_parts(dest, vault_root)
     assets_dir = vault_root.joinpath(*parts)
     assets_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{slugify(subject)}.jpg"
-    abs_path = assets_dir / filename
-    img.save(abs_path, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
+    if keep_original:
+        # the rare case (a print-quality asset wanted on purpose) — bytes as served, format kept
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+        ext = (img.format or "JPEG").lower().replace("jpeg", "jpg")
+        filename = f"{slugify(subject)}.{ext}"
+        abs_path = assets_dir / filename
+        abs_path.write_bytes(raw)
+        width, height = img.size
+    else:
+        # the ONE size discipline for vault images (imaging.py): long edge ≤ 1600, JPEG q85,
+        # ~400KB best-effort cap, metadata dropped. Formerly an inline thumbnail at 1280/q82.
+        shrunk = shrink_bytes(raw, force_format="JPEG")
+        filename = f"{slugify(subject)}.jpg"
+        abs_path = assets_dir / filename
+        abs_path.write_bytes(shrunk.data)
+        width, height = shrunk.width, shrunk.height
 
     rel_path = "/".join((*parts, filename))
     return ImageResult(
@@ -118,10 +129,25 @@ def store_image(
         attribution=candidate.attribution,
         rel_path=rel_path,
         abs_path=str(abs_path),
-        width=img.width,
-        height=img.height,
+        width=width,
+        height=height,
         size_bytes=abs_path.stat().st_size,
     )
+
+
+def archive_photo(
+    url: str, vault_root: Path, rel_dir: str, name: str,
+    *, client: httpx.Client | None = None, timeout: float = 30.0,
+) -> Path:
+    """Download one photo URL into `travel/{rel_dir}/{name}.jpg` under the cap — the tool for the
+    gallery-archive case that used to be a curl fallback (and produced a 28MB original)."""
+    raw = _download_bytes(url, "", client, timeout)
+    shrunk = shrink_bytes(raw, force_format="JPEG")
+    out_dir = vault_root / "travel" / rel_dir.strip("/")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{slugify(name)}.jpg"
+    out.write_bytes(shrunk.data)
+    return out
 
 
 def build_contact_sheet(

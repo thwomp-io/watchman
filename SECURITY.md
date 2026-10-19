@@ -39,7 +39,7 @@ Every push and pull request runs a layered scan in CI (see `.github/workflows/`)
 - **CodeQL** — static analysis (SAST) of the Python + TypeScript source.
 - **Dependabot** — continuous dependency-vulnerability alerts and version-bump PRs across every ecosystem
   (Python, npm, Cargo, Docker, GitHub Actions).
-- A pre-publish `osv-scanner` pass over the lockfiles is run locally as a final gate.
+- An `osv-scanner` pass over all four lockfiles runs inside the maintainer's release gate; the accepted no-fix advisories are enumerated with reasons in `osv-scanner.toml`, and anything not listed there blocks the tag.
 
 ### Accepted, documented advisories
 
@@ -52,6 +52,7 @@ in the container image** (which is Python-only — the desktop GUI ships as nati
   are not part of the headless engine or its container image.
 - `esbuild` (dev-only, a transitive build dependency of the test runner) — a low-severity advisory with
   no exploit path in a local dev/test context.
+- **esbuild 0.27.x** (npm, dev-only): a low-severity Windows dev-server file-read advisory whose fix (0.28.1) sits outside vite 7's `^0.27` pin. Not a production dependency and the dev server is never exposed; re-evaluated at the vite 8 bump.
 
 These are below the release gate (which fails only on *fixable* HIGH/CRITICAL) and are revisited as
 upstream fixes land.

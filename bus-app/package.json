@@ -1,7 +1,7 @@
 {
   "name": "harness-bus-app",
   "private": true,
-  "version": "0.12.1",
+  "version": "0.13.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,9 +11,12 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "install:local": "tauri build && rm -rf '/Applications/Watchman.app' && cp -R 'src-tauri/target/release/bundle/macos/Watchman.app' /Applications/ && (pkill -f 'Watchman.app/Contents/MacOS/bus-app' 2>/dev/null; sleep 1; true) && open '/Applications/Watchman.app'",
-    "shot": "node scripts/console-shot.mjs"
+    "shot": "node scripts/console-shot.mjs",
+    "gen:types": "node scripts/gen-types.mjs",
+    "e2e": "npm run build && playwright test"
   },
   "dependencies": {
+    "@observablehq/plot": "^0.6.17",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-process": "^2",
@@ -22,6 +25,7 @@
     "d3": "^7.9.0",
     "d3-sankey": "^0.12.3",
     "js-yaml": "^5.2.2",
+    "lightweight-charts": "^5.2.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-grid-layout": "^2.2.3",
@@ -29,6 +33,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -36,11 +41,12 @@
     "@types/d3-sankey": "^0.12.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^4.6.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "jsdom": "^29.1.1",
+    "json-schema-to-typescript": "^16.0.0",
     "playwright": "^1.61.1",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
   }
 }

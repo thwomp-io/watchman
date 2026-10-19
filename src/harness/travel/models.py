@@ -53,6 +53,18 @@ class ScreenStatus(BaseModel):
     calibration_notes: list[str] = Field(default_factory=list)
 
 
+# The pipeline's three phases, by status. LIVE = on the horizon (counted, counted down, occupying its
+# window); PARKED = an idea kept on the books without a plan — listed apart ("someday"), never
+# counted, never counted down, never blocking a nudge window; DONE = history.
+DONE_STATUSES = frozenset({"completed", "cancelled"})
+PARKED_STATUSES = frozenset({"idea"})
+
+
+def is_live(status: str) -> bool:
+    """On the horizon: neither history nor a parked idea."""
+    return status not in DONE_STATUSES and status not in PARKED_STATUSES
+
+
 class Trip(BaseModel):
     """A trip or visit from the corpus pipeline — parsed from the `trip:` frontmatter block in
     corpus/travel/{trips,visits}/*.md (the machine-readable twin). The spine of
@@ -230,13 +242,79 @@ class HotelSearch(BaseModel):
     offers: list[HotelOffer] = Field(default_factory=list)
 
 
+class ExploreQuery(BaseModel):
+    """A Google Travel Explore search from ONE origin: where can I fly, and for how much.
+
+    Prices are per person (1 adult, as `research_flights` queries), so the two are comparable.
+
+    One search returns a whole list of destinations with the cheapest fare to each (no destination
+    needed). Dates are either exact (`outbound_date` + `return_date`) or flexible (`month` 1-12,
+    0 = the next six months, with a `duration`)."""
+
+    origin: str  # IATA
+    outbound_date: date | None = None
+    return_date: date | None = None
+    month: int = 0  # 1-12; 0 = any (flexible dates only)
+    duration: str = "week"  # weekend | week | two-weeks (flexible dates only)
+    travel_class: str = "economy"  # economy | premium | business | first
+    stops: str = "any"  # any | nonstop | 1 | 2 (max stops)
+    max_price: int | None = None  # round-trip USD ceiling
+    to: str | None = None  # a region (caribbean, europe…), a Google /m/ id, or an airport IATA
+    exclude_airlines: list[str] = Field(default_factory=list)  # IATA codes (the avoid list)
+
+
+class ExploreFare(BaseModel):
+    """The cheapest fare from one origin to one destination."""
+
+    origin: str
+    price_usd: float | None = None
+    start_date: str = ""
+    end_date: str = ""
+    airport: str = ""  # destination airport IATA
+    stops: int | None = None
+    flight_minutes: int | None = None
+    airline: str = ""
+    airline_code: str = ""
+    link: str = ""  # Google's Explore page for this origin → destination (the next step)
+    hotel_price_usd: float | None = None  # Google's nightly hotel price for THIS fare's dates
+
+
+class ExploreDestination(BaseModel):
+    """One destination with its fare from each searched origin, cheapest first."""
+
+    destination_id: str = ""  # Google kgmid
+    name: str
+    country: str = ""
+    latitude: float | None = None
+    longitude: float | None = None
+    thumbnail: str = ""
+    fares: list[ExploreFare] = Field(default_factory=list)
+    corpus: list[str] = Field(default_factory=list)  # destination slugs already profiled (by airport)
+
+    @property
+    def best(self) -> ExploreFare | None:
+        priced = [f for f in self.fares if f.price_usd is not None]
+        return min(priced, key=lambda f: f.price_usd or 0) if priced else None
+
+
+class ExploreSearch(BaseModel):
+    """Travel Explore across one or more origins, merged per destination."""
+
+    origins: list[str]
+    dates: str  # "2026-11-06 → 2026-11-09" or "Nov · weekend" (what was searched)
+    searches: int = 0  # live searches spent (quota)
+    cache_hits: int = 0
+    destinations: list[ExploreDestination] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class GeoLocation(BaseModel):
     """A geocoded place — the lat/lon a weather lookup needs, plus context for display."""
 
     name: str
     latitude: float
     longitude: float
-    admin1: str | None = None  # state/region, e.g. "Washington"
+    admin1: str | None = None  # state/region, e.g. "Colorado"
     country_code: str | None = None
     timezone: str | None = None
 
@@ -279,7 +357,7 @@ class WeatherForecast(BaseModel):
 
 
 class HourlyWeather(BaseModel):
-    """One forecast hour — the outdoor-windows solver's substrate (tier B).
+    """One forecast hour — the outdoor-windows solver's substrate.
 
     Deliberately narrow: the five fields that decide "is this a good hour to be outside" —
     everything else stays on the daily surface."""
@@ -592,7 +670,7 @@ class FerryVessel(BaseModel):
     at_dock: bool = False
     eta: str | None = None  # ISO-8601 UTC
     left_dock: str | None = None  # ISO-8601 UTC
-    route: list[str] = Field(default_factory=list)  # OpRouteAbbrev (e.g. ["sea-bi"])
+    route: list[str] = Field(default_factory=list)  # OpRouteAbbrev (e.g. ["<route-abbrev>"])
 
 
 class FerryReport(BaseModel):

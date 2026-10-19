@@ -1,0 +1,47 @@
+{
+  "title": "Food bank",
+  "groups": [
+    {
+      "key": "lake",
+      "label": "By the lakes"
+    }
+  ],
+  "restaurants": [
+    {
+      "name": "Sample Lakeside Grill",
+      "group": "lake",
+      "area": "Lake district",
+      "cuisine": "American",
+      "meals": [
+        "dinner"
+      ],
+      "price": "$$",
+      "rating": 4.4,
+      "reviews": 980,
+      "note": "Patio at sunset.",
+      "status": "done",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Lakeside+Grill"
+      }
+    },
+    {
+      "name": "Sample Creamery",
+      "group": "lake",
+      "area": "Lake district",
+      "cuisine": "Ice cream",
+      "meals": [
+        "dessert"
+      ],
+      "price": "$",
+      "rating": 4.8,
+      "reviews": 410,
+      "note": "The kids' pick.",
+      "status": "done",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Creamery"
+      }
+    }
+  ]
+}

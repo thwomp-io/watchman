@@ -5,7 +5,7 @@ per turn — NOT a rate limiter (a token bucket would be over-engineering for th
 for the backoff policy + the UA, so every domain's call path behaves identically.
 
 The UA is deliberately *tool*-identifying only (`harness/<version>`): descriptive enough to satisfy
-provider policy + be a good API citizen (some providers — Wikimedia is the lesson — throttle/block
+provider policy + be a good API citizen (some providers, e.g. Wikimedia, throttle/block
 requests lacking a proper UA), and carrying **zero PII** (no name/email) by deliberate choice for a
 personal tool — the UA identifies the software, never the person running it.
 """
@@ -56,20 +56,42 @@ def get_with_retry(
                     url, params=params, headers=merged,
                     timeout=timeout, follow_redirects=follow_redirects,
                 )
-            if allow_status and resp.status_code in allow_status:
-                return resp
-            if resp.status_code in _RETRY_STATUS:
-                last = httpx.HTTPStatusError(
-                    f"HTTP {resp.status_code}", request=resp.request, response=resp
-                )
-                time.sleep(base_delay * 2**attempt)
-                continue
-            resp.raise_for_status()
-            return resp
-        except httpx.HTTPError as e:
+        except httpx.HTTPError as e:  # transport-level: DNS, connect, read timeout
             last = e
             time.sleep(base_delay * 2**attempt)
+            continue
+        if allow_status and resp.status_code in allow_status:
+            return resp
+        if resp.status_code in _RETRY_STATUS:
+            last = httpx.HTTPStatusError(
+                f"HTTP {resp.status_code}", request=resp.request, response=resp
+            )
+            time.sleep(base_delay * 2**attempt)
+            continue
+        if 400 <= resp.status_code < 500:
+            # A non-429 4xx is the server's FINAL answer (a moved board token, a bad id, a key
+            # the caller doesn't hold) — retrying it costs 3x the wall-clock for the same reply.
+            # Raised immediately as the HTTPStatusError callers already catch (it subclasses
+            # HTTPError), carrying the response so a provider can name the code + a hint.
+            raise httpx.HTTPStatusError(
+                f"HTTP {resp.status_code} from {url}", request=resp.request, response=resp
+            )
+        resp.raise_for_status()
+        return resp
     raise httpx.HTTPError(f"request to {url} failed after {retries} attempts: {last}")
+
+
+def describe_http_error(e: httpx.HTTPError, *, hint_404: str | None = None) -> str:
+    """A one-line, provider-facing description of a failed request: the status when there is one
+    (plus an optional 404 hint — the recurring case is a board token that moved ATS), else the
+    transport error. Providers wrap this into `ProviderError` so one dead source is a loud row,
+    never an aborted run, and never a silent empty result."""
+    if isinstance(e, httpx.HTTPStatusError):
+        code = e.response.status_code
+        if code == 404 and hint_404:
+            return f"HTTP 404 ({hint_404})"
+        return f"HTTP {code}"
+    return f"transport error: {e}"
 
 
 def post_with_retry(

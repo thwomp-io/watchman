@@ -26,6 +26,7 @@ from typing import Any
 import httpx
 
 from harness._http import get_with_retry
+from harness.paths import cache_file
 from harness.travel.models import Eatery
 from harness.travel.providers.base import ProviderError
 
@@ -34,7 +35,7 @@ _UA = "harness/0.1 (personal travel-planning harness)"
 _AMENITIES = "restaurant|cafe|bar|pub|fast_food|ice_cream"
 _SHOPS = "bakery|deli"
 
-_CACHE_DIR = Path.home() / ".cache" / "harness" / "food"
+_CACHE_SUBDIR = "food"  # under harness.paths.harness_cache_dir() — sealable via HARNESS_CACHE_DIR
 _CACHE_TTL_S = 24 * 3600  # local-pack ratings drift slowly; day-old is fine + costs 0 quota
 
 
@@ -98,7 +99,7 @@ class SerpApiLocalFoodProvider:
         self, api_key: str | None, *, cache_dir: Path | None = None, ttl_s: int = _CACHE_TTL_S
     ) -> None:
         self._api_key = api_key
-        self._cache_dir = cache_dir or _CACHE_DIR
+        self._cache_dir = cache_dir or cache_file(_CACHE_SUBDIR)
         self._ttl_s = ttl_s
         self.search_count = 0  # live searches actually spent (quota)
         self.cache_hits = 0
@@ -239,6 +240,94 @@ class SerpApiLocalFoodProvider:
             data_id=r.get("data_id") or "",
         )
 
+    def known_places(self) -> dict[str, dict[str, Any]]:
+        """Every place an earlier google_maps search already returned, keyed by `normalize_name`
+        of its title — read from the on-disk cache regardless of age (a place id doesn't go
+        stale the way ratings do). Costs zero quota; a resolver checks here before searching."""
+        out: dict[str, dict[str, Any]] = {}
+        if not self._cache_dir.is_dir():
+            return out
+        for path in sorted(self._cache_dir.glob("*.json")):
+            try:
+                raw = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue
+            engine = (raw.get("search_parameters") or {}).get("engine") if isinstance(raw, dict) else None
+            if engine != "google_maps":
+                continue
+            rows = list(raw.get("local_results") or [])
+            if isinstance(raw.get("place_results"), dict):
+                rows.append(raw["place_results"])
+            for r in rows:
+                if isinstance(r, dict) and r.get("data_id") and (r.get("title") or "").strip():
+                    out.setdefault(normalize_name(r["title"]), _place_record(r))
+        return out
+
+    def cached_details(self) -> dict[str, dict[str, Any]]:
+        """Every place record the on-disk cache holds, keyed by `data_id`, merged across the
+        searches that returned it. Any age: hours and booking links drift slowly, and an
+        enrichment pass re-fetches on --refresh. Costs zero quota."""
+        out: dict[str, dict[str, Any]] = {}
+        if not self._cache_dir.is_dir():
+            return out
+        for path in sorted(self._cache_dir.glob("*.json")):
+            try:
+                raw = json.loads(path.read_text())
+            except (OSError, ValueError):
+                continue
+            engine = (raw.get("search_parameters") or {}).get("engine") if isinstance(raw, dict) else None
+            if engine != "google_maps":
+                continue
+            rows = [(r, 0) for r in raw.get("local_results") or []]
+            if isinstance(raw.get("place_results"), dict):
+                rows.append((raw["place_results"], 1))
+            # list rows first, then place pages: a page's non-empty fields override a row's, and
+            # a row fills what the page lacks (hours can sit on one, the booking link on the other)
+            for r, _is_page in sorted(rows, key=lambda x: x[1]):
+                if not isinstance(r, dict) or not r.get("data_id"):
+                    continue
+                merged = out.setdefault(str(r["data_id"]), {})
+                merged.update({k: v for k, v in r.items() if v not in (None, "", [], {})})
+        return out
+
+    def lookup_place(
+        self, query: str, latitude: float, longitude: float, *, zoom: int = 11, refresh: bool = False
+    ) -> dict[str, Any] | None:
+        """1 quota search: the top Google Maps match for a free-text place query ("name, area")
+        around a point. `zoom` sets the search radius (11z ≈ a metro area). Returns
+        {data_id, title, address, lat, lon, type} or None — never a guessed place."""
+        params: dict[str, Any] = {
+            "engine": "google_maps",
+            "q": query,
+            "ll": f"@{round(latitude, 5)},{round(longitude, 5)},{zoom}z",
+            "type": "search",
+            "hl": "en",
+        }
+        raw, _ = self._cached_or_search(params, refresh=refresh)
+        r = raw.get("place_results") or next(iter(raw.get("local_results") or []), None)
+        if not isinstance(r, dict) or not r.get("data_id") or not (r.get("title") or "").strip():
+            return None
+        return _place_record(r)
+
+    def place_gallery(self, data_id: str, *, refresh: bool = False, edge: int = 1200) -> list[str]:
+        """1 quota search: a place's photo gallery as download URLs, cleaned of what never makes a
+        good tile: video entries (their `image` is a poster frame), and gstatic thumbnails (tiny,
+        low-res). Google photo URLs carry a size suffix (`=w3072-h3072-k-no`); it is rewritten to
+        `edge` so a download is gallery-sized, not the multi-megabyte original."""
+        params: dict[str, Any] = {"engine": "google_maps_photos", "data_id": data_id, "hl": "en"}
+        raw, _ = self._cached_or_search(params, refresh=refresh)
+        out: list[str] = []
+        for ph in raw.get("photos") or []:
+            if not isinstance(ph, dict) or ph.get("video"):
+                continue
+            url = str(ph.get("image") or "")
+            if not url.startswith("https://lh3.googleusercontent.com/"):
+                continue
+            url = re.sub(r"=w\d+-h\d+(-k-no)?$", f"=w{edge}-h{edge}-k-no", url)
+            if url not in out:
+                out.append(url)
+        return out
+
     def _cached_or_search(
         self, params: dict[str, Any], *, refresh: bool
     ) -> tuple[dict[str, Any], bool]:
@@ -252,6 +341,18 @@ class SerpApiLocalFoodProvider:
         raw = self._raw_search(params)
         path.write_text(json.dumps(raw))
         return raw, False
+
+
+def _place_record(r: dict[str, Any]) -> dict[str, Any]:
+    gps = r.get("gps_coordinates") or {}
+    return {
+        "data_id": str(r["data_id"]),
+        "title": str(r["title"]).strip(),
+        "address": r.get("address") or "",
+        "lat": gps.get("latitude"),
+        "lon": gps.get("longitude"),
+        "type": r.get("type") or "",
+    }
 
 
 def normalize_name(name: str) -> str:

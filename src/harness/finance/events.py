@@ -10,6 +10,7 @@ import hashlib
 from typing import TYPE_CHECKING
 
 from harness.bus.models import EventDraft, Severity
+from harness.finance.catalysts import story_key
 
 if TYPE_CHECKING:
     from harness.finance.models import NewsItem
@@ -21,8 +22,14 @@ SEVERITY_BY_KIND: dict[str, Severity] = {
     "day_move": "warn",
     "index_move": "warn",
     "macro_soon": "info",
+    "macro_print": "info",  # a released number — context for the take, never a page
     "print_soon": "info",
 }
+
+
+def catalyst_key(it: NewsItem) -> str:
+    """The idempotency key a catalyst publishes under (what the bus dedupes on)."""
+    return _headline_key(it.symbol, it.url or it.title)
 
 
 def _headline_key(symbol: str, basis: str) -> str:
@@ -32,6 +39,15 @@ def _headline_key(symbol: str, basis: str) -> str:
     upstream; this is the durable cross-run belt (idempotent even if the cache resets)."""
     h = hashlib.sha1(basis.encode("utf-8")).hexdigest()[:16]  # noqa: S324 — dedup id, not security
     return f"finance.catalyst:{symbol}:{h}"
+
+
+def _plain(html: str, limit: int = 800) -> str:
+    """A feed summary as plain text for the payload (tags stripped, entities decoded, capped)."""
+    import re
+    from html import unescape
+
+    text = re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", html or ""))).strip()
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
 def events_from_catalysts(
@@ -53,7 +69,19 @@ def events_from_catalysts(
             continue
         payload: dict[str, object] = {
             "url": it.url, "source": it.source, "published": it.published,
+            # the article view (the Inbox reader): the outlet, the link to open, and what the
+            # feed shipped — each only when present, so old readers see the same payload
+            "story": story_key(it.title, it.publisher),
         }
+        for k in ("publisher", "publisher_url", "resolved_url", "image_url", "author", "filtered"):
+            v = getattr(it, k)
+            if v:
+                payload[k] = v
+        if it.tags:
+            payload["tags"] = it.tags
+        text = _plain(it.summary)
+        if text:
+            payload["summary"] = text
         ref_dir = refs.get(it.symbol)
         if ref_dir:
             payload["ref"] = {"zone": "vault", "dir": ref_dir}
@@ -66,9 +94,11 @@ def events_from_catalysts(
                 subject=it.symbol,
                 title=f"{it.symbol} — {it.title}",
                 body=body,
+                # a filtered quote/option page is kept for the Inbox's "n filtered" reveal, not read
+                # as news; same severity — the Inbox hides it by default
                 payload=payload,
                 severity="info",
-                idempotency_key=_headline_key(it.symbol, it.url or it.title),
+                idempotency_key=catalyst_key(it),
             )
         )
     return drafts

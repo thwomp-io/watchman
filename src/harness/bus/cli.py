@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from harness._cli import fail
 from harness.bus.models import EventDraft, Severity
 from harness.bus.service import BusService
 
@@ -23,6 +25,9 @@ app = typer.Typer(
     "Producers publish; the tray app (and future transports) deliver. Spec: docs/BUS.md.",
 )
 console = Console()
+
+
+_fail = partial(fail, mark="✗")
 
 
 def _payload_arg(raw: str) -> dict[str, object]:
@@ -141,16 +146,56 @@ def watchmen(as_json: bool = typer.Option(False, "--json")) -> None:
 
 @app.command()
 def purge(
-    before: str = typer.Option(..., "--before", help="ISO timestamp OR Nd (e.g. 30d)"),
+    before: str = typer.Option("", "--before", help="ISO timestamp OR Nd (e.g. 30d)"),
     include_unread: bool = typer.Option(False, "--include-unread", help="Also purge unread"),
+    policy: str = typer.Option(
+        "", "--policy",
+        help="Apply the standing retention policy instead of a bound: `default` = catalyst >30d · "
+        "read+delivered non-alert >90d · read alerts >1y; also rotates the pulse JSON logs past 1MB",
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Count what the policy would delete"),
 ) -> None:
-    """Delete old events (read-only events by default; unread survive unless --include-unread)."""
+    """Delete old events. `--before` is the manual bound (read events only unless
+    --include-unread); `--policy default` is what a weekly scheduled run uses."""
+    if policy:
+        if policy != "default":
+            _fail(f"unknown policy: {policy} (only `default` exists)")
+            raise typer.Exit(code=1)
+        counts = BusService().purge_policy(dry_run=dry_run)
+        verb = "would purge" if dry_run else "purged"
+        console.print(
+            f"{verb} catalyst>30d={counts['catalyst']} · settled>90d={counts['settled']} · "
+            f"alerts>1y={counts['alerts']}"
+        )
+        for rotated in rotate_pulse_logs(dry_run=dry_run):
+            console.print(f"{'would rotate' if dry_run else 'rotated'} {rotated}")
+        return
+    if not before:
+        _fail("pass --before <bound> or --policy default")
+        raise typer.Exit(code=1)
     bound = before
     if before.endswith("d") and before[:-1].isdigit():
         cutoff = datetime.now(UTC) - timedelta(days=int(before[:-1]))
         bound = cutoff.isoformat(timespec="seconds")
     n = BusService().purge(bound, keep_unread=not include_unread)
     console.print(f"purged {n} (before {bound})")
+
+
+def rotate_pulse_logs(*, dry_run: bool = False, cap_bytes: int = 1_000_000) -> list[str]:
+    """Bound the standing agents' JSON run logs (`pulse-json.log`, `travel-pulse-json.log` —
+    written by the launchd plists' shell redirect, so nothing in code ever truncates them). Past
+    `cap_bytes` the file rotates to `.1` (replacing the previous `.1`), so the pair never exceeds
+    ~2× the cap. Returns the names rotated."""
+    from harness.bus.store import harness_state_dir
+
+    out: list[str] = []
+    for name in ("pulse-json.log", "travel-pulse-json.log"):
+        p = harness_state_dir() / name
+        if p.exists() and p.stat().st_size > cap_bytes:
+            if not dry_run:
+                p.replace(p.with_suffix(p.suffix + ".1"))
+            out.append(name)
+    return out
 
 
 @app.command("push-keys")
@@ -194,7 +239,7 @@ def serve(
         "native console's commands; the browser form-factor's backend). Off by default: the "
         "plain bus serve stays exactly what satellites already depend on.",
     ),
-    ui: list[str] = typer.Option(# noqa: B008 — typer option factory, the exempted pattern
+    ui: list[str] = typer.Option(  # noqa: B008 — typer option factory, the exempted pattern
         [],
         "--ui",
         help="Serve a built console UI (implies --console). Bare DIR mounts the default console "

@@ -30,7 +30,7 @@ const isVaultDoc = (v: unknown): v is string =>
   typeof v === "string" && /\.md$/.test(v) && !isUrl(v);
 
 // A cell value that's an http(s) URL renders as a compact external link ("post ↗") instead of the
-// raw URL — surfaces per-row links (e.g. the shortlist's posting URL, an event's TM purchase page) the
+// raw URL — surfaces per-row links (e.g. the shortlist's posting URL, an event's Ticketmaster purchase page) the
 // way the markdown tables do. Opens in the system browser (read-rich/execute-gated: viewing is the act).
 // A `.md` cell instead routes the VAULT zone in-app. Either way the table becomes a launchpad into data.
 function Cell({ value }: { value: unknown }) {
@@ -153,6 +153,9 @@ export default function JsonView({ data, columns }: { data: unknown; columns?: s
         <pre className="raw-json">{JSON.stringify(data, null, 2)}</pre>
       </div>
     );
+  }
+  if (Array.isArray(data) && data.length === 0) {
+    return <div className="json-view"><p className="projections-empty">No rows.</p></div>;
   }
   if (isObjArray(data)) {
     return <div className="json-view">{rawToggle}<ReadoutTable rows={data} columns={columns} /></div>;

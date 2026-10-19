@@ -84,7 +84,7 @@ class Settings(BaseToolkitSettings):
     @property
     def scorecards_path(self) -> Path | None:
         """The print-scorecard registry (`finance/reference/print-scorecards.yaml`), pack-first
-        then tracker-resident. Appended by the operating agent at grade time; the PRINTS
+        then tracker-resident. Appended by the agent (or you) at grade time; the PRINTS
         scorecard-book tab renders from it via `hn finance scorecards --json`. None if absent —
         the verb degrades to an honest empty state, never an invented card."""
         pack = self.pack_file("finance", "print-scorecards.yaml")
@@ -96,7 +96,7 @@ class Settings(BaseToolkitSettings):
     @property
     def projections_path(self) -> Path | None:
         """The scenario-projection params registry (`finance/reference/projection-params.yaml`),
-        pack-first then tracker-resident. Authored by the operating agent at research/grade time
+        pack-first then tracker-resident. Authored by the agent (or you) at research time
         (forward EPS + growth band + multiple band per name, with provenance); the PROJECTIONS
         tab renders from it via `hn finance projections --json`. None if absent — the verb
         degrades to an honest empty state, never an invented grid."""

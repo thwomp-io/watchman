@@ -15,6 +15,32 @@ interface LineData {
 }
 
 const M = { top: 16, right: 24, bottom: 28, left: 64 };
+const DAY = 86_400_000;
+
+/** X-axis ticks for a date domain at a given plot width (px), placed by real date. A window under
+ *  ~2.5 months reads in days ("Sep 14"); a longer one reads in months, stepping 1/2/3/6 months so
+ *  the labels fit (~48px each — a "Jun '26"-wide label plus a gap), then in years. The first tick and every January carry the year
+ *  ("Jun '26"); a yearly step labels the year alone. */
+export function timeTicks(dom: [Date, Date], plotW: number): { t: Date; label: string }[] {
+  const fit = Math.max(2, Math.floor(plotW / 48));
+  const spanDays = (dom[1].getTime() - dom[0].getTime()) / DAY;
+  if (spanDays <= 75) {
+    const x = d3.scaleUtc().domain(dom);
+    return x.ticks(Math.min(fit, 6)).map((t) => ({ t, label: d3.utcFormat("%b %d")(t) }));
+  }
+  const months = spanDays / 30.44;
+  const step = [1, 2, 3, 6].find((k) => months / k <= fit);
+  if (step == null) {  // a year or more per label: yearly ticks, every k years
+    const k = Math.max(1, Math.ceil(months / 12 / fit));
+    return d3.utcYear.every(k)!.range(d3.utcYear.ceil(dom[0]), new Date(dom[1].getTime() + 1))
+      .map((t) => ({ t, label: d3.utcFormat("%Y")(t) }));
+  }
+  const iv = step === 1 ? d3.utcMonth : d3.utcMonth.every(step)!;
+  return iv.range(iv.ceil(dom[0]), new Date(dom[1].getTime() + 1)).map((t, i) => ({
+    t,
+    label: i === 0 || t.getUTCMonth() === 0 ? d3.utcFormat("%b '%y")(t) : d3.utcFormat("%b")(t),
+  }));
+}
 
 export default function LineChart({ data }: { data: LineData }) {
   const COLORS = useCatColors(); // theme-aware categorical set (re-renders on toggle)
@@ -113,65 +139,67 @@ export default function LineChart({ data }: { data: LineData }) {
   const zoomed = xDom[0].getTime() !== fullX[0].getTime() || xDom[1].getTime() !== fullX[1].getTime();
 
   return (
-    <div className="viz-canvas" ref={ref}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg line-chart"
-           onMouseMove={onMove}
-           onMouseDown={(e) => { dragRef.current = svgPos(e); }}
-           onMouseUp={endDrag}
-           onMouseLeave={() => { setCross(null); endDrag(); }}
-           onDoubleClick={() => setXDom(fullX)}>
-        {y.ticks(5).map((t) => (
-          <g key={t}>
-            <line x1={M.left} x2={W - M.right} y1={y(t)} y2={y(t)} className="grid-line" />
-            <text x={M.left - 8} y={y(t)} dy="0.35em" textAnchor="end" className="axis-label">
-              {yp}{fmtNum(t)}
-            </text>
-          </g>
-        ))}
-        {x.ticks(6).map((t, i) => (
-          <text key={i} x={x(t)} y={H - 8} textAnchor="middle" className="axis-label">
-            {d3.utcFormat("%b %d")(t)}
-          </text>
-        ))}
-        {(data.levels ?? []).map((l, i) => (
-          <g key={`lv${i}`}>
-            <line x1={M.left} x2={W - M.right} y1={y(l.y)} y2={y(l.y)} className="ref-level" />
-            <text x={W - M.right - 4} y={y(l.y) - 4} textAnchor="end" className="ref-level-label">
-              {l.label}
-            </text>
-          </g>
-        ))}
-        {data.series.map((s, i) => {
-          const pts = s.points
-            .map((p) => ({ d: parse(p.x) as Date, y: p.y }))
-            .filter((p) => p.d >= xDom[0] && p.d <= xDom[1]);
-          return (
-            <g key={s.label}>
-              <path d={line(pts) ?? ""} fill="none" stroke={COLORS[i % COLORS.length]}
-                    strokeWidth={2} strokeLinejoin="round" />
-              {pts.map((p, j) => (
-                <circle key={j} cx={x(p.d)} cy={y(p.y)} r={2.5}
-                        fill={COLORS[i % COLORS.length]} />
-              ))}
+    <div className="viz-canvas line-canvas">
+      <div className="line-plot" ref={ref}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg line-chart"
+             onMouseMove={onMove}
+             onMouseDown={(e) => { dragRef.current = svgPos(e); }}
+             onMouseUp={endDrag}
+             onMouseLeave={() => { setCross(null); endDrag(); }}
+             onDoubleClick={() => setXDom(fullX)}>
+          {y.ticks(5).map((t) => (
+            <g key={t}>
+              <line x1={M.left} x2={W - M.right} y1={y(t)} y2={y(t)} className="grid-line" />
+              <text x={M.left - 8} y={y(t)} dy="0.35em" textAnchor="end" className="axis-label">
+                {yp}{fmtNum(t)}
+              </text>
             </g>
-          );
-        })}
-        {drag && (
-          <rect x={Math.min(...drag)} y={M.top} width={Math.abs(drag[1] - drag[0])}
-                height={H - M.top - M.bottom} className="brush-rect" />
-        )}
+          ))}
+          {timeTicks(xDom, W - M.left - M.right).map(({ t, label }, i) => (
+            <text key={i} x={x(t)} y={H - 8} textAnchor="middle" className="axis-label x-tick">
+              {label}
+            </text>
+          ))}
+          {(data.levels ?? []).map((l, i) => (
+            <g key={`lv${i}`}>
+              <line x1={M.left} x2={W - M.right} y1={y(l.y)} y2={y(l.y)} className="ref-level" />
+              <text x={W - M.right - 4} y={y(l.y) - 4} textAnchor="end" className="ref-level-label">
+                {l.label}
+              </text>
+            </g>
+          ))}
+          {data.series.map((s, i) => {
+            const pts = s.points
+              .map((p) => ({ d: parse(p.x) as Date, y: p.y }))
+              .filter((p) => p.d >= xDom[0] && p.d <= xDom[1]);
+            return (
+              <g key={s.label}>
+                <path d={line(pts) ?? ""} fill="none" stroke={COLORS[i % COLORS.length]}
+                      strokeWidth={2} strokeLinejoin="round" />
+                {pts.map((p, j) => (
+                  <circle key={j} cx={x(p.d)} cy={y(p.y)} r={2.5}
+                          fill={COLORS[i % COLORS.length]} />
+                ))}
+              </g>
+            );
+          })}
+          {drag && (
+            <rect x={Math.min(...drag)} y={M.top} width={Math.abs(drag[1] - drag[0])}
+                  height={H - M.top - M.bottom} className="brush-rect" />
+          )}
+          {cross && !drag && (
+            <g>
+              <line x1={cross.px} x2={cross.px} y1={M.top} y2={H - M.bottom} className="crosshair" />
+              <circle cx={cross.px} cy={cross.py} r={4.5} className="crosshair-dot" />
+            </g>
+          )}
+        </svg>
         {cross && !drag && (
-          <g>
-            <line x1={cross.px} x2={cross.px} y1={M.top} y2={H - M.bottom} className="crosshair" />
-            <circle cx={cross.px} cy={cross.py} r={4.5} className="crosshair-dot" />
-          </g>
+          <div className="viz-tip" style={{ left: Math.min(cross.px + 14, W - 180), top: cross.py - 30 }}>
+            {cross.label}
+          </div>
         )}
-      </svg>
-      {cross && !drag && (
-        <div className="viz-tip" style={{ left: Math.min(cross.px + 14, W - 180), top: cross.py - 30 }}>
-          {cross.label}
-        </div>
-      )}
+      </div>
       <p className="viz-hint">
         {zoomed ? "DOUBLE-CLICK TO RESET ZOOM" : "DRAG A WINDOW TO ZOOM · CROSSHAIR TRACKS NEAREST POINT"}
       </p>

@@ -17,6 +17,20 @@ import ScorecardBook, { type ScorecardData } from "./ScorecardBook";
 import ProjectionTiles, { type ProjectionData } from "./ProjectionTiles";
 import HoldingsGrid, { type HoldingsData } from "./HoldingsGrid";
 import NudgeCards, { type NudgeData } from "./NudgeCards";
+import PoolTiles, { type PoolData } from "./PoolTiles";
+import RoleTiles, { type RolesData } from "./RoleTiles";
+import CampaignBoard, { type CampaignData } from "./CampaignBoard";
+import LaddersGrid, { type LaddersData } from "./LaddersGrid";
+import BankTiles from "./BankTiles";
+import ScheduleBoard from "./ScheduleBoard";
+import TripPicker, { type TripPickerData } from "./TripPicker";
+import { PICKER_SCOPES, setSelection, useSelection } from "./selection";
+import CalendarCards, { type CalendarData } from "./CalendarCards";
+import DecisionPanel, { type DecisionData, hasDecision } from "./DecisionPanel";
+import { TickerStrip } from "./TickerStrip";
+import PriceChart from "./PriceChart";
+import CorrelationHeatmap from "./CorrelationHeatmap";
+import type { BarsReport, CorrelationReport, VisitBank, VisitSchedule } from "./generated/contracts";
 import type { BusEvent, Dashboard, DirDoc, NewsItem, SurfaceState, Widget, WireDigest } from "./types";
 import { fmtNum } from "./viz/common";
 import BarChart from "./viz/BarChart";
@@ -41,7 +55,7 @@ const MARKET_MS = 10 * 60_000;
 const LOCAL_MS = 60_000;
 const LOCAL30M_MS = 30 * 60_000; // gentle cadence for non-tick sources (the News wire)
 
-// ————— cache + dedupe (the first-load-lockup field feedback) ————————————————————————————————————
+// ————— cache + dedupe (keeps the first load from locking up) ————————————————————————————————————
 // localStorage cache: DASH paints instantly with last-known data (CACHED chip + honest AS-OF),
 // then refreshes per policy in the background. In-flight dedupe: widgets sharing a source
 // (watch ×2, pulse ×2) share ONE subprocess run.
@@ -284,14 +298,17 @@ function NewsReader({ data }: { data: WireDigest }) {
           {cur ? (
             <>
               <div className="news-detail-meta">
-                <span className="news-src">{cur.source}</span>
+                <span className="news-src">{cur.publisher || cur.source}</span>
+                {cur.author && <span className="news-when">{cur.author}</span>}
                 {cur.published && <span className="news-when">{relTime(cur.published)}</span>}
                 {(cur.holdings_hit?.length ?? 0) > 0 &&
                   <span className="book-tags">{cur.holdings_hit.join(" · ")}</span>}
                 {cur.url &&
-                  <a className="ext-link" href={cur.url} target="_blank" rel="noreferrer">open original ↗</a>}
+                  <a className="ext-link" href={cur.resolved_url || cur.url} target="_blank" rel="noreferrer">open original ↗</a>}
               </div>
               <h3 className="news-detail-title">{cur.title}</h3>
+              {cur.image_url && <img className="news-detail-image" src={cur.image_url} alt="" loading="lazy"
+                onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none"; }} />}
               {body
                 ? <div className="news-detail-body">{body}</div>
                 : <p className="empty">Headline only — open the original for the full story.</p>}
@@ -314,7 +331,7 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
   // offline/error fallback, so a failed resolve degrades to exactly the pre-dynamic-symbols behavior.
   const [dynSymbols, setDynSymbols] = useState<string[] | null>(null);
   useEffect(() => {
-    if (widget.symbols_from !== "portfolio") return;
+    if (widget.symbols_from !== "portfolio") return;  // picker scopes resolve via the selection
     let alive = true;
     listPortfolioSymbols(lane, widget.id)
       .then((s) => { if (alive && s.length) setDynSymbols(s); })
@@ -330,7 +347,13 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
   // state — snap to a valid symbol so a bars/position widget never queries a ticker the current
   // book doesn't hold. Driving the run + cache key off effSymbol (not raw state) means the query
   // is always valid even before the state-sync effect below commits.
-  const effSymbol = symbol && symbolList?.includes(symbol) ? symbol : (symbolList?.[0] ?? null);
+  // trip/visit picker widgets: the selection is the tab's (the picker widget sets it), "auto" until
+  // a pick — the verb then resolves its own default, the same one the picker highlights
+  const pickerScope = widget.symbols_from && PICKER_SCOPES.has(widget.symbols_from) ? widget.symbols_from : null;
+  const picked = useSelection(lane, pickerScope);
+  const effSymbol = pickerScope
+    ? (picked ?? "auto")
+    : symbol && symbolList?.includes(symbol) ? symbol : (symbolList?.[0] ?? null);
   const ck = effSymbol ? `${widget.id}:${effSymbol}` : widget.id;
   // boot from cache: instant paint with last-known data, honest CACHED chip
   const [state, setState] = useState<SurfaceState>(() => {
@@ -411,7 +434,11 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
   const clock = (d: Date) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const nav = useNav();
   // viz widgets expand full-bleed on a title click (DASH renders just this widget; the masthead ◀ returns).
-  const expandable = widget.kind === "viz";
+  const expandable = widget.kind === "viz" || widget.kind === "chart" || widget.kind === "correlation";
+  // a decision panel with no live decision leaves the grid entirely (no empty frame to explain)
+  if (widget.kind === "decision" && state.status === "ok" && !hasDecision(pluck(state.data, widget.value_path))) {
+    return null;
+  }
 
   return (
     <section className={`widget bezel span-${widget.span} rows-${widget.rows ?? 1} kind-${widget.kind}`}>
@@ -430,7 +457,7 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
             return v != null && v !== "" ? <span className="widget-title-accent"> · {String(v)}</span> : null;
           })()}
         </span>
-        {(symbolList?.length ?? 0) > 0 && (
+        {!pickerScope && (symbolList?.length ?? 0) > 0 && (
           <span className="symbol-pills">
             {symbolList.map((s) => (
               <button key={s} className={s === effSymbol ? "active" : ""}
@@ -456,6 +483,9 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
       {state.status === "ok" && (
         <ErrorBoundary resetKey={`${widget.id}`}>
           {widget.kind === "stat" && <StatBody data={state.data} widget={widget} />}
+          {widget.kind === "ticker" && <TickerStrip data={state.data} tickers={widget.tickers ?? []} />}
+          {widget.kind === "chart" && <PriceChart data={state.data as BarsReport} />}
+          {widget.kind === "correlation" && <CorrelationHeatmap data={state.data as CorrelationReport} />}
           {widget.kind === "table" && (
             <div className="widget-table"><JsonView data={pluck(state.data, widget.value_path)} columns={widget.columns} /></div>
           )}
@@ -472,6 +502,33 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
           )}
           {widget.kind === "nudges" && (
             <NudgeCards data={pluck(state.data, widget.value_path) as NudgeData} />
+          )}
+          {widget.kind === "pool" && (
+            <PoolTiles data={pluck(state.data, widget.value_path) as PoolData} />
+          )}
+          {widget.kind === "roles" && (
+            <RoleTiles lane={lane} data={pluck(state.data, widget.value_path) as RolesData} />
+          )}
+          {widget.kind === "campaign" && (
+            <CampaignBoard data={pluck(state.data, widget.value_path) as CampaignData} />
+          )}
+          {widget.kind === "ladders" && (
+            <LaddersGrid data={pluck(state.data, widget.value_path) as LaddersData} />
+          )}
+          {widget.kind === "bank" && (
+            <BankTiles data={pluck(state.data, widget.value_path) as VisitBank} />
+          )}
+          {widget.kind === "picker" && (
+            <TripPicker lane={lane} data={pluck(state.data, widget.value_path) as TripPickerData} />
+          )}
+          {widget.kind === "calendar" && (
+            <CalendarCards data={pluck(state.data, widget.value_path) as CalendarData} />
+          )}
+          {widget.kind === "decision" && (
+            <DecisionPanel data={pluck(state.data, widget.value_path) as DecisionData} />
+          )}
+          {widget.kind === "schedule" && (
+            <ScheduleBoard data={pluck(state.data, widget.value_path) as VisitSchedule} />
           )}
           {widget.kind === "viz" && (() => {
             // viz widgets honor value_path like stat/table do — so one rich source (e.g.
@@ -605,14 +662,32 @@ function DocSeriesCard({ widget, forceTick }: { widget: Widget; forceTick: numbe
   );
 }
 
+/** Groups keep their first-appearance position (the loaders' lane-alphabetical order); within a
+ * group, subtabs sort by `order` (absent = after the ordered ones), then by that same position. One
+ * sort for every loader, so the native app and the served console read a group identically. */
+export function orderDashboards(ds: Dashboard[]): Dashboard[] {
+  const groupAt = new Map<string, number>();
+  ds.forEach((d) => {
+    const g = d.group || d.title;
+    if (!groupAt.has(g)) groupAt.set(g, groupAt.size);
+  });
+  return ds
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) =>
+      groupAt.get(a.d.group || a.d.title)! - groupAt.get(b.d.group || b.d.title)!
+      || (a.d.order ?? 1e6) - (b.d.order ?? 1e6)
+      || a.i - b.i)
+    .map((x) => x.d);
+}
+
 export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
   const compact = useCompact();
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [group, setGroup] = useState<string>("");
   const [lane, setLane] = useState<string>("");
   const [allTick, setAllTick] = useState(0);
-  // Dashboard Studio: edit mode. LOCKED IS ALWAYS THE DEFAULT (operator ruling —
-  // browsing must never accidentally drag); any tab or pack change re-locks. The toggle renders
+  // Dashboard Studio: edit mode. LOCKED IS ALWAYS THE DEFAULT (browsing must
+  // never accidentally drag); any tab or pack change re-locks. The toggle renders
   // only on the real corpus (reloadKey "") — pack dashboards are transients the save command
   // rejects anyway (the demo-seal belt in commands.rs).
   const [unlocked, setUnlocked] = useState(false);
@@ -625,13 +700,14 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
     selRef.current = { group, lane };
   }, [group, lane]);
 
-  // (Re)fetch the dashboard LAYOUT — not just the data. A weight pack can now DESCRIBE the dashboards
-  // (v2), so the tab structure itself changes on a pack swap; refetching only widget data would
+  // (Re)fetch the dashboard LAYOUT — not just the data. A weight pack can DESCRIBE the dashboards, so
+  // the tab structure itself changes on a pack swap; refetching only widget data would
   // leave a stale layout whose tabs/widgets no longer resolve ("unknown widget"). `preserve` keeps the
   // active group + subtab when they still exist in the new set (sit on Finance, swap personas → stay on
   // Finance Core), else falls back to the first group/lane (a vanished tab like Tickets → Core).
   const load = useCallback((preserve: boolean, bump = false) => {
-    void listDashboards().then((ds) => {
+    void listDashboards().then((raw) => {
+      const ds = orderDashboards(raw);
       setDashboards(ds);
       if (ds.length === 0) {
         setGroup("");
@@ -686,6 +762,35 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
       : undefined),
     [nav.current, current],
   );
+
+  // Deep-link into a subtab. `dash` = an exact lane (what the subtab clicks report, so ◀ returns to
+  // the tab you were on); `follows` = the subtab whose widgets follow that picker scope — the current
+  // group's first, else any — with `pick` selected in it before it opens.
+  useEffect(() => {
+    const ref = nav.current;
+    if (ref.zone !== "dash" || dashboards.length === 0 || (!ref.dash && !ref.follows)) return;
+    let target: Dashboard | undefined;
+    if (ref.follows) {
+      const follows = (d: Dashboard) => d.widgets.some((w) => w.symbols_from === ref.follows);
+      const inGroup = dashboards.find((d) => (d.group || d.title) === selRef.current.group && follows(d));
+      target = inGroup ?? dashboards.find(follows);
+      if (target && ref.pick) setSelection(target.lane, ref.follows, ref.pick);
+    } else {
+      target = dashboards.find((d) => d.lane === ref.dash);
+    }
+    if (!target) return;
+    if (target.lane !== selRef.current.lane) {
+      setGroup(target.group || target.title);
+      setLane(target.lane);
+    }
+    if (ref.follows) nav.report({ dash: target.lane, follows: undefined, pick: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.current, dashboards]);
+  const openLane = (g: string, l: string) => {
+    setGroup(g);
+    setLane(l);
+    nav.report({ dash: l });
+  };
 
   // Studio commit: fold an RGL layout change back into the dashboard, update state, persist.
   // Auto-save on every drag/resize commit — unlock is the deliberate act, so edits inside it are
@@ -765,7 +870,7 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
       <div className="strip">
         {groups.map(([g, ds]) => (
           <button key={g} className={g === group ? "active" : ""}
-                  onClick={() => { setGroup(g); setLane(ds[0].lane); }}>
+                  onClick={() => openLane(g, ds[0].lane)}>
             {g}
           </button>
         ))}
@@ -795,7 +900,7 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         <div className="substrip">
           {groupDashboards.map((d) => (
             <button key={d.lane} className={d.lane === lane ? "active" : ""}
-                    onClick={() => setLane(d.lane)}>
+                    onClick={() => openLane(group, d.lane)}>
               {d.title}
             </button>
           ))}
@@ -881,10 +986,10 @@ function makeOccupancy(cols: number) {
   return { fits, claim };
 }
 
-// THE NO-WIDGET-LOSS INVARIANT (found via a field bug): widgets are interchangeable
+// THE NO-WIDGET-LOSS INVARIANT: widgets are interchangeable
 // blocks — a drop may NEVER hide or lose another widget. RGL under noCompactor resolves only the
 // FIRST collision (it pushes the occupant one row) and never re-resolves the pushed widget's own
-// landing — in the incident the pushed stat tile landed UNDER a 3×3 panel and vanished from view.
+// landing — a pushed tile can land UNDER a larger panel and vanish from view.
 // This pass runs on every commit: widgets that didn't move keep their cells; every MOVED cell
 // (the user's drag AND RGL's pushes) that overlaps anything is first-fit relocated to the nearest
 // free slot, scanning from the top — which lands a displaced tile in the dragged tile's vacated
@@ -938,7 +1043,13 @@ export function migrateLegacyLayouts(d: Dashboard, cols: number): Dashboard {
     if (wg.layout) { claim(wg.layout.x, wg.layout.y, wg.layout.w, wg.layout.h); return wg; }
     const w = Math.max(1, Math.min(wg.span || 2, cols));
     const h = wg.kind === "stat" ? 1
-      : wg.kind === "doc_series" || wg.kind === "scorecards" || wg.kind === "holdings" ? 6
+      : wg.kind === "doc_series" || wg.kind === "scorecards" || wg.kind === "holdings"
+        || wg.kind === "pool" || wg.kind === "ladders" || wg.kind === "bank" ? 6
+      // the timeline is a full day axis + its chips, unclipped: ~830px (7 × 110 + margins)
+      : wg.kind === "schedule" ? 7
+      // role tiles: two chip rows + the on-profile pane; the campaign: the in-flight cards + the calendar
+      : wg.kind === "roles" ? 8
+      : wg.kind === "campaign" ? 6
       : wg.kind === "nudges" ? 4
       : 3 * (wg.rows ?? 1);
     let px = 0, py = 0;

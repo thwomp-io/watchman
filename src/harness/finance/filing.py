@@ -14,7 +14,7 @@ the N-PORT module's proven UA posture. The one genuinely-new piece is the stdlib
 converter (API-over-library rule: no bs4/lxml/html2text dependency for what HTMLParser handles —
 press-release HTML is table-heavy but structurally simple).
 
-UA posture (same finding as nport.py, probed 2026-07-13): the directory listings + documents live
+UA posture (same finding as nport.py): the directory listings + documents live
 on www.sec.gov/Archives, which WAF-requires an email-style contact UA (SEC fair-access policy).
 Shipping a contact would violate the non-PII default, so the fetch reads ``HARNESS_SEC_CONTACT``
 from the environment (the gitignored .env is its home) and fails LOUD with instructions when unset.
@@ -29,7 +29,6 @@ appear in `documents` and are fetchable via --doc).
 from __future__ import annotations
 
 import re
-from html.parser import HTMLParser
 
 from harness._http import get_with_retry
 from harness.errors import ProviderError
@@ -78,8 +77,17 @@ def list_documents(cik: str, accession: str) -> list[str]:
 
     The list is the re-aim surface: when the default exhibit pick is wrong, the caller sees what
     else the filing carries (additional EX-99.2 slide exhibits, the 8-K body, XBRL sidecars)."""
+    import httpx
+
     url = _INDEX_URL.format(cik_int=int(cik), accession_nodash=accession.replace("-", ""))
-    resp = get_with_retry(url, headers=_sec_contact_headers())
+    try:
+        resp = get_with_retry(url, headers=_sec_contact_headers())
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
+        hint = " — no such accession for this filer (check it against --list)" if code == 404 else ""
+        raise ProviderError(f"filing index CIK{cik} {accession}: HTTP {code}{hint}") from e
+    except httpx.HTTPError as e:
+        raise ProviderError(f"filing index CIK{cik} {accession}: {e}") from e
     if resp.status_code != 200:
         raise ProviderError(f"filing index CIK{cik} {accession}: HTTP {resp.status_code}")
     try:
@@ -90,6 +98,58 @@ def list_documents(cik: str, accession: str) -> list[str]:
     if not names:
         raise ProviderError(f"filing index CIK{cik} {accession}: empty directory listing")
     return names
+
+
+_WRAPPER_RE = re.compile(
+    r"(-index-headers\.html|-index\.html?|\.txt|-xbrl\.zip|FilingSummary\.xml|\.xsd|_(cal|def|lab|pre)\.xml)$",
+    re.IGNORECASE,
+)
+
+
+def merge_documents(listed: list[str], doc_types: dict[str, str]) -> tuple[list[str], bool]:
+    """The filing's document set = the directory listing ∪ the `-index.htm` table.
+
+    SEC's `index.json` listing has been seen TRUNCATED on large filings (a 10-K showing only its
+    four wrapper files — the index pages, the full-submission .txt, the XBRL zip — while the rendered
+    table listed every document), which made the primary document unreachable and `--doc` reject a
+    file that plainly exists. Returns (documents, listing_looked_truncated)."""
+    merged = list(dict.fromkeys([*listed, *doc_types]))
+    content = [n for n in listed if not _WRAPPER_RE.search(n) and not _META_RE.match(n)]
+    return merged, bool(doc_types) and not content
+
+
+# EDGAR spells some form types with a space; users type them without one.
+FORM_ALIASES = {
+    "DEF14A": "DEF 14A", "PRE14A": "PRE 14A", "SC13D": "SC 13D", "SC13G": "SC 13G",
+    "SC13E3": "SC 13E3", "SC14D9": "SC 14D9", "SCTO-T": "SC TO-T",
+}
+
+
+def normalize_form(form: str) -> str:
+    key = form.strip().upper().replace(" ", "")
+    return FORM_ALIASES.get(key, form.strip().upper())
+
+
+_SGML_DOC_RE = re.compile(r"<DOCUMENT>.*?</DOCUMENT>", re.S | re.I)
+_BINARY_TYPES = ("GRAPHIC", "ZIP", "EXCEL", "PDF", "XML", "JSON")
+
+
+def clean_submission_text(raw: str) -> str:
+    """A full-submission `.txt` carries NUL bytes and uuencoded/base64 binary exhibits (logos, zips,
+    PDFs) inline. NULs make BSD grep call the file binary and match NOTHING; the encoded blocks
+    produce false keyword hits. Drop both — the text documents stay whole."""
+    raw = raw.replace("\x00", "")
+
+    def keep(m: re.Match[str]) -> str:
+        head = m.group(0)[:400].upper()
+        t = re.search(r"<TYPE>\s*([^\s<]+)", head)
+        if t and t.group(1).startswith(_BINARY_TYPES):
+            return f"<DOCUMENT><TYPE>{t.group(1)} [binary exhibit omitted]</DOCUMENT>"
+        if "\nBEGIN 644 " in head or "\nBEGIN 666 " in head:
+            return "<DOCUMENT>[uuencoded exhibit omitted]</DOCUMENT>"
+        return m.group(0)
+
+    return _SGML_DOC_RE.sub(keep, raw)
 
 
 def parse_index_types(html: str) -> dict[str, str]:
@@ -157,89 +217,21 @@ def pick_press_release(
 
 def fetch_document(cik: str, accession: str, doc: str) -> tuple[str, str]:
     """Fetch one document from the filing's archive directory. Returns (url, raw_html)."""
+    import httpx
+
     url = _DOC_URL.format(cik_int=int(cik), accession_nodash=accession.replace("-", ""), doc=doc)
-    resp = get_with_retry(url, headers=_sec_contact_headers())
+    try:
+        resp = get_with_retry(url, headers=_sec_contact_headers(), timeout=120.0)
+    except httpx.HTTPError as e:
+        raise ProviderError(f"filing doc {doc}: {e}") from e
     if resp.status_code != 200:
         raise ProviderError(f"filing doc {doc}: HTTP {resp.status_code}")
-    return url, resp.text
+    text = resp.text
+    if doc.lower().endswith(".txt"):
+        text = clean_submission_text(text)
+    return url, text
 
 
-class _TextExtractor(HTMLParser):
-    """HTML → readable plain text, tuned for press-release exhibits.
-
-    What matters for a print readout: block boundaries become newlines (paragraph flow survives),
-    table cells join with ` | ` inside their row (the KPI/guidance tables stay scannable as rows),
-    script/style/head content is dropped. Everything else passes through as text — press-release
-    HTML is presentation-heavy but structurally shallow, which is what makes stdlib parsing
-    sufficient here (the API-over-library call in the module docstring)."""
-
-    _SKIP = {"script", "style", "head", "title"}
-    _BLOCK = {"p", "div", "br", "tr", "table", "h1", "h2", "h3", "h4", "h5", "h6", "li", "hr"}
-    _CELL = {"td", "th"}
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self._chunks: list[str] = []
-        self._skip_depth = 0
-        self._in_row = False
-        self._row_cells: list[str] = []
-        self._cell_chunks: list[str] | None = None
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in self._SKIP:
-            self._skip_depth += 1
-            return
-        if tag == "tr":
-            self._in_row = True
-            self._row_cells = []
-        elif tag in self._CELL and self._in_row:
-            self._cell_chunks = []
-        elif tag in self._BLOCK and not self._in_row:
-            self._chunks.append("\n")
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in self._SKIP:
-            self._skip_depth = max(0, self._skip_depth - 1)
-            return
-        if tag in self._CELL and self._cell_chunks is not None:
-            cell = " ".join("".join(self._cell_chunks).split())
-            self._row_cells.append(cell)
-            self._cell_chunks = None
-        elif tag == "tr":
-            # Emit the row as ` | `-joined cells; skip rows that are pure whitespace/layout.
-            row = " | ".join(self._row_cells).strip(" |")
-            if any(c for c in self._row_cells):
-                self._chunks.append("\n" + row)
-            self._in_row = False
-            self._row_cells = []
-        elif tag in self._BLOCK and not self._in_row:
-            self._chunks.append("\n")
-
-    def handle_data(self, data: str) -> None:
-        if self._skip_depth:
-            return
-        if self._cell_chunks is not None:
-            self._cell_chunks.append(data)
-        elif not self._in_row:
-            self._chunks.append(data)
-
-    def text(self) -> str:
-        raw = "".join(self._chunks)
-        # Collapse intra-line whitespace runs (presentational HTML is &nbsp;-ridden), then
-        # collapse blank-line runs to one — readable paragraphs, no vertical sprawl.
-        lines = [" ".join(line.split()) for line in raw.splitlines()]
-        out: list[str] = []
-        for line in lines:
-            if line:
-                out.append(line)
-            elif out and out[-1]:
-                out.append("")
-        return "\n".join(out).strip()
-
-
-def html_to_text(html: str) -> str:
-    """Convert filing-document HTML to readable plain text (tables as ` | `-joined rows)."""
-    parser = _TextExtractor()
-    parser.feed(html)
-    parser.close()
-    return parser.text()
+# `html_to_text` moved to the shared `harness.textutil` (the career lane reads job content
+# through the same converter); re-exported here so existing imports keep working.
+from harness.textutil import html_to_text  # noqa: E402,F401

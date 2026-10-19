@@ -6,7 +6,7 @@ module makes that observation mechanical: swing lows (local minima of the low se
 by proximity into named levels with touch counts. Pure functions, no I/O, no model —
 deterministic-core doctrine.
 
-This is an observation surface for the sounding-board: levels are *descriptions of past price
+This is an observation surface for the assistant: levels are *descriptions of past price
 behavior*, never predictions or recommendations.
 """
 
@@ -65,8 +65,12 @@ def support_levels(
             touches=len(c),
             last_touch=max(w for _, w in c)[:10],
             distance_pct=round((median(p for p, _ in c) - last_close) / last_close * 100.0, 2),
+            kind="support" if median(p for p, _ in c) <= last_close else "overhead",
         )
         for c in clusters
     ]
-    levels.sort(key=lambda lv: abs(lv.distance_pct))
-    return levels[:max_levels]
+    # Supports (at/below the close) nearest-first, then at most two overhead levels (broken supports
+    # now above the market) — a level above spot was once listed as support, nearest-first.
+    below = sorted((lv for lv in levels if lv.kind == "support"), key=lambda lv: abs(lv.distance_pct))
+    above = sorted((lv for lv in levels if lv.kind == "overhead"), key=lambda lv: lv.distance_pct)
+    return below[:max_levels] + above[:2]

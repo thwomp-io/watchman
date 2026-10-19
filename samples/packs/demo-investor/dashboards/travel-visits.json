@@ -5,9 +5,9 @@
   "owner": "default",
   "widgets": [
     {
-      "id": "inbound",
-      "title": "Inbound visits — who's coming",
-      "kind": "table",
+      "id": "picker",
+      "title": "Visits — pick one",
+      "kind": "picker",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -15,8 +15,8 @@
           "run",
           "hn",
           "travel",
-          "trips",
-          "--kind",
+          "banks",
+          "--scope",
           "visit",
           "--json"
         ],
@@ -24,24 +24,79 @@
       },
       "refresh": "local60s",
       "span": 4,
-      "value_path": "trips",
+      "value_path": null,
       "prefix": null,
       "suffix": null,
       "signed": null,
       "title_path": null,
       "symbols": [],
-      "symbols_from": null,
-      "columns": [
-        "when",
-        "date",
-        "status",
-        "destination",
-        "anchor",
-        "who",
-        "doc"
-      ],
-      "rows": 1,
-      "layout": null
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "schedule",
+      "title": "Visit schedule — day by day",
+      "kind": "schedule",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "schedule",
+          "--scope",
+          "visit",
+          "--visit",
+          "{symbol}",
+          "--no-weather",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "visit",
+      "columns": [],
+      "rows": 6
+    },
+    {
+      "id": "bank",
+      "title": "Visit bank — outings + restaurants",
+      "kind": "bank",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "bank",
+          "--scope",
+          "visit",
+          "--visit",
+          "{symbol}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "visit",
+      "columns": [],
+      "rows": 3
     }
   ]
 }

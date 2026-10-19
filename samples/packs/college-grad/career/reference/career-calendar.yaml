@@ -1,0 +1,8 @@
+# The career calendar — operator-authored milestones the Campaign tab counts down to (fictional sample).
+# Early-career milestones: offer windows and the first start date.
+milestones:
+  - {date: "2030-02-01", label: "Return-offer deadline", kind: deadline}
+  - {date: "2030-05-17", label: "Graduation", kind: school}
+  - {date: "2030-07-08", label: "First day at the new job", kind: start}
+notes:
+  - "Sample persona — the dates and amounts are illustrative."

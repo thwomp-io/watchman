@@ -1,0 +1,8 @@
+# The career calendar — operator-authored milestones the Campaign tab counts down to (fictional sample).
+# An active search: offer and follow-up deadlines close together, plus the comp date that shapes timing.
+milestones:
+  - {date: "2030-01-15", label: "Recruiter follow-ups due", kind: search}
+  - {date: "2030-01-31", label: "Offer decision deadline", kind: deadline}
+  - {date: "2030-03-01", label: "Annual bonus lands", kind: comp, approx: true}
+notes:
+  - "Sample persona — the dates and amounts are illustrative."

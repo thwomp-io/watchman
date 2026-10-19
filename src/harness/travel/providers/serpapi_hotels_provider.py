@@ -18,10 +18,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from harness.paths import cache_file
 from harness.travel.models import HotelOffer, HotelQuery, HotelSearch, NearbyPlace
 from harness.travel.providers.base import ProviderError
 
-_CACHE_DIR = Path.home() / ".cache" / "harness" / "hotels"
+_CACHE_SUBDIR = "hotels"  # under harness.paths.harness_cache_dir() — sealable via HARNESS_CACHE_DIR
 _CACHE_TTL_S = 24 * 3600  # prices drift slowly; a day-old cache is fine for research + costs 0 quota
 
 
@@ -36,7 +37,7 @@ class SerpApiHotelProvider:
         self, api_key: str | None, *, cache_dir: Path | None = None, ttl_s: int = _CACHE_TTL_S
     ) -> None:
         self._api_key = api_key
-        self._cache_dir = cache_dir or _CACHE_DIR
+        self._cache_dir = cache_dir or cache_file(_CACHE_SUBDIR)
         self._ttl_s = ttl_s
         self.search_count = 0  # live searches actually spent (quota)
         self.cache_hits = 0
@@ -104,7 +105,12 @@ class SerpApiHotelProvider:
 
 def _parse_offers(raw: dict[str, Any], limit: int) -> list[HotelOffer]:
     offers: list[HotelOffer] = []
-    for p in raw.get("properties") or []:
+    props = raw.get("properties") or []
+    if not props and raw.get("name") and (raw.get("property_token") or raw.get("rate_per_night")):
+        # A NAMED query ("Parker Palm Springs") answers with ONE property's details at the top level
+        # instead of a `properties` list — same field names, so it parses as a one-item list.
+        props = [raw]
+    for p in props:
         if not isinstance(p, dict):
             continue
         rpn = p.get("rate_per_night") or {}

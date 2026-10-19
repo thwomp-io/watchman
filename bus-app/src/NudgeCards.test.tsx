@@ -90,6 +90,33 @@ describe("NudgeCards", () => {
     expect(screen.getByText(/Fixture Day/)).toBeInTheDocument();
   });
 
+  it("groups cards by lane in order with a header each; family cards carry no score", () => {
+    stubPointer(false);
+    render(
+      <NudgeCards
+        data={{
+          nudges: [
+            nudge({ slug: "far-isle", display: "Far Isle", lane: "horizon", score: 41,
+              window: { start: "2026-11-01", end: "2027-02-28", kind: "season", title: "best Nov–Feb" },
+              reason: "never on your calendar and screen-calibrated (geological) — the exposure-building pick" }),
+            nudge({ slug: "family-2026-11-26", display: "Turkey Day", lane: "family", score: 0, doc: "",
+              window: { start: "2026-11-26", end: "2026-11-29", kind: "family", anchor: "Turkey Day" },
+              reason: "book the flights home early" }),
+            nudge({}), // weekend (no lane field → weekend)
+            nudge({ slug: "deep-cove", display: "Deep Cove", lane: "long-lead", score: 54,
+              window: { start: "2026-12-19", end: "2026-12-27", kind: "week", anchor: "Holiday", pto_days: 4 } }),
+          ],
+        }}
+      />,
+    );
+    const headers = screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent);
+    expect(headers).toEqual(["Weekends", "Long-lead · 3–12 months", "Horizon · worth a look", "Family windows"]);
+    expect(screen.getByText("best Nov–Feb")).toBeInTheDocument(); // the season title IS the window line
+    expect(screen.getByText("8 nights · 4 PTO")).toBeInTheDocument(); // the block chip
+    expect(screen.queryByText("0")).not.toBeInTheDocument(); // family cards show no score
+    expect(screen.getByRole("button", { name: /Turkey Day .* family window/ })).toBeInTheDocument();
+  });
+
   it("click opens DocPopup on the destination doc (fine pointer)", async () => {
     stubPointer(false);
     render(<NudgeCards data={DATA} />);
@@ -112,5 +139,43 @@ describe("NudgeCards", () => {
     stubPointer(false);
     render(<NudgeCards data={{ nudges: [] }} />);
     expect(screen.getByText(/No nudges cleared the bar/)).toBeInTheDocument();
+  });
+});
+
+describe("NudgeCards — Planning refinements", () => {
+  it("why toggles the component rows inline", () => {
+    render(<NudgeCards data={DATA} />);
+    const why = screen.getByRole("button", { name: "why" });
+    expect(why).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(why);
+    expect(screen.getByRole("button", { name: "hide why" })).toHaveAttribute("aria-expanded", "true");
+    expect(document.querySelector(".nudge-why-rows")).toHaveTextContent("~6h flight");
+  });
+
+  it("flags a nudge the open decision is weighing, and lists the skipped windows", () => {
+    render(<NudgeCards data={{
+      nudges: [nudge({ in_decision: true }), nudge({ slug: "pine", display: "Pine Ridge", window: { start: "2030-05-03", end: "2030-05-05", kind: "weekend" } })],
+      skipped: ["Fri May 10 → Sun May 12 — Visit already on the calendar"],
+    }} />);
+    expect(screen.getAllByText("in decision")).toHaveLength(1);
+    expect(screen.getByText(/Visit already on the calendar/)).toBeInTheDocument();
+  });
+
+  it("family cards carry no why toggle", () => {
+    render(<NudgeCards data={{ nudges: [nudge({ lane: "family", display: "Turkey Day" })] }} />);
+    expect(screen.queryByRole("button", { name: "why" })).toBeNull();
+  });
+});
+
+describe("NudgeCards — the GAME WEEKENDS lane", () => {
+  it("renders between weekends and long-lead under its own heading, the game leading the line", () => {
+    render(<NudgeCards data={{ nudges: [
+      nudge({ lane: "long-lead", slug: "far", display: "Far Away" }),
+      nudge({ lane: "games", slug: "bay", display: "Bay City", reason: "Waves vs. Comets · Fri 10/16 7:00p — peak October season there" }),
+      nudge({}),
+    ] }} />);
+    const titles = screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent);
+    expect(titles).toEqual(["Weekends", "Game weekends", "Long-lead · 3–12 months"]);
+    expect(screen.getByText(/^Waves vs\. Comets · Fri 10\/16 7:00p/)).toBeInTheDocument();
   });
 });

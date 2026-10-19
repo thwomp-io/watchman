@@ -19,6 +19,21 @@ def _svc(feed: str = "iex") -> FinanceService:
     return FinanceService(feed=feed)
 
 
+# Agent-facing news payloads are COMPACTED: a tool result has a size cap, and the full wire (every feed,
+# every summary, every empty field) runs to megabytes. Summaries are trimmed, empty fields dropped, and
+# every cut is reported (a `*_total` count + a note) so a caller knows there is more and how to narrow.
+SUMMARY_CHARS = 240
+
+
+def _compact(item: dict[str, Any], summary_chars: int = SUMMARY_CHARS) -> dict[str, Any]:
+    out = {k: v for k, v in item.items() if v not in ("", None, [], {})}
+    summary = out.get("summary")
+    if isinstance(summary, str) and len(summary) > summary_chars:
+        out["summary"] = summary[: summary_chars - 1].rstrip() + "…"
+    out.pop("image_url", None)
+    return out
+
+
 @mcp.tool()
 def finance_quote(symbols: list[str], feed: str = "iex") -> list[dict[str, Any]]:
     """Live quote(s) for one or more tickers — price + day change vs. previous close. A symbol the
@@ -39,6 +54,22 @@ def finance_market(feed: str = "iex") -> dict[str, Any]:
     equal-weight−cap gap = RSP−SPY, Mag7 avg/spread, semis avg). The breadth is FACTS, not a
     risk-on/off verdict — that interpretation is the agent's 'take'. READ-ONLY."""
     return _svc(feed).market().model_dump()
+
+
+@mcp.tool()
+def finance_correlate(
+    symbols: list[str] | None = None, held: bool = False, limit: int = 20, days: int = 120,
+    factor: list[str] | None = None, feed: str = "iex",
+) -> dict[str, Any]:
+    """Daily-return Pearson correlation across names — the 'is this a real diversifier?' facts:
+    the matrix, annualized vol, and with `factor` (an equal-weight basket) each name's corr + beta
+    to it plus the first name's divergence days. `held=True` uses the book (quotable holdings,
+    largest cost basis first, up to `limit`) instead of `symbols`. Facts only; the reading is the
+    agent's. READ-ONLY."""
+    svc = _svc(feed)
+    syms = svc.held_symbols()[:limit] if held else [s.upper() for s in symbols or []]
+    fac = [s.upper() for s in factor] if factor else None
+    return svc.correlate(syms, days=days, factor=fac).model_dump()
 
 
 @mcp.tool()
@@ -152,7 +183,7 @@ def finance_multiples(symbol: str, cik: str | None = None, recent: int = 8) -> d
     never a fabricated figure. TTM = sum of the 4 most-recent discrete quarters (fallback: most-recent
     annual). Only the price is real-time; reported figures LAG (newest = most recent 10-Q/10-K). `cik`
     overrides the ticker→CIK map for symbols it can't resolve. READ-ONLY observation — surfaces the
-    math; the judgment is the user's. Serves the screened-core engine + research profiles."""
+    math; the judgment is the user's. Serves valuation research."""
     return _svc().multiples(symbol.upper(), cik=cik, recent=recent).model_dump()
 
 
@@ -163,7 +194,7 @@ def finance_compare(symbols: list[str], recent: int = 8) -> dict[str, Any]:
     EDGAR multiples (P/S, P/E, EV/EBITDA + market cap; graceful on a failed resolve) + the corpus
     values-screen (clean/excluded). Multiples keep the honesty strings ("N/M" unprofitable,
     "unavailable" un-tagged); a per-row note flags a failed resolve or the mega-cap P/S sanity-guard
-    (TTM mis-tag). Reported figures LAG (newest 10-Q/10-K); only price/day move are live.
+    (the Q4-in-10-K TTM mis-tag). Reported figures LAG (newest 10-Q/10-K); only price/day move are live.
     The interpretive comparison (which wins, why) is the agent's separate written artifact, not this.
     READ-ONLY observation — surfaces the side-by-side; the judgment is the user's."""
     return _svc().compare([s.upper() for s in symbols], recent=recent).model_dump()
@@ -179,14 +210,40 @@ def finance_news(symbols: list[str] | None = None, limit: int = 5) -> list[dict[
 
 
 @mcp.tool()
-def finance_wire(source: str | None = None, limit: int = 8) -> dict[str, Any]:
+def finance_wire(source: str | None = None, limit: int = 40, per_feed: int = 8) -> dict[str, Any]:
     """Broad-market news WIRE — config/feeds.yaml headlines (the configured feeds.yaml sources — market wires
     + geopolitics feeds + thesis-topic searches) aggregated NEWEST-FIRST across sources. The
     'what's the market narrative today?' layer for a market take. Distinct from finance_news
     (per-ticker Yahoo) and finance_watch (which dedupes the same feeds via the seen-cache): the wire
-    is NEVER seen-filtered, so it returns the FULL wire every call. READ-ONLY; per-feed failures land
-    in `notes`, never a silent empty. `source` filters to one feed by substring of its name."""
-    return _svc().wire(source=source, limit=limit).model_dump()
+    is NEVER seen-filtered, so a repeat call sees the same items. READ-ONLY; per-feed failures land
+    in `notes`, never a silent empty. `source` filters to one feed by substring of its name.
+
+    `limit` caps the NEWEST items across all feeds (default 40); `per_feed` is how many each feed
+    contributes before the cut. Items are compacted (summaries trimmed, empty fields dropped);
+    `items_total` + a note report what the cap left out — narrow with `source` or read a story's
+    body with finance_wire_read_match."""
+    data = _svc().wire(source=source, limit=max(1, per_feed)).model_dump()
+    items = data.get("items") or []
+    data["items_total"] = len(items)
+    data["items"] = [_compact(it) for it in items[: max(1, limit)]]
+    if len(items) > len(data["items"]):
+        data.setdefault("notes", []).append(
+            f"showing the newest {len(data['items'])} of {len(items)} items — narrow with source=")
+    return data
+
+
+@mcp.tool()
+def finance_wire_read(url: str) -> dict[str, Any]:
+    """Read ONE article's body behind a wire headline (keyless). Extraction order: the publisher's
+    JSON-LD articleBody → <article> paragraphs → page paragraphs → the dek. Google News links (the
+    AP/Reuters/Bloomberg lanes) resolve to the publisher first. Returns title/site/published/body/
+    method/words/partial/notes; a paywall is labeled partial, and a bot wall (401/403) raises with
+    the reason — the wire's headline + dek is then the reachable read. READ-ONLY."""
+    from dataclasses import asdict
+
+    from harness.finance.providers.article_provider import read_article
+
+    return asdict(read_article(url))
 
 
 @mcp.tool()
@@ -215,6 +272,82 @@ def finance_watch(mark_seen: bool = True, news_limit: int = 4) -> dict[str, Any]
 
 
 @mcp.tool()
+def finance_watch_peek(news_limit: int = 4, max_news: int = 60) -> dict[str, Any]:
+    """The standing-watch digest WITHOUT consuming the news delta (finance_watch with mark_seen fixed
+    off — the market-take read of the book: day moves, bands, wash window, days-to-print, fresh
+    headlines). A separate tool so a read-only agent can be granted it without the seen-cache write.
+    `fresh_news` is the newest `max_news` items, compacted; `filtered_news` keeps symbol, title and
+    the filter reason; `fresh_news_total` / `filtered_news_total` + a note report the cut."""
+    data = _svc().watch(mark_seen=False, news_limit=news_limit).model_dump()
+    fresh = sorted(data.get("fresh_news") or [], key=lambda it: it.get("published") or "", reverse=True)
+    data["fresh_news_total"] = len(fresh)
+    data["fresh_news"] = [_compact(it) for it in fresh[: max(0, max_news)]]
+    filtered = data.get("filtered_news") or []
+    data["filtered_news_total"] = len(filtered)
+    data["filtered_news"] = [{k: it.get(k) for k in ("symbol", "title", "filtered") if it.get(k)}
+                             for it in filtered]
+    if len(fresh) > len(data["fresh_news"]):
+        data.setdefault("notes", []).append(
+            f"fresh_news: the newest {len(data['fresh_news'])} of {len(fresh)} — "
+            "finance_news(symbols=[…]) reads one name's headlines")
+    return data
+
+
+@mcp.tool()
+def finance_global(sections: list[str] | None = None) -> dict[str, Any]:
+    """Follow-the-sun board — index futures (each row names its contract), rates + the Treasury cash
+    curve, Asia/Europe, oil, metals, FX; each row says LIVE or CLOSED <session>. The overnight read
+    the US tape can't show. `sections` narrows (futures/rates/asia/europe/oil/metals/fx). READ-ONLY."""
+    from harness.finance.reads import global_payload
+
+    return global_payload(sections)
+
+
+@mcp.tool()
+def finance_calendar(days: int = 7, show_all: bool = False) -> dict[str, Any]:
+    """The macro release calendar from primary sources: releases with actual/consensus/previous once
+    printed, FOMC decisions + minutes, Fed speakers, Treasury auctions. High tier by default;
+    `show_all` for every release. Use it for any date/time claim — never a remembered date. READ-ONLY."""
+    from harness.finance.reads import calendar_payload
+
+    return calendar_payload(days, show_all=show_all)
+
+
+@mcp.tool()
+def finance_wire_read_match(match: str, max_chars: int = 6000) -> dict[str, Any]:
+    """Read the article BODY behind the newest wire headline containing `match` (case-insensitive
+    words from the headline). Only articles already on the configured feeds are reachable — it takes
+    no URL. A paywall is labeled partial; a bot wall raises with the reason (the headline + dek is
+    then the reachable read — never infer the body). READ-ONLY."""
+    from harness.finance.reads import wire_read_match
+
+    return wire_read_match(match, max_chars=max_chars)
+
+
+@mcp.tool()
+def finance_take_write(body: str, session: str = "", tags: list[str] | None = None) -> dict[str, Any]:
+    """WRITE one new market take to finance/market/takes/<date>-<HHMM>-take.md (local time now).
+    Send the markdown BODY only (start with an H1 — one is added if missing); the writer adds the
+    frontmatter (date, time, `session` label such as overnight-asia, `tags`, and the author, which
+    the host sets). Create-only: an existing file is never overwritten — a second take in the same
+    minute is refused. No git: the file is left uncommitted for you to review. Returns the path."""
+    import os
+
+    from harness.finance.config.settings import get_settings
+    from harness.finance.takes import announce, write_take
+
+    author = os.environ.get("HARNESS_TAKE_AUTHOR") or os.environ.get("BEADS_ACTOR") or "agent"
+    written = write_take(body, tracker_path=get_settings().tracker_path, author=author,
+                         session=session, tags=tags)
+    out: dict[str, Any] = {"path": written.path, "author": written.author, "date": written.date,
+                           "time": written.time, "bytes": written.bytes, "committed": False}
+    note = announce(written)
+    if note:
+        out["notes"] = [note]
+    return out
+
+
+@mcp.tool()
 def finance_gauges(symbol: str) -> dict[str, Any]:
     """Options-positioning gauges for one underlying — the broker-card read as data: put/call ratio
     (session volume + an open-interest ratio when the contracts roster is reachable), IV30 (median
@@ -235,7 +368,7 @@ def finance_projections() -> dict[str, Any]:
     from forward-EPS × growth-band × multiple-band arithmetic against the live quote (ref_price
     fallback, source named). Horizons beyond 1y are sketch-tier; entries older than ~a quarter
     flag stale. SCENARIOS to reason against, never forecasts — the bands were authored at
-    research time by the operating loop. READ-ONLY."""
+    research time by the agent (or you). READ-ONLY."""
     from harness.finance.config.settings import get_settings
     from harness.finance.projections import build_contract, load_params
 

@@ -1,7 +1,7 @@
 """Alpaca market-data provider — the v0 (and sole) provider.
 
 Read-only Market Data API v2 (https://data.alpaca.markets). Free tier: real-time IEX feed +
-15-min-delayed SIP — plenty for a sounding-board. Auth via key-id/secret headers. The raw-GET
+15-min-delayed SIP — plenty for research use. Auth via key-id/secret headers. The raw-GET
 seam (`_raw_get`) is monkeypatched in tests so unit tests never hit the network.
 
 Coverage caveat (handled, not hidden): Alpaca covers US-listed equities/ETFs. Mutual funds
@@ -14,7 +14,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from harness._http import get_with_retry
+import httpx
+
+from harness._http import describe_http_error, get_with_retry
 from harness.finance.models import Bar, Quote
 from harness.finance.providers.base import ProviderError
 
@@ -46,10 +48,30 @@ class AlpacaProvider:
 
     # --- seam for tests: override to feed canned JSON instead of hitting the network ---
     def _raw_get(self, path: str, params: dict[str, str | int]) -> dict[str, Any]:
-        resp = get_with_retry(f"{_DATA_BASE}{path}", params=params, headers=self._headers())
+        try:
+            resp = get_with_retry(f"{_DATA_BASE}{path}", params=params, headers=self._headers())
+        except httpx.HTTPError as e:  # one line for the caller (an unknown symbol is an HTTP 400)
+            raise ProviderError(f"alpaca {path}: {describe_http_error(e)}") from None
         self.request_count += 1
         data = resp.json()
         return data if isinstance(data, dict) else {}
+
+    def get_splits(self, symbol: str, since: str) -> list[tuple[str, float]]:
+        """Forward/reverse splits with an ex-date on or after `since` → [(ex_date, new/old)].
+        The corporate-actions endpoint on the same data host."""
+        raw = self._raw_get(
+            "/v1/corporate-actions",
+            {"symbols": symbol.upper(), "types": "forward_split,reverse_split", "start": since},
+        )
+        ca = raw.get("corporate_actions") or {}
+        out: list[tuple[str, float]] = []
+        for kind in ("forward_splits", "reverse_splits"):
+            for row in ca.get(kind) or []:
+                try:
+                    out.append((str(row["ex_date"]), float(row["new_rate"]) / float(row["old_rate"])))
+                except (KeyError, TypeError, ValueError, ZeroDivisionError):
+                    continue
+        return sorted(out)
 
     def get_quotes(self, symbols: list[str]) -> list[Quote]:
         if not symbols:
@@ -121,7 +143,10 @@ class AlpacaProvider:
 
     # --- seam for tests: the trading API (contracts roster) mirrors _raw_get on its own base ---
     def _raw_get_trading(self, path: str, params: dict[str, str | int]) -> dict[str, Any]:
-        resp = get_with_retry(f"{_TRADING_BASE}{path}", params=params, headers=self._headers())
+        try:
+            resp = get_with_retry(f"{_TRADING_BASE}{path}", params=params, headers=self._headers())
+        except httpx.HTTPError as e:  # one line for the caller (an unknown symbol is an HTTP 400)
+            raise ProviderError(f"alpaca {path}: {describe_http_error(e)}") from None
         self.request_count += 1
         data = resp.json()
         return data if isinstance(data, dict) else {}

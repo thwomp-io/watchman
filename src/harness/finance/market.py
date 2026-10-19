@@ -60,6 +60,18 @@ CREDIT: list[tuple[str, str]] = [
     ("HYG", "High-yield credit"),
     ("LQD", "IG credit"),
     ("IEF", "Treasuries 7-10y"),
+    ("KRE", "Regional banks"),  # where a financing-cycle stress shows in EQUITY first
+]
+# Rates rail: the Treasury curve priced as ETFs — intraday, from the same
+# Alpaca snapshots call, no new data lane. SHY (1-3y, the policy-expectations end) vs TLT (20+y,
+# the term-premium end) gives a day-scale steepening/flattening proxy; TIP vs IEF (same duration
+# class, inflation-linked vs nominal) gives the breakeven-inflation DIRECTION. The cash-curve
+# LEVELS (the 2-year, 2s10s) live on `hn finance global` — this rail is the intraday tape.
+RATES: list[tuple[str, str]] = [
+    ("SHY", "Treasuries 1-3y"),
+    ("IEF", "Treasuries 7-10y"),
+    ("TLT", "Treasuries 20+y"),
+    ("TIP", "TIPS (inflation-linked)"),
 ]
 
 _GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
@@ -68,6 +80,7 @@ _GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
     ("semis", SEMIS),
     ("megacap", MEGACAP),
     ("credit", CREDIT),
+    ("rates", RATES),
 ]
 
 
@@ -118,12 +131,13 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         key: [_to_market_quote(by_sym.get(sym), sym, label, key) for sym, label in members]
         for key, members in _GROUPS
     }
-    indices, sectors, semis, megacap, credit = (
+    indices, sectors, semis, megacap, credit, rates = (
         grouped["indices"],
         grouped["sectors"],
         grouped["semis"],
         grouped["megacap"],
         grouped["credit"],
+        grouped["rates"],
     )
 
     # --- breadth facts ---
@@ -135,6 +149,10 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
     semis_pcts = [r.day_change_pct for r in semis if r.day_change_pct is not None]
     hyg, ief = _pct(credit, "HYG"), _pct(credit, "IEF")
     hy_minus_tsy = round(hyg - ief, 2) if (hyg is not None and ief is not None) else None
+    shy, tlt, tip = _pct(rates, "SHY"), _pct(rates, "TLT"), _pct(rates, "TIP")
+    ief_r = _pct(rates, "IEF")
+    long_minus_short = round(tlt - shy, 2) if (tlt is not None and shy is not None) else None
+    tip_minus_ief = round(tip - ief_r, 2) if (tip is not None and ief_r is not None) else None
     breadth = MarketBreadth(
         sectors_advancing=sectors_adv,
         sectors_declining=sectors_dec,
@@ -146,10 +164,13 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         semis_avg_pct=_mean(semis_pcts),
         hyg_pct=hyg,
         credit_hy_minus_tsy_pct=hy_minus_tsy,
+        kre_pct=_pct(credit, "KRE"),
+        tsy_long_minus_short_pct=long_minus_short,
+        tip_minus_ief_pct=tip_minus_ief,
     )
 
     # --- movers: rotation universe (sectors + semis + mega-caps; not the broad indices, and not
-    #     credit — sub-1% ETF drifts would pollute the rotation ranks without meaning rotation) ---
+    #     credit/rates — sub-1% ETF drifts would pollute the rotation ranks without meaning rotation) ---
     pool = [r for r in (sectors + semis + megacap) if r.day_change_pct is not None]
     ranked = sorted(pool, key=lambda r: r.day_change_pct or 0.0, reverse=True)
 
@@ -175,6 +196,7 @@ def build_overview(quotes: list[Quote]) -> MarketOverview:
         semis=semis,
         megacap=megacap,
         credit=credit,
+        rates=rates,
         leaders=leaders,
         laggards=laggards,
         breadth=breadth,

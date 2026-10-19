@@ -21,6 +21,8 @@ import VestTimeline from "./VestTimeline";
 import Ladder from "./Ladder";
 import BeadTree from "./BeadTree";
 import Calendar from "./Calendar";
+import ScheduleBoard from "../ScheduleBoard";
+import type { VisitSchedule } from "../generated/contracts";
 
 const PHASE_BY_TYPE: Record<string, string> = {
   unknown: "TBD",  // remaining: radial/map — interactive on demand (calendar landed)
@@ -182,6 +184,10 @@ export default function VizZone({ target }: { target?: string }) {
         {data != null && selected?.viz_type === "compare" && <Radar data={data as never} />}
         {data != null && selected?.viz_type === "scatter" && <Scatter data={data as never} />}
         {data != null && selected?.viz_type === "schedule" && <Schedule data={data as never} />}
+        {/* a visit/trip schedule, LIVE: the Visits tab's themed day-by-day component at full canvas */}
+        {data != null && selected?.viz_type === "visit-schedule" && (
+          <div className="viz-visit-schedule"><ScheduleBoard data={data as VisitSchedule} /></div>
+        )}
         {data != null && selected?.viz_type === "food-bank" && <FoodBank data={data as never} />}
         {data != null && selected?.viz_type === "vest-timeline" && <VestTimeline data={data as never} />}
         {data != null && selected?.viz_type === "ladder" && <Ladder data={data as never} />}

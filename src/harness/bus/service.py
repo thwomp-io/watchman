@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +103,23 @@ class BusService:
             f"SELECT * FROM events {where} ORDER BY id DESC LIMIT ?", (*params, limit)
         ).fetchall()
         return [_row_to_event(r) for r in rows]
+
+    def existing_keys(self, keys: list[str]) -> set[str]:
+        """Which of these idempotency keys are already on the bus (a producer's "is this new?")."""
+        found: set[str] = set()
+        for i in range(0, len(keys), 500):  # SQLite's bound-parameter ceiling
+            chunk = keys[i:i + 500]
+            marks = ",".join("?" * len(chunk))
+            rows = self._conn.execute(
+                f"SELECT idempotency_key FROM events WHERE idempotency_key IN ({marks})", chunk
+            ).fetchall()
+            found.update(r[0] for r in rows)
+        return found
+
+    def get_event(self, event_id: int) -> Event | None:
+        """One event by id (None when it doesn't exist or was purged)."""
+        row = self._conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+        return _row_to_event(row) if row else None
 
     def unread_count(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) AS n FROM events WHERE read_at IS NULL").fetchone()
@@ -195,6 +212,41 @@ class BusService:
         cur = self._conn.execute(sql, (before,))
         self._conn.commit()
         return cur.rowcount
+
+    def purge_policy(self, *, now: datetime | None = None, dry_run: bool = False) -> dict[str, int]:
+        """The standing retention policy — three rules, each a count in the result:
+        `catalyst`: info-tier wire items older than 30 days (a skim-stream, never a to-do) ·
+        `settled`: read AND delivered non-alert events older than 90 days · `alerts`: read alerts
+        older than a year (an unread alert is never purged by policy — it is still a to-do).
+        `dry_run` counts without deleting. Why a policy verb and not just `--before`: without a
+        policy the store grows unbounded; a rule the launchd timer applies runs unattended, and the
+        counts make the run auditable."""
+        stamp = (now or datetime.now(UTC)).astimezone(UTC)
+
+        def bound(days: int) -> str:
+            return (stamp - timedelta(days=days)).isoformat(timespec="seconds")
+
+        rules = {
+            "catalyst": ("kind = 'catalyst' AND created_at < ?", (bound(30),)),
+            # kind != 'catalyst' keeps the three counts mutually exclusive (a 90-day-old read
+            # catalyst is already the first rule's) so the audit line adds up.
+            "settled": (
+                "kind != 'catalyst' AND severity != 'alert' AND read_at IS NOT NULL "
+                "AND delivered_via != '[]' AND created_at < ?",
+                (bound(90),),
+            ),
+            "alerts": ("severity = 'alert' AND read_at IS NOT NULL AND created_at < ?", (bound(365),)),
+        }
+        out: dict[str, int] = {}
+        for name, (where, params) in rules.items():
+            if dry_run:
+                row = self._conn.execute(f"SELECT COUNT(*) AS n FROM events WHERE {where}", params).fetchone()
+                out[name] = int(row["n"])
+            else:
+                out[name] = self._conn.execute(f"DELETE FROM events WHERE {where}", params).rowcount
+        if not dry_run:
+            self._conn.commit()
+        return out
 
     def stats(self) -> BusStats:
         total = int(self._conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"])

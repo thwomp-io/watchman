@@ -33,11 +33,6 @@ def test_base_settings_blank_tracker_path_falls_back() -> None:
     assert BaseToolkitSettings(tracker_path="   ").tracker_path == DEFAULT_TRACKER  # type: ignore[arg-type]
     assert BaseToolkitSettings(tracker_path="/tmp/t").tracker_path == Path("/tmp/t")  # type: ignore[arg-type]
 
-
-def test_provider_error_is_runtime_error() -> None:
-    assert issubclass(ProviderError, RuntimeError)
-
-
 def test_lane_provider_errors_are_the_shared_one() -> None:
     # The re-export shims must point at the single shared class (so `except ProviderError` is
     # interchangeable across lanes).

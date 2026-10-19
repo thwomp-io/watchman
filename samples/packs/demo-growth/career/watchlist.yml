@@ -74,3 +74,10 @@ filters:
     - marketing
     - recruiter
     - account
+
+# Values-screen flags for pool companies (sample pack — fictional): a flag in the screen-out set
+# moves the company to the Pool tab's screen-gated pane (no arithmetic); gray flags stay in play.
+pool_screen_out: [defense]   # flag values that screen a company out of ranking
+pool_flags:
+  gamma-defense: defense
+  beta-systems: gray-adtech

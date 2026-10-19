@@ -1,0 +1,172 @@
+{
+  "bankTitle": "Idea bank",
+  "bank": [
+    {
+      "id": "history-museum",
+      "group": "Museums (rain-safe)",
+      "lane": "museums",
+      "label": "Sample History Museum",
+      "area": "Downtown",
+      "drive_min": 20,
+      "indoor": true,
+      "why": "A half-day of regional history; easy walking, cafe inside.",
+      "note": "open 10-5",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+History+Museum+Minneapolis"
+      }
+    },
+    {
+      "id": "science-center",
+      "group": "Museums (rain-safe)",
+      "lane": "museums",
+      "label": "Sample Science Center",
+      "area": "City Park",
+      "drive_min": 15,
+      "indoor": true,
+      "why": "Planetarium show at 2p fits an afternoon.",
+      "note": "tickets online",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Science+Center+Minneapolis",
+        "tickets": "https://example.com/tickets"
+      }
+    },
+    {
+      "id": "foothills-drive",
+      "group": "Day trips (dry days)",
+      "lane": "daytrip",
+      "label": "River bluffs scenic drive",
+      "area": "West foothills",
+      "drive_min": 45,
+      "indoor": false,
+      "why": "Fall color from the car with two overlook stops.",
+      "note": "dry day only",
+      "image": null,
+      "season": "Nov",
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=foothills+scenic+drive"
+      }
+    },
+    {
+      "id": "game-night",
+      "group": "Together / low-key",
+      "lane": "together",
+      "label": "Game night at home",
+      "area": "Home",
+      "drive_min": 0,
+      "indoor": true,
+      "why": "Low effort, all together.",
+      "note": "Wed evening",
+      "image": null,
+      "links": {}
+    }
+  ],
+  "title": "Thanksgiving week — schedule + bank",
+  "subtitle": "Fictional sample · family in town Tue–Sun",
+  "start": "2026-11-24",
+  "end": "2026-11-29",
+  "dayStart": "08:00",
+  "dayEnd": "22:00",
+  "eveningStart": "17:30",
+  "availability": {
+    "groups": [
+      {
+        "key": "all",
+        "label": "whole family",
+        "color": "#86efac"
+      },
+      {
+        "key": "some",
+        "label": "parents only",
+        "color": "#c7d2fe"
+      }
+    ],
+    "weekday": [
+      {
+        "group": "some"
+      }
+    ],
+    "weekend": [
+      {
+        "group": "all"
+      }
+    ],
+    "dates": {
+      "2026-11-26": [
+        {
+          "group": "all"
+        }
+      ],
+      "2026-11-27": [
+        {
+          "group": "all"
+        }
+      ]
+    }
+  },
+  "markerLabel": "what's on",
+  "markerCats": {
+    "game": {
+      "label": "game (TV)",
+      "color": "#1f5bc4"
+    },
+    "day": {
+      "label": "calendar",
+      "color": "#64748b"
+    }
+  },
+  "markers": [
+    {
+      "date": "2026-11-26",
+      "label": "Thanksgiving",
+      "cat": "day"
+    },
+    {
+      "date": "2026-11-26",
+      "time": "1:30p",
+      "label": "The holiday game",
+      "cat": "game"
+    }
+  ],
+  "items": [
+    {
+      "date": "2026-11-24",
+      "start": "15:00",
+      "end": "16:00",
+      "label": "Airport pickup",
+      "lane": "together",
+      "note": "two flights · times TBD"
+    },
+    {
+      "date": "2026-11-25",
+      "start": "10:00",
+      "end": "14:00",
+      "label": "✎ Sample History Museum",
+      "lane": "museums",
+      "note": "rain-safe"
+    },
+    {
+      "date": "2026-11-26",
+      "start": "14:00",
+      "end": "19:00",
+      "label": "The big dinner",
+      "lane": "together",
+      "note": "at home"
+    },
+    {
+      "date": "2026-11-27",
+      "start": "18:00",
+      "end": "21:00",
+      "label": "✎ Game night at home",
+      "lane": "together"
+    },
+    {
+      "date": "2026-11-29",
+      "start": "09:00",
+      "end": "10:30",
+      "label": "Departure",
+      "lane": "together"
+    }
+  ]
+}

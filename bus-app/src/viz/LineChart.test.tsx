@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import LineChart from "./LineChart";
+import LineChart, { timeTicks } from "./LineChart";
 
 const mk = (pts: [string, number][]) => ({
   title: "Net worth", yPrefix: "$",
@@ -49,5 +49,49 @@ describe("LineChart — redraw on data change (pack swap)", () => {
     const { container, getByText } = render(<LineChart data={empty} />);
     expect(container.querySelector("svg.line-chart")).toBeNull(); // no chart drawn
     expect(getByText("needs a live key")).toBeTruthy();           // the subtitle note shows
+  });
+});
+
+const D = (iso: string) => new Date(`${iso}T00:00:00Z`);
+const labels = (dom: [string, string], w: number) => timeTicks([D(dom[0]), D(dom[1])], w).map((t) => t.label);
+
+describe("LineChart — x-axis time ticks", () => {
+  it("a ~4-month series on a phone-width plot still gets every month", () => {
+    expect(labels(["2026-05-29", "2026-10-08"], 250)).toEqual(["Jun '26", "Jul", "Aug", "Sep", "Oct"]);
+  });
+
+  it("a ~4-month series reads in months on the 1st, year on the first tick", () => {
+    const ticks = timeTicks([D("2026-05-29"), D("2026-10-08")], 900);
+    expect(ticks.map((t) => t.label)).toEqual(["Jun '26", "Jul", "Aug", "Sep", "Oct"]);
+    // placed by real date (the 1st of each month), not by point index
+    expect(ticks.map((t) => t.t.toISOString().slice(0, 10))).toEqual(
+      ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01", "2026-10-01"]);
+  });
+
+  it("a year boundary carries the new year; a narrow plot steps months so labels fit", () => {
+    expect(labels(["2026-10-01", "2027-03-15"], 900)).toEqual(["Oct '26", "Nov", "Dec", "Jan '27", "Feb", "Mar"]);
+    const narrow = labels(["2026-05-29", "2027-05-29"], 260); // ~4 labels fit
+    expect(narrow.length).toBeLessThanOrEqual(4);
+    expect(narrow[0]).toMatch(/'26$/);
+  });
+
+  it("two years at a phone width step to quarters or halves; many years read as years", () => {
+    expect(labels(["2026-05-29", "2028-05-29"], 300).length).toBeLessThanOrEqual(4);
+    expect(labels(["2026-01-15", "2034-01-15"], 300)).toEqual(["2028", "2030", "2032", "2034"]);
+    // four years at desktop width: quarters, each January carrying its year
+    const four = labels(["2026-01-15", "2030-01-15"], 900);
+    expect(four.slice(0, 5)).toEqual(["Apr '26", "Jul", "Oct", "Jan '27", "Apr"]);
+    expect(four.length).toBeLessThanOrEqual(Math.floor(900 / 48));
+  });
+
+  it("a short (zoomed) window reads in days", () => {
+    expect(labels(["2026-09-01", "2026-09-30"], 900).every((l) => /^[A-Z][a-z]{2} \d{2}$/.test(l))).toBe(true);
+  });
+
+  it("the rendered chart draws the month labels", () => {
+    const { container } = render(<LineChart data={INVESTOR} />);
+    const ticks = [...container.querySelectorAll("svg.line-chart text.x-tick")].map((t) => t.textContent);
+    expect(ticks[0]).toBe("Jan '24");
+    expect(ticks).toContain("Apr");
   });
 });

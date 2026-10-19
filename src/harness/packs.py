@@ -33,6 +33,8 @@ import typer
 import yaml
 from typer.core import TyperGroup, TyperOption
 
+from harness.yamlio import load_yaml
+
 
 def _activate_pack(ctx: Any, param: Any, value: Any) -> Any:
     """Eager option callback: point the lanes at the chosen pack for this invocation.
@@ -122,7 +124,7 @@ def discover_bundled_packs() -> list[BundledPack]:
         if not manifest.is_file():
             continue
         try:
-            m = yaml.safe_load(manifest.read_text()) or {}
+            m = load_yaml(manifest.read_text()) or {}
         except yaml.YAMLError:
             continue
         out.append(BundledPack(

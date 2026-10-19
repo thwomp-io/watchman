@@ -20,7 +20,7 @@ from harness.finance.models import (
     ScreenResult,
 )
 
-# P/S above this on a profitable mega-cap is almost always the TTM mis-tag (Q4-only-in-10-K
+# P/S above this on a profitable mega-cap is almost always the Q4-in-10-K TTM mis-tag (Q4-only-in-10-K
 # inflates the multiple — e.g. NVDA showed 455x vs the real ~24x). Flag, don't trust, pending the TTM-tag fix.
 _PS_SANITY_CEILING = 60.0
 

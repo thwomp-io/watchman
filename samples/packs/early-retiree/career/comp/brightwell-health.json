@@ -1,0 +1,60 @@
+{
+  "slug": "brightwell-health",
+  "company": "Brightwell Health",
+  "ladders": {
+    "software-engineer/united-states": {
+      "company": "Brightwell Health",
+      "slug": "brightwell-health",
+      "family": "software-engineer",
+      "location": "united-states",
+      "currency": "USD",
+      "url": "https://example.invalid/sample-pack/brightwell-health",
+      "generated": "2026-09-08T12:00:00+00:00",
+      "last_updated": "September 8, 2026",
+      "median_tc": 337000,
+      "high_tc": 928000,
+      "levels": [
+        {
+          "level": "L3",
+          "median_tc": 187000,
+          "yoe": "0\u20132",
+          "title": null
+        },
+        {
+          "level": "L4",
+          "median_tc": 253000,
+          "yoe": "2\u20135",
+          "title": "Software Engineer II"
+        },
+        {
+          "level": "L5",
+          "median_tc": 337000,
+          "yoe": "5\u20138",
+          "title": "Senior Software Engineer"
+        },
+        {
+          "level": "L6",
+          "median_tc": 449000,
+          "yoe": "8\u201312",
+          "title": "Staff Software Engineer"
+        },
+        {
+          "level": "L7",
+          "median_tc": 580000,
+          "yoe": "12+",
+          "title": "Principal Software Engineer"
+        }
+      ],
+      "mix": {
+        "base": 185350,
+        "stock": 117949,
+        "bonus": 33700
+      },
+      "note": null,
+      "fetched_at": "2026-09-08T12:00:00+00:00",
+      "source": "sample-pack",
+      "attribution": "Fictional sample data (demo pack) \u2014 not from levels.fyi"
+    }
+  },
+  "updated_at": "2026-09-08T12:00:00+00:00"
+}

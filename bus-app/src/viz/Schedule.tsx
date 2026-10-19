@@ -1,4 +1,4 @@
-// Interactive schedule (v2) — the `schedule`/`schedule-bank` family
+// Interactive schedule — the `schedule`/`schedule-bank` family
 // ({title, start, end, dayStart, dayEnd, availability?, items?:[{date, start, end, label, lane,
 // note?, links?:[{label,url}]}], markers?, bank?:[{group?, lane?, label, note?, links?}],
 // bankTitle?}). Day columns × time rows with the static renderer's settled design ported whole:

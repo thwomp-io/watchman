@@ -297,8 +297,8 @@ function scheduleLayout(d, withBank) {
 
   const M = { top: 72, right: 22, bottom: 56, left: 50 };
   // Day columns auto-widen on 1-2 day plans: the canvas floors at 460 anyway, so a lone 158px column
-  // wastes the floor while its labels/notes ellipsize into empty gutter — the truncation-into-
-  // whitespace bug (viz doctrine rule 1). Multi-day grids keep the compact 158.
+  // wastes the floor while its labels/notes ellipsize into empty gutter — never truncate a
+  // label into whitespace when the canvas has room. Multi-day grids keep the compact 158.
   const colW = Math.max(158, Math.min(380, Math.floor((460 - 50 - 22) / days.length)));
   const headerH = 46, pxPerMin = 0.72;
   const colsRight = M.left + days.length * colW; // right edge of the day columns
@@ -316,9 +316,14 @@ function scheduleLayout(d, withBank) {
   // make room; absent → railH 0 (unchanged layout). Data: markers:[{date,label,time?}], markerLabel?.
   const markers = d.markers || [];
   const markersByDate = d3.group(markers, (m) => m.date);
+  // Items with no `start` are all-day (the schedule.json contract, the console widget's rule): they
+  // ride the same header rail as chips, under the day's markers — never a block at a guessed hour.
+  const untimedByDate = d3.group((d.items || []).filter((it) => !it.start), (it) => it.date);
   const markerRowH = 17;
-  const maxMarkers = d3.max([0, ...Array.from(markersByDate.values(), (a) => a.length)]) || 0;
-  const railH = markers.length ? maxMarkers * markerRowH + 6 : 0;
+  const railRows = (k) => (markersByDate.get(k) || []).length + (untimedByDate.get(k) || []).length;
+  const railKeys = new Set([...markersByDate.keys(), ...untimedByDate.keys()]);
+  const maxMarkers = d3.max([0, ...Array.from(railKeys, railRows)]) || 0;
+  const railH = maxMarkers ? maxMarkers * markerRowH + 6 : 0;
   const railTop = M.top + headerH;
   const plotTop = railTop + railH;
   const plotH = (dayEndMin - dayStartMin) * pxPerMin;
@@ -349,7 +354,7 @@ function scheduleLayout(d, withBank) {
   return {
     days, items, bank, toMin, dayStartMin, dayEndMin, M, colW, plotTop, plotH, width, colsRight,
     keyf, dayIndex, colX, yAt, lanes, color, avail, labelMax, noteMax,
-    markers, markersByDate, railTop, markerRowH,
+    markers, markersByDate, untimedByDate, railTop, markerRowH,
     gridBottom, legendY, bankGroups, bankGeom, bankTop, height,
   };
 }
@@ -371,7 +376,7 @@ function makeSvg(root, width, height) {
 function paintGrid(svg, d, L) {
   const { days, items, M, colW, plotTop, plotH, width, colsRight, dayStartMin, dayEndMin, colX, yAt,
     dayIndex, toMin, color, avail, labelMax, noteMax, legendY, lanes, keyf, markers, markersByDate,
-    railTop, markerRowH } = L;
+    untimedByDate, railTop, markerRowH } = L;
 
   // Marker categories: each marker may carry a `cat` key mapped via top-level `markerCats`
   // ({cat: {label, color}}) to its own chip color — lets one awareness rail carry multiple
@@ -420,6 +425,17 @@ function paintGrid(svg, d, L) {
       gm.append("text").attr("x", 7).attr("y", markerRowH - 7).attr("font-size", 9.5).attr("fill", shadeText(cat.color))
         .text(truncate(`${mk.time ? mk.time + " " : ""}${mk.label}`, Math.floor((cw - 12) / 5.3)));
     });
+    const nMarkers = (markersByDate.get(keyf(dt)) || []).length;
+    (untimedByDate.get(keyf(dt)) || []).forEach((it, k) => {
+      const my = railTop + 2 + (nMarkers + k) * markerRowH;
+      const cw = colW - 10;
+      const c = color(it.lane || "plan");
+      const gu = svg.append("g").attr("transform", `translate(${x + 5},${my})`);
+      gu.append("rect").attr("width", cw).attr("height", markerRowH - 3).attr("rx", 4)
+        .attr("fill", tintFill(c)).attr("stroke", c).attr("stroke-width", 1.4);
+      gu.append("text").attr("x", 7).attr("y", markerRowH - 7).attr("font-size", 9.5).attr("font-weight", 600)
+        .attr("fill", T.ink).text(truncate(it.label, Math.floor((cw - 12) / 5.3)));
+    });
   });
 
   for (let m = dayStartMin; m <= dayEndMin; m += 60) {
@@ -433,8 +449,8 @@ function paintGrid(svg, d, L) {
 
   items.forEach((it) => {
     const i = dayIndex.get(it.date);
-    if (i === undefined) return;
-    const s = toMin(it.start || "12:00");
+    if (i === undefined || !it.start) return; // untimed items are header chips (above)
+    const s = toMin(it.start);
     const e = it.end ? toMin(it.end) : s + 120;
     const top = yAt(s);
     const h = Math.max(26, yAt(e) - yAt(s));
@@ -443,11 +459,16 @@ function paintGrid(svg, d, L) {
     g.append("rect").attr("width", colW - 18).attr("height", h).attr("rx", 6)
       .attr("fill", c).attr("fill-opacity", 0.18).attr("stroke", c).attr("stroke-opacity", 0.6);
     g.append("rect").attr("width", 4).attr("height", h).attr("rx", 2).attr("fill", c);
-    g.append("text").attr("x", 11).attr("y", 15).attr("font-size", 11).attr("font-weight", 600)
-      .attr("fill", T.ink)
-      .text(`${it.start ? fmtClock(it.start) + " " : ""}${truncate(it.label, labelMax)}`);
-    if (it.note && h >= 38)
-      g.append("text").attr("x", 11).attr("y", 29).attr("font-size", 9.5).attr("fill", T.inkDim)
+    // The title wraps onto as many 13px lines as the block holds (an ellipsis only on the last one);
+    // the note takes the line after the title when there is still room.
+    const titleLines = wrapLines(`${fmtClock(it.start)} ${it.label}`, labelMax, Math.max(1, Math.floor((h - 6) / 13)));
+    titleLines.forEach((ln, k) => {
+      g.append("text").attr("x", 11).attr("y", 15 + k * 13).attr("font-size", 11).attr("font-weight", 600)
+        .attr("fill", T.ink).text(ln);
+    });
+    const noteY = 15 + titleLines.length * 13 + 1;
+    if (it.note && noteY + 4 <= h)
+      g.append("text").attr("x", 11).attr("y", noteY).attr("font-size", 9.5).attr("fill", T.inkDim)
         .text(truncate(it.note, noteMax));
   });
 
@@ -532,7 +553,7 @@ function renderScheduleBank(root, d) {
 }
 
 // word-wrap `s` into at most `maxLines` lines of ~`maxChars` each; ellipsize the last line if content
-// overflows. Used for the rich note text on food-bank cards.
+// overflows. Used for the rich note text on food-bank cards and the schedule's block titles.
 function wrapLines(s, maxChars, maxLines) {
   const words = String(s || "").split(/\s+/).filter(Boolean);
   const lines = [];
@@ -792,8 +813,8 @@ function renderSankey(root, d) {
     label: l.label,
   })).filter((l) => l.source != null && l.target != null && l.value > 0);
   // Left gutter auto-sizes to the longest SOURCE-side label (nodes never appearing as a target) —
-  // an earlier fixed 84px gutter clipped long source-side labels (doctrine rule 1: never truncate
-  // into whitespace — the canvas had room). Right gutter stays 215 (target labels render rightward).
+  // an earlier fixed 84px gutter clipped long source-side labels (never truncate a label
+  // into whitespace when the canvas has room). Right gutter stays 215 (target labels render rightward).
   const targetIdx = new Set(links.map((l) => l.target));
   const srcLabelMax = Math.max(0, ...rawNodes.filter((_, i) => !targetIdx.has(i)).map((n) => n.name.length));
   const M = { top: 66, right: 215, bottom: 18, left: Math.max(84, Math.min(260, srcLabelMax * 6.1 + 14)) };
@@ -854,8 +875,8 @@ function renderFlow(root, d) {
   const subLines = (n) => (n.sublabel ? String(n.sublabel).split("\n") : []);
   const maxSub = d3.max(nodes, (n) => subLines(n).length) || 0;
   const NW = 200, NH = 50 + maxSub * 15;
-  // Column gap auto-sizes to the longest ADJACENT-column link label (the auto-size doctrine: a fixed
-  // gap that clips real labels is a defect — dense wire diagrams carry file/route names on their
+  // Column gap auto-sizes to the longest ADJACENT-column link label (a fixed gap
+  // that clips real labels is a defect — dense wire diagrams carry file/route names on their
   // arrows). Labels sit centered in the gap at ~6.15px/char (font 11); skip-column links are excluded
   // (their midpoints land over another column's band, so authors keep those labels short). Clamped so
   // a label can widen the canvas but never explode it.
@@ -1486,7 +1507,7 @@ function renderMatrix(root, d) {
   }
 
   const lg = svg.append("g").attr("transform", `translate(${M.left},${height - 16})`);
-  // neutral default legend; domain framing belongs in the data (`note`) —
+  // neutral default legend; domain framing belongs in the data (`note`)
   lg.append("text").attr("x", 0).attr("y", 0).attr("font-size", 10.5).attr("fill", T.inkDim)
     .text(d.note || "more of this quality →  (a characteristics scale, not a goodness score)");
   for (let v = 1; v <= maxV; v++) {
@@ -1614,16 +1635,43 @@ function renderMap(root, d) {
       .attr("stroke", color(p.group || "")).attr("stroke-width", 1.3).attr("stroke-opacity", 0.5);
   });
 
-  // destination pins + labels
-  points.forEach((p) => {
-    const [x, y] = projection([p.lon, p.lat]);
+  // destination pins, then labels placed to avoid each other: pins inside a couple of degrees overlap
+  // at continental zoom (nearby destinations), so each label takes the first of eight positions
+  // around its pin whose box clears every pin and every label already placed; a label pushed off
+  // its pin gets a leader line. Deterministic (input order), no force simulation.
+  const placed = points.map((p) => ({ p, xy: projection([p.lon, p.lat]) }));
+  placed.forEach(({ p, xy: [x, y] }) => {
     svg.append("circle").attr("cx", x).attr("cy", y).attr("r", 4.5).attr("fill", color(p.group || ""))
       .attr("stroke", T.panel).attr("stroke-width", 1);
-    svg.append("text").attr("x", x + 7).attr("y", y - 2).attr("font-size", 10.5).attr("font-weight", 600)
-      .attr("fill", T.ink).text(truncate(p.label, 22));
-    if (p.reach)
-      svg.append("text").attr("x", x + 7).attr("y", y + 9).attr("font-size", 8.8).attr("fill", T.inkDim)
-        .text(truncate(p.reach, 24));
+  });
+  const boxes = placed.map(({ xy: [x, y] }) => ({ x0: x - 6, y0: y - 6, x1: x + 6, y1: y + 6 }));
+  const hit = (b) => boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
+  placed.forEach(({ p, xy: [x, y] }) => {
+    const label = truncate(p.label, 22);
+    const reach = p.reach ? truncate(p.reach, 24) : "";
+    const w = Math.max(label.length * 6.1, reach.length * 5.1) + 4;
+    const h = reach ? 22 : 12;
+    const spots = [[8, -h / 2], [-8 - w, -h / 2], [-w / 2, -h - 8], [-w / 2, 10], [8, -h - 6], [-8 - w, -h - 6],
+      [8, 6], [-8 - w, 6], [14, -h - 22], [-14 - w, -h - 22], [14, 22], [-14 - w, 22]];
+    let chosen = null;
+    for (const [dx, dy] of spots) {
+      const b = { x0: x + dx, y0: y + dy, x1: x + dx + w, y1: y + dy + h };
+      if (b.x0 >= 2 && b.x1 <= W - 2 && b.y0 >= 58 && b.y1 <= H - 26 && !hit(b)) { chosen = [dx, dy, b]; break; }
+    }
+    if (!chosen) {  // every spot collides: stack below the last label column, with a leader line
+      const dy = 26 + boxes.length * 2;
+      chosen = [12, dy, { x0: x + 12, y0: y + dy, x1: x + 12 + w, y1: y + dy + h }];
+    }
+    const [dx, dy, b] = chosen;
+    boxes.push(b);
+    if (Math.hypot(dx, dy) > 18)
+      svg.append("line").attr("x1", x).attr("y1", y).attr("x2", dx > 0 ? b.x0 : b.x1).attr("y2", b.y0 + 5)
+        .attr("stroke", T.inkFaint).attr("stroke-width", 0.8);
+    svg.append("text").attr("x", b.x0 + 2).attr("y", b.y0 + 9.5).attr("font-size", 10.5).attr("font-weight", 600)
+      .attr("fill", T.ink).text(label);
+    if (reach)
+      svg.append("text").attr("x", b.x0 + 2).attr("y", b.y0 + 20).attr("font-size", 8.8).attr("fill", T.inkDim)
+        .text(reach);
   });
 
   // origin marker (drawn last so it sits on top)
@@ -1819,7 +1867,8 @@ function renderMapAnnotate(root, d) {
       .attr("stroke-width", 6 * u).attr("stroke-dasharray", `${2 * u} ${16 * u}`).attr("stroke-linecap", "round");
   }
 
-  // title band — SOLID (≥0.9 opacity) + crisp white title, NO halo (the v2 washed-out lesson)
+  // title band — SOLID (≥0.9 opacity) + crisp white title, NO halo (a translucent band
+  // with a haloed title reads washed-out)
   const titleSize = 46 * u, subSize = 28 * u;
   const bandH = d.subtitle ? 126 * u : 78 * u;
   svg.append("rect").attr("x", 0).attr("y", 0).attr("width", W).attr("height", bandH)

@@ -27,7 +27,7 @@
     },
     {
       "id": "gates",
-      "title": "Plan gates — prints & macro",
+      "title": "Plan gates — prints, macro & vests",
       "kind": "viz",
       "source": {
         "type": "command",
@@ -110,6 +110,35 @@
       "symbols_from": null,
       "columns": [],
       "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "vests",
+      "title": "Vest calendar — forward vests + wash windows",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "unwind",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 4,
+      "value_path": "vest_timeline",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 2,
       "layout": null
     }
   ]

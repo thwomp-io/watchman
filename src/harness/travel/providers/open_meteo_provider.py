@@ -36,7 +36,7 @@ _DAILY = (
     "sunrise,sunset"
 )
 
-# Hourly fields for the outdoor-windows solver (tier B) — the five that decide
+# Hourly fields for the outdoor-windows solver — the five that decide
 # "is this a good hour to be outside". A separate fetch by design: hourly rides only when the
 # solver runs (the daily surface stays one cheap call for every other consumer).
 _HOURLY = "temperature_2m,apparent_temperature,precipitation_probability,uv_index,wind_gusts_10m"
@@ -168,7 +168,7 @@ class OpenMeteoWeatherProvider:
         fahrenheit: bool = True,
     ) -> tuple[list[HourlyWeather], CurrentConditions | None]:
         """Hourly forecast over [start_date, end_date] + the CURRENT read — the outdoor-windows
-        solver's substrate + the tile row's "now" half (tiers B+C). One fetch: the
+        solver's substrate + the tile row's "now" half. One fetch: the
         `current=` vars ride the hourly call (full-response-surface — no third request). Same
         units contract as the daily surface. Current degrades to None, never fails the hours."""
         params: dict[str, str | int] = {

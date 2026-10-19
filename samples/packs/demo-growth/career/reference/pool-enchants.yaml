@@ -1,0 +1,39 @@
+# The pool's modifier catalogue (sample pack — fictional, illustrative values). Every entry: key ·
+# display name · value (small signed int) · family (for set bonuses) · how (machine = the verb
+# computes it from data on disk; agent = written into pool-items.yaml with a source pointer;
+# user = the operator's stamp). Enchantments are positive, debuffs negative.
+enchantments:
+  remote_first:        {name: "Remote-first",              value: 3, family: presence, how: machine}
+  home_area_priority:  {name: "Home-area seat",            value: 2, family: presence, how: machine}
+  liquid_equity:       {name: "Liquid equity",             value: 2, family: equity,   how: machine}
+  level_latitude:      {name: "Level latitude",            value: 2, family: fit,      how: machine}
+  base_clears_anchor:  {name: "Posted base clears anchor", value: 3, family: comp,     how: machine}
+  finance_researched:  {name: "Researched on the bench",   value: 1, family: edge,     how: machine}
+  builds_own_tools:    {name: "Team builds its own tools", value: 3, family: fit,      how: agent}
+  ai_forward_org:      {name: "AI-forward org",            value: 2, family: fit,      how: agent}
+  warm_path:           {name: "Warm path in",              value: 2, family: edge,     how: agent}
+  fast_promotion:      {name: "Fast promotion track", value: 2, family: fit, how: agent}
+debuffs:
+  onsite_five_day:     {name: "Five days on-site",         value: -3, family: presence,  how: agent}
+  illiquid_equity:     {name: "Illiquid equity",           value: -2, family: equity,    how: agent}
+  layoff_cadence:      {name: "Layoff cadence",            value: -2, family: stability, how: agent}
+  consultancy_shape:   {name: "Consultancy shape",         value: -4, family: shape,     how: agent}
+# Set bonuses: when at least `count` modifiers of a family apply, the bonus is its own line.
+set_bonuses:
+  fit:      {name: "Strong-fit set", count: 3, bonus: 2}
+  presence: {name: "Presence set",   count: 2, bonus: 1}
+
+# Role modifiers — the posting-level layer under the company item (`hn career roles`); machine-applied.
+role_modifiers:
+  level_in_band: {name: "Staff+ seat (in band)", value: 8, family: role_level, how: machine}
+  level_lead: {name: "Leadership seat", value: 0, family: role_level, how: machine}
+  level_below: {name: "Below the band", value: -8, family: role_level, how: machine}
+  shape_in_lane: {name: "In-lane shape", value: 6, family: role_shape, how: machine}
+  shape_off_lane: {name: "Off-lane shape", value: -25, family: role_shape, how: machine}
+  loc_home: {name: "Home-area seat", value: 4, family: role_presence, how: machine}
+  loc_remote_us: {name: "Remote (US)", value: 4, family: role_presence, how: machine}
+  loc_relocation: {name: "Relocation", value: -4, family: role_presence, how: machine}
+  loc_outside_us: {name: "Outside the US", value: -15, family: role_presence, how: machine}
+  posted_clears_anchor: {name: "Posted range reaches the anchor", value: 3, family: role_comp, how: machine}
+  fresh: {name: "Updated within 14 days", value: 1, family: role_time, how: machine}
+  new: {name: "New since the earlier scans", value: 1, family: role_time, how: machine}

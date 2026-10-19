@@ -51,25 +51,41 @@ def build_correlation(
     closes_by_sym: dict[str, dict[str, float]],
     *,
     factor: list[str] | None = None,
+    factor_closes: dict[str, dict[str, float]] | None = None,
     top_divergence: int = 8,
 ) -> CorrelationReport:
     """Pure: aligned closes → correlation FACTS. `closes_by_sym` maps symbol → {date: close}.
 
     Aligns all symbols on their COMMON dates (so a stock with a shorter history doesn't silently skew
     the matrix), computes daily returns, then the pairwise Pearson matrix + annualized vol. With a
-    `factor` (a list of symbols present in the data), builds an equal-weight factor return series and
-    reports each symbol's corr + beta to it, plus the focal (first symbol) vs factor divergence days.
+    `factor` (a list of symbols), builds an equal-weight factor return series and reports each
+    symbol's corr + beta to it, plus the focal (first symbol) vs factor divergence days.
+
+    Factor members resolve their price series from `closes_by_sym` first, then `factor_closes` —
+    the latter carries members that are NOT matrix symbols (the factor block used to
+    require every basket name to also be a matrix symbol, and silently vanished otherwise; the
+    service now fetches basket bars separately and passes them here). Factor-only series join the
+    date alignment (a short-history basket member shrinks the common window — inherent to computing
+    corr-to-basket on common dates) but stay OUT of the pairwise matrix and vol table.
     """
     symbols = list(closes_by_sym.keys())
     if not symbols:
         return CorrelationReport(notes=["no symbols"])
 
-    common = set.intersection(*(set(d.keys()) for d in closes_by_sym.values()))
+    # factor members: resolve each series (matrix data first, then factor_closes); drop the rest
+    fac_src = factor_closes or {}
+    fac_members = [
+        f for f in (factor or []) if f in closes_by_sym or (f in fac_src and fac_src[f])
+    ]
+    fac_only = {f: fac_src[f] for f in fac_members if f not in closes_by_sym}
+
+    all_series = {**closes_by_sym, **fac_only}
+    common = set.intersection(*(set(d.keys()) for d in all_series.values()))
     dates = sorted(common)
     if len(dates) < 3:
         return CorrelationReport(symbols=symbols, notes=["insufficient overlapping history"])
 
-    rets = {s: _returns([closes_by_sym[s][d] for d in dates]) for s in symbols}
+    rets = {s: _returns([all_series[s][d] for d in dates]) for s in all_series}
     ret_dates = dates[1:]
     n = min(len(r) for r in rets.values())
     # guard against ragged series (shouldn't happen post-alignment, but stay safe)
@@ -88,7 +104,7 @@ def build_correlation(
         vol_annual=vol,
     )
 
-    fac = [s for s in (factor or []) if s in symbols]
+    fac = fac_members
     if fac:
         factor_ret = [_mean([rets[s][i] for s in fac]) for i in range(n)]
         mf = _mean(factor_ret)

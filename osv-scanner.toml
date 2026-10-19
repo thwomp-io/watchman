@@ -1,0 +1,74 @@
+# osv-scanner config for the release gate — the ACCEPTED no-fix
+# advisories, each with the reason a reader can check. Anything NOT listed here fails the gate,
+# fixable or not, so a new advisory is a decision at tag time rather than a CI surprise (the
+# v0.12.0 precedent: Trivy caught two HIGH uv.lock deps the local gate never scanned).
+#
+# The Tauri-GTK cluster: tauri 2.x on Linux pins gtk-rs 0.18, whose atk/gdk/gtk crates are flagged
+# "unmaintained" (RUSTSEC-2024-041x/042x) — no fix exists short of Tauri moving to gtk4. Linux-only
+# link deps; the shipped Python image doesn't carry them. Documented in SECURITY.md. Re-check when
+# tauri bumps its gtk-rs floor.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0413"
+reason = "atk 0.18 unmaintained — Tauri GTK cluster, no fix until tauri leaves gtk-rs 0.18 (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0416"
+reason = "atk-sys 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0412"
+reason = "gdk 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0418"
+reason = "gdk-sys 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0411"
+reason = "gdkwayland-sys 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0417"
+reason = "gdkx11 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0414"
+reason = "gdkx11-sys 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0415"
+reason = "gtk 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0420"
+reason = "gtk-sys 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0419"
+reason = "gtk3-macros 0.18 unmaintained — Tauri GTK cluster (SECURITY.md)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib 0.18 (unsound VariantStrIter, 6.9) — the fix is glib 0.20, which the Tauri GTK 0.18 cluster pins below; same no-fix as the crates above"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error unmaintained — a transitive build-time macro helper (no runtime code); pulled by the gtk3-macros cluster"
+
+# zbus_names 4.3.2 / zvariant 5.12.0 / zvariant_derive 5.12.0 (RUSTSEC-2026-0370/0371/0372) — ACCEPTED
+# 2026-10-18, no fixed version published. Linux builds only: the D-Bus stack under
+# tauri-plugin-notification (notify-rust) and tauri-plugin-single-instance — the public Linux .deb links
+# it; macOS and Windows builds do not. It talks to the user's own session bus. Re-check when zbus/zvariant
+# publish a fix (then a lockfile bump). Disclosed in the public changelog.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+reason = "zvariant via zbus (Linux-only D-Bus under the notification/single-instance plugins); no fix published"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+reason = "zbus_names via zbus (Linux-only D-Bus under the notification/single-instance plugins); no fix published"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+reason = "zvariant_derive via zbus (Linux-only D-Bus under the notification/single-instance plugins); no fix published"

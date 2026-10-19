@@ -1,0 +1,16 @@
+# Per-company APPLIED modifiers for the judged tiers (sample pack — fictional). Keys are company
+# slugs; entry: slug → {by: agent|user, source: <pointer>, as_of: YYYY-MM-DD, modifiers: [key…]}.
+acme-cloud:
+  by: agent
+  source: companies/acme-cloud.md (fictional)
+  as_of: 2026-09-08
+  modifiers: [builds_own_tools, ai_forward_org, warm_path]
+thin-co:
+  by: agent
+  source: companies/thin-co.md (fictional)
+  as_of: 2026-09-08
+  modifiers: [ai_forward_org, illiquid_equity]
+delta-games:
+  by: user
+  source: the operator's call (fictional)
+  modifiers: [onsite_five_day, consultancy_shape]

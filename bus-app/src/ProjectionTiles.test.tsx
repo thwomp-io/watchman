@@ -253,4 +253,31 @@ describe("ProjectionTiles", () => {
     expect(panes[1].textContent).not.toContain("JJJ");
     expect(panes[2].textContent).toContain("JJJ");
   });
+
+  // The no-scrollbar bug: the widget container is overflow:hidden at a definite
+  // height, so the tri-pane MUST sit inside one scroll container (.projections-body) with the
+  // chip row and disclaimer OUTSIDE it (they stay fixed; only the panes scroll). At ~30-70 bank
+  // entries nothing overflowed and the missing scroller was invisible; at 133 the last two panes
+  // were unreachable. jsdom can't measure overflow, so this pins the STRUCTURE the CSS relies on.
+  it("wraps every pane in the single scroll body, with chips and disclaimer outside it", () => {
+    render(
+      <ProjectionTiles
+        data={{
+          ...data([
+            proj({ symbol: "HHH", held: true }),
+            proj({ symbol: "III" }),
+            proj({ symbol: "JJJ", screen_note: "VALUES-SCREENED OUT" }),
+          ]),
+          disclaimer: "an extra lens, never sole reasoning",
+        }}
+      />,
+    );
+    const body = document.querySelector(".projections-body");
+    expect(body).not.toBeNull();
+    const panes = document.querySelectorAll(".projections-pane");
+    expect(panes.length).toBe(3);
+    for (const pane of panes) expect(body!.contains(pane)).toBe(true);
+    expect(body!.contains(document.querySelector(".projections-chips")!)).toBe(false);
+    expect(body!.contains(document.querySelector(".projections-disclaimer")!)).toBe(false);
+  });
 });

@@ -1,7 +1,7 @@
 # The engine CLI — lanes, packs, and keys from the shell
 
 **This is the advanced/contributor path.** The console installers are the first-class way to use
-Watchman (README Quickstart + **⚙ Settings**); this page is for running the engine directly —
+Watchman (README → Run it + **⚙ Settings**); this page is for running the engine directly —
 development, scripting, headless boxes, or building the console from source.
 
 ## Run any lane against a bundled sample persona
@@ -56,7 +56,7 @@ HARNESS_SEC_CONTACT=you@example.com
 
 ## Notable verbs
 
-The full lane/verb surface is in the [README](../README.md); these are the flag shapes worth
+Run `hn --help` for the full lane/verb surface; these are the flag shapes worth
 knowing from the shell:
 
 - **`hn finance filing SYM [--list] [--form 8-K] [--accession N] [--doc FILE] [--json]`** — read a
@@ -97,7 +97,14 @@ knowing from the shell:
   (`travel/weights.yaml destination_nudge:`) and surfaces the top pairs with the reason assembled
   from the scored components. Scoring is corpus + almanac and keyless; `--live` (on by default) adds
   free-tier Ticketmaster events and the keyless Open-Meteo forecast for in-horizon windows —
-  `--no-live` skips it. The data behind the Planning tab's nudge cards.
+  `--no-live` skips it. The data behind the Planning tab's nudge cards. Lanes: weekends, **game
+  weekends** (the followed NBA/NFL teams in `events.centerpiece_markets`, one search per team per
+  day — each card leads with the matchup and tip-off), long-lead blocks, horizon cards and family
+  windows; `--lane` picks any subset.
+- **`hn travel upcoming [--json]`** — what's on the calendar: one card per live trip and visit,
+  soonest first, with window, countdown, who and whether an open decision hangs on it; undated items
+  and parked ideas (status `idea`) are listed apart as "someday". The Planning tab's top band, above
+  the open decision (`hn travel decision`) and the nudges.
 - **Conditions** (`hn travel weather` / `hn travel pulse`) — the forecast carries feels-like, UV,
   gust, and sunrise/sunset fields; pulse heat alerts are feels-like-aware, with `uv` and `wind`
   flag kinds (thresholds `conditions.thresholds.uv` / `.gusts_mph` in `travel/weights.yaml`). The

@@ -24,7 +24,7 @@ impl BusHandle {
     /// This instance's delivered_via marker. Local keeps the historical `"desktop"`; a remote
     /// watchman is its OWN transport instance — `"desktop:{hostname}"` — so every device
     /// delivers its own notification exactly once (the always-on node notifying must not
-    /// swallow a remote desk's notification, and vice versa). Acks stay global (read_at), so
+    /// swallow another device's notification, and vice versa). Acks stay global (read_at), so
     /// acking anywhere still clears badges everywhere.
     pub fn transport_marker(&self) -> String {
         match self {

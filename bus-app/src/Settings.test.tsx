@@ -79,7 +79,7 @@ describe("Settings modal", () => {
     expect(p.onSelectPack).toHaveBeenCalledWith("/packs/demo-investor");
   });
 
-  it("Personal tabs render dynamically from the overlay yaml (phase 3)", async () => {
+  it("Personal tabs render dynamically from the overlay yaml", async () => {
     mockTauri.setValue("get_user_overlay", {
       text: "finance:\n  global_settings:\n    brokerage: Example Broker\n    fund_holdings:\n      query: Acme Fund\ntravel:\n  global_settings:\n    home_airports: [AAA, BBB]\n",
       source: "user overlay", path: "/x/config/harness.yaml",

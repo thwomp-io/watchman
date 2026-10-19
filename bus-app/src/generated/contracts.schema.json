@@ -1,0 +1,2768 @@
+{
+  "$defs": {
+    "AvailabilityGroup": {
+      "properties": {
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "color",
+        "key",
+        "label"
+      ],
+      "title": "AvailabilityGroup",
+      "type": "object"
+    },
+    "BankGroup": {
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "key": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "outing",
+            "restaurant"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "count",
+        "key",
+        "kind",
+        "label"
+      ],
+      "title": "BankGroup",
+      "type": "object"
+    },
+    "BankItem": {
+      "description": "One tile: an outing or a restaurant, normalized to a shared shape.",
+      "properties": {
+        "area": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confirm": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cuisine": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "drive_min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "extra": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "gallery": {
+          "type": "boolean"
+        },
+        "gallery_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "group": {
+          "type": "string"
+        },
+        "group_label": {
+          "type": "string"
+        },
+        "hours": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "images": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "indoor": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "outing",
+            "restaurant"
+          ],
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "lane": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lat": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "links": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "lon": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "meals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "place_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "price": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviews": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "season": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "why": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "yelp_rating": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "area",
+        "confirm",
+        "cuisine",
+        "drive_min",
+        "extra",
+        "gallery",
+        "gallery_from",
+        "group",
+        "group_label",
+        "hours",
+        "id",
+        "image",
+        "images",
+        "indoor",
+        "kind",
+        "label",
+        "lane",
+        "lat",
+        "links",
+        "lon",
+        "meals",
+        "note",
+        "phone",
+        "place_id",
+        "price",
+        "rating",
+        "reviews",
+        "season",
+        "status",
+        "why",
+        "yelp_rating"
+      ],
+      "title": "BankItem",
+      "type": "object"
+    },
+    "Bar": {
+      "description": "A single OHLCV bar \u2014 the chart-able unit.",
+      "properties": {
+        "c": {
+          "type": "number"
+        },
+        "h": {
+          "type": "number"
+        },
+        "l": {
+          "type": "number"
+        },
+        "o": {
+          "type": "number"
+        },
+        "t": {
+          "type": "string"
+        },
+        "v": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "c",
+        "h",
+        "l",
+        "o",
+        "t",
+        "v"
+      ],
+      "title": "Bar",
+      "type": "object"
+    },
+    "BarsReport": {
+      "description": "`hn finance bars --json`: daily bars + the clustered levels \u2014 the price chart's input.",
+      "properties": {
+        "as_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bars": {
+          "items": {
+            "$ref": "#/$defs/Bar"
+          },
+          "type": "array"
+        },
+        "days": {
+          "type": "integer"
+        },
+        "last_close": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "levels": {
+          "items": {
+            "$ref": "#/$defs/SupportLevel"
+          },
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sessions": {
+          "type": "integer"
+        },
+        "symbol": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "as_of",
+        "bars",
+        "days",
+        "last_close",
+        "levels",
+        "notes",
+        "sessions",
+        "symbol"
+      ],
+      "title": "BarsReport",
+      "type": "object"
+    },
+    "CalendarCard": {
+      "description": "One Planning \"on the calendar\" card: a live (or parked) trip or visit at a glance.",
+      "properties": {
+        "anchor": {
+          "type": "string"
+        },
+        "cover": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "type": "boolean"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "doc": {
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        },
+        "who": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "window": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "anchor",
+        "cover",
+        "days",
+        "decision",
+        "destination",
+        "doc",
+        "end",
+        "kind",
+        "name",
+        "slug",
+        "start",
+        "status",
+        "title",
+        "when",
+        "who",
+        "window"
+      ],
+      "title": "CalendarCard",
+      "type": "object"
+    },
+    "CampaignReport": {
+      "properties": {
+        "as_of": {
+          "type": "string"
+        },
+        "calendar": {
+          "items": {
+            "$ref": "#/$defs/Milestone"
+          },
+          "type": "array"
+        },
+        "calendar_notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "in_flight": {
+          "items": {
+            "$ref": "#/$defs/InFlight"
+          },
+          "type": "array"
+        },
+        "mail": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "mail_note": {
+          "default": "",
+          "type": "string"
+        },
+        "stale_days": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "as_of",
+        "calendar",
+        "calendar_notes",
+        "in_flight",
+        "mail",
+        "mail_note",
+        "stale_days"
+      ],
+      "title": "CampaignReport",
+      "type": "object"
+    },
+    "CompEstimate": {
+      "description": "The role's likely level on its company's levels.fyi ladder and that rung's median TC, with the\nneighboring rungs' medians as the low/high edges (levels.fyi publishes medians per level, not\npercentiles). `basis` says how the rung was chosen; `note` names any fallback.",
+      "properties": {
+        "attribution": {
+          "default": "",
+          "type": "string"
+        },
+        "band": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string"
+        },
+        "high_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "high_tc": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ilvl": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "level": {
+          "type": "string"
+        },
+        "location": {
+          "default": "united-states",
+          "type": "string"
+        },
+        "low_level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "low_tc": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "median_tc": {
+          "type": "integer"
+        },
+        "note": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attribution",
+        "band",
+        "basis",
+        "high_level",
+        "high_tc",
+        "ilvl",
+        "level",
+        "location",
+        "low_level",
+        "low_tc",
+        "median_tc",
+        "note"
+      ],
+      "title": "CompEstimate",
+      "type": "object"
+    },
+    "CorrelationReport": {
+      "description": "Daily-return correlation across holdings \u2014 the 'is this name a real diversifier?' hard-data\nsurface. Deterministic FACTS (Pearson correlations / beta / dispersion); the interpretation is the\nagent's narrative, never computed here (the market.build_overview doctrine).",
+      "properties": {
+        "days": {
+          "default": 0,
+          "type": "integer"
+        },
+        "divergence_days": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/DivergenceDay"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end": {
+          "default": "",
+          "type": "string"
+        },
+        "factor": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "factor_beta": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "factor_corr": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "matrix": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "n_obs": {
+          "default": 0,
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "start": {
+          "default": "",
+          "type": "string"
+        },
+        "symbols": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "vol_annual": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "days",
+        "divergence_days",
+        "end",
+        "factor",
+        "factor_beta",
+        "factor_corr",
+        "matrix",
+        "n_obs",
+        "notes",
+        "start",
+        "symbols",
+        "vol_annual"
+      ],
+      "title": "CorrelationReport",
+      "type": "object"
+    },
+    "DayWeather": {
+      "properties": {
+        "condition": {
+          "type": "string"
+        },
+        "high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precip_hours": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precip_prob": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precip_sum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wet": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "condition",
+        "high",
+        "low",
+        "precip_hours",
+        "precip_prob",
+        "precip_sum",
+        "wet"
+      ],
+      "title": "DayWeather",
+      "type": "object"
+    },
+    "DivergenceDay": {
+      "description": "A day the focal name's return diverged most from the factor basket \u2014 the 'what moved on its\nown' evidence. Sign-coded gap (focal \u2212 factor): positive = focal up while the factor lagged.",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "factor_ret_pct": {
+          "type": "number"
+        },
+        "focal": {
+          "type": "string"
+        },
+        "focal_ret_pct": {
+          "type": "number"
+        },
+        "gap_pct": {
+          "type": "number"
+        },
+        "members": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "date",
+        "factor_ret_pct",
+        "focal",
+        "focal_ret_pct",
+        "gap_pct",
+        "members"
+      ],
+      "title": "DivergenceDay",
+      "type": "object"
+    },
+    "GateItem": {
+      "description": "One upcoming binary on the plan's calendar \u2014 a held-name print, a macro event, or an RSU\nvest of the concentrated holding (a vest re-arms the wash window + fires the\nsell-at-vest pattern, so it ranks on the same countdown).\n\nThe structured twin of what pulse's print_soon/macro_soon flags carry as prose: the\ngates board renders these as countdown bars, so every\nfield a bar needs is first-class here instead of parsed out of a message string.",
+      "properties": {
+        "confirmed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "symbol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "confirmed",
+        "date",
+        "days",
+        "kind",
+        "label",
+        "symbol"
+      ],
+      "title": "GateItem",
+      "type": "object"
+    },
+    "GatesBoard": {
+      "description": "The plan-gates contract \u2014 upcoming prints + macro events inside the horizon, sorted\nimminent-first. `gates` is the viz sniff signature (disjoint from every other shape).",
+      "properties": {
+        "as_of": {
+          "type": "string"
+        },
+        "gates": {
+          "items": {
+            "$ref": "#/$defs/GateItem"
+          },
+          "type": "array"
+        },
+        "horizon_days": {
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "as_of",
+        "gates",
+        "horizon_days",
+        "notes"
+      ],
+      "title": "GatesBoard",
+      "type": "object"
+    },
+    "GlobalQuote": {
+      "description": "One rail card: last price + day change vs previous close, with venue state/time.\n\nFutures rows also name the DATED contract they quote (see futures_calendar): `symbol` stays\nthe rail's continuous key (`BZ=F` \u2014 scalars and dashboards key on it), `contract` is what was\nactually fetched (`BZX26.NYM`), `contract_month` is the printed month ('Nov 26'), and on a roll\nday `rolled_from` names the month the rule left. `contract_month` None on a future = the dated\nsymbol was unavailable and the row fell back to Yahoo's continuous alias \u2014 the notes say so.",
+      "properties": {
+        "change": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contract": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "contract_month": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "live": {
+          "default": false,
+          "type": "boolean"
+        },
+        "market_state": {
+          "type": "string"
+        },
+        "market_time": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "price": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "roll_day": {
+          "default": false,
+          "type": "boolean"
+        },
+        "rolled_from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "session_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "session_label": {
+          "default": "",
+          "type": "string"
+        },
+        "session_note": {
+          "default": "",
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "change_pct",
+        "contract",
+        "contract_month",
+        "live",
+        "market_state",
+        "market_time",
+        "name",
+        "price",
+        "roll_day",
+        "rolled_from",
+        "session_date",
+        "session_label",
+        "session_note",
+        "symbol"
+      ],
+      "title": "GlobalQuote",
+      "type": "object"
+    },
+    "InFlight": {
+      "properties": {
+        "channel": {
+          "default": "other",
+          "type": "string"
+        },
+        "comp_signal": {
+          "default": "",
+          "type": "string"
+        },
+        "company": {
+          "type": "string"
+        },
+        "days_since": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "drift": {
+          "default": false,
+          "type": "boolean"
+        },
+        "last_touch": {
+          "default": "",
+          "type": "string"
+        },
+        "location": {
+          "default": "",
+          "type": "string"
+        },
+        "next_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "next_step": {
+          "default": "",
+          "type": "string"
+        },
+        "next_time": {
+          "default": "",
+          "type": "string"
+        },
+        "ref": {
+          "default": "",
+          "type": "string"
+        },
+        "role": {
+          "default": "",
+          "type": "string"
+        },
+        "screen_line": {
+          "default": "clear",
+          "type": "string"
+        },
+        "stage": {
+          "default": "inbound",
+          "type": "string"
+        },
+        "stale": {
+          "default": false,
+          "type": "boolean"
+        },
+        "url": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "comp_signal",
+        "company",
+        "days_since",
+        "drift",
+        "last_touch",
+        "location",
+        "next_date",
+        "next_step",
+        "next_time",
+        "ref",
+        "role",
+        "screen_line",
+        "stage",
+        "stale",
+        "url"
+      ],
+      "title": "InFlight",
+      "type": "object"
+    },
+    "Marker": {
+      "properties": {
+        "cat": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "time": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "cat",
+        "date",
+        "label",
+        "time"
+      ],
+      "title": "Marker",
+      "type": "object"
+    },
+    "MarkerCat": {
+      "properties": {
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "color",
+        "key",
+        "label"
+      ],
+      "title": "MarkerCat",
+      "type": "object"
+    },
+    "Milestone": {
+      "properties": {
+        "approx": {
+          "default": false,
+          "type": "boolean"
+        },
+        "date": {
+          "type": "string"
+        },
+        "days": {
+          "default": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "default": "",
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "ref": {
+          "default": "",
+          "type": "string"
+        },
+        "time": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approx",
+        "date",
+        "days",
+        "kind",
+        "label",
+        "ref",
+        "time"
+      ],
+      "title": "Milestone",
+      "type": "object"
+    },
+    "Modifier": {
+      "properties": {
+        "family": {
+          "type": "string"
+        },
+        "how": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "type": "string"
+        },
+        "value": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "family",
+        "how",
+        "key",
+        "name",
+        "source",
+        "value"
+      ],
+      "title": "Modifier",
+      "type": "object"
+    },
+    "PlanningCalendar": {
+      "description": "`hn travel upcoming --json`: the Planning tab's top band. `upcoming` = live and dated,\nsoonest first; `someday` = live-but-undated plus parked ideas \u2014 listed, never counted down.",
+      "properties": {
+        "as_of": {
+          "type": "string"
+        },
+        "someday": {
+          "items": {
+            "$ref": "#/$defs/CalendarCard"
+          },
+          "type": "array"
+        },
+        "upcoming": {
+          "items": {
+            "$ref": "#/$defs/CalendarCard"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "as_of",
+        "someday",
+        "upcoming"
+      ],
+      "title": "PlanningCalendar",
+      "type": "object"
+    },
+    "PocketEntry": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "role": {
+          "type": "string"
+        },
+        "seq": {
+          "type": "integer"
+        },
+        "text": {
+          "default": "",
+          "type": "string"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "truncated": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ok",
+        "role",
+        "seq",
+        "text",
+        "tool",
+        "truncated",
+        "ts"
+      ],
+      "title": "PocketEntry",
+      "type": "object"
+    },
+    "PocketLimit": {
+      "properties": {
+        "resets_at": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "utilization": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "resets_at",
+        "utilization"
+      ],
+      "title": "PocketLimit",
+      "type": "object"
+    },
+    "PocketQueued": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "ts"
+      ],
+      "title": "PocketQueued",
+      "type": "object"
+    },
+    "PocketSeal": {
+      "properties": {
+        "checked_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "failures": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ok": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "checked_at",
+        "failures",
+        "ok"
+      ],
+      "title": "PocketSeal",
+      "type": "object"
+    },
+    "PocketSnapshot": {
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/PocketEntry"
+          },
+          "type": "array"
+        },
+        "live": {
+          "type": "string"
+        },
+        "online": {
+          "type": "boolean"
+        },
+        "queued": {
+          "items": {
+            "$ref": "#/$defs/PocketQueued"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/PocketStatus"
+        }
+      },
+      "required": [
+        "entries",
+        "live",
+        "online",
+        "queued",
+        "status"
+      ],
+      "title": "PocketSnapshot",
+      "type": "object"
+    },
+    "PocketStatus": {
+      "properties": {
+        "actor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "branch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "claude_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "context_max": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "context_used": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cost_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cwd": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "duration_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "harness_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limits": {
+          "additionalProperties": {
+            "$ref": "#/$defs/PocketLimit"
+          },
+          "type": "object"
+        },
+        "mcp": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seal": {
+          "$ref": "#/$defs/PocketSeal"
+        },
+        "session_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "turn_cost_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "turn_started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "turns": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "actor",
+        "branch",
+        "claude_version",
+        "context_max",
+        "context_used",
+        "cost_usd",
+        "cwd",
+        "duration_ms",
+        "effort",
+        "harness_version",
+        "limit_status",
+        "limits",
+        "mcp",
+        "mode",
+        "model",
+        "seal",
+        "session_id",
+        "started_at",
+        "state",
+        "turn_cost_usd",
+        "turn_started_at",
+        "turns",
+        "updated_at"
+      ],
+      "title": "PocketStatus",
+      "type": "object"
+    },
+    "RoleCompany": {
+      "properties": {
+        "company": {
+          "type": "string"
+        },
+        "new": {
+          "default": 0,
+          "type": "integer"
+        },
+        "on_profile": {
+          "default": 0,
+          "type": "integer"
+        },
+        "openings": {
+          "default": 0,
+          "type": "integer"
+        },
+        "slug": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "company",
+        "new",
+        "on_profile",
+        "openings",
+        "slug"
+      ],
+      "title": "RoleCompany",
+      "type": "object"
+    },
+    "RoleCounts": {
+      "properties": {
+        "fit": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "new": {
+          "default": 0,
+          "type": "integer"
+        },
+        "shown": {
+          "default": 0,
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fit",
+        "new",
+        "shown",
+        "total"
+      ],
+      "title": "RoleCounts",
+      "type": "object"
+    },
+    "RoleFilters": {
+      "properties": {
+        "company": {
+          "default": "auto",
+          "type": "string"
+        },
+        "location": {
+          "default": "all",
+          "type": "string"
+        },
+        "new": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "company",
+        "location",
+        "new"
+      ],
+      "title": "RoleFilters",
+      "type": "object"
+    },
+    "RoleItem": {
+      "properties": {
+        "base_ilvl": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "base_source": {
+          "default": "",
+          "type": "string"
+        },
+        "comp": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CompEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "company": {
+          "type": "string"
+        },
+        "company_ilvl": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "company_median_tc": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "company_mods": {
+          "default": 0,
+          "type": "integer"
+        },
+        "company_rarity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "days_old": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "doc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "final_ilvl": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "first_seen": {
+          "default": "",
+          "type": "string"
+        },
+        "fit": {
+          "default": "adjacent",
+          "type": "string"
+        },
+        "lane": {
+          "default": "neutral",
+          "type": "string"
+        },
+        "level": {
+          "default": "none",
+          "type": "string"
+        },
+        "location": {
+          "default": "",
+          "type": "string"
+        },
+        "location_class": {
+          "default": "unknown",
+          "type": "string"
+        },
+        "modifier_sum": {
+          "default": 0,
+          "type": "integer"
+        },
+        "modifiers": {
+          "items": {
+            "$ref": "#/$defs/Modifier"
+          },
+          "type": "array"
+        },
+        "new": {
+          "default": false,
+          "type": "boolean"
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rarity": {
+          "default": "unranked",
+          "type": "string"
+        },
+        "salary": {
+          "default": "",
+          "type": "string"
+        },
+        "screen_flag": {
+          "default": "none",
+          "type": "string"
+        },
+        "screened_out": {
+          "default": false,
+          "type": "boolean"
+        },
+        "shape": {
+          "default": "Other",
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "updated": {
+          "default": "",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_ilvl",
+        "base_source",
+        "comp",
+        "company",
+        "company_ilvl",
+        "company_median_tc",
+        "company_mods",
+        "company_rarity",
+        "days_old",
+        "doc",
+        "final_ilvl",
+        "first_seen",
+        "fit",
+        "lane",
+        "level",
+        "location",
+        "location_class",
+        "modifier_sum",
+        "modifiers",
+        "new",
+        "profile",
+        "rarity",
+        "salary",
+        "screen_flag",
+        "screened_out",
+        "shape",
+        "slug",
+        "title",
+        "updated",
+        "url"
+      ],
+      "title": "RoleItem",
+      "type": "object"
+    },
+    "RolesReport": {
+      "description": "`hn career roles --json` \u2014 the Openings tab.",
+      "properties": {
+        "anchor": {
+          "type": "integer"
+        },
+        "as_of": {
+          "type": "string"
+        },
+        "bands": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "companies": {
+          "items": {
+            "$ref": "#/$defs/RoleCompany"
+          },
+          "type": "array"
+        },
+        "constitution": {
+          "type": "string"
+        },
+        "counts": {
+          "$ref": "#/$defs/RoleCounts"
+        },
+        "filters": {
+          "$ref": "#/$defs/RoleFilters"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/RoleItem"
+          },
+          "type": "array"
+        },
+        "screen_gated": {
+          "items": {
+            "$ref": "#/$defs/RoleItem"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "anchor",
+        "as_of",
+        "bands",
+        "companies",
+        "constitution",
+        "counts",
+        "filters",
+        "rows",
+        "screen_gated"
+      ],
+      "title": "RolesReport",
+      "type": "object"
+    },
+    "ScheduleDay": {
+      "properties": {
+        "availability": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "date": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ScheduleItem"
+          },
+          "type": "array"
+        },
+        "markers": {
+          "items": {
+            "$ref": "#/$defs/Marker"
+          },
+          "type": "array"
+        },
+        "weather": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DayWeather"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "weekday": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "availability",
+        "date",
+        "items",
+        "markers",
+        "weather",
+        "weekday"
+      ],
+      "title": "ScheduleDay",
+      "type": "object"
+    },
+    "ScheduleItem": {
+      "properties": {
+        "bank_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bank_match": {
+          "anyOf": [
+            {
+              "enum": [
+                "explicit",
+                "label"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "lane": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "penciled": {
+          "type": "boolean"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "bank_id",
+        "bank_match",
+        "date",
+        "end",
+        "label",
+        "lane",
+        "note",
+        "penciled",
+        "start"
+      ],
+      "title": "ScheduleItem",
+      "type": "object"
+    },
+    "SupportLevel": {
+      "description": "A clustered swing-low level (see `harness.finance.levels`) \u2014 an observation of past\nprice behavior, never a prediction.",
+      "properties": {
+        "distance_pct": {
+          "type": "number"
+        },
+        "kind": {
+          "default": "support",
+          "type": "string"
+        },
+        "last_touch": {
+          "type": "string"
+        },
+        "level": {
+          "type": "number"
+        },
+        "touches": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "distance_pct",
+        "kind",
+        "last_touch",
+        "level",
+        "touches"
+      ],
+      "title": "SupportLevel",
+      "type": "object"
+    },
+    "TripBanks": {
+      "description": "`hn travel banks --json`: the Visits/Trips picker.",
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/TripEntry"
+          },
+          "type": "array"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "default",
+        "entries",
+        "scope"
+      ],
+      "title": "TripBanks",
+      "type": "object"
+    },
+    "TripEntry": {
+      "description": "One picker tile: a visit or trip folder and what it carries.",
+      "properties": {
+        "cover": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "doc": {
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "live": {
+          "type": "boolean"
+        },
+        "outings": {
+          "type": "integer"
+        },
+        "phase": {
+          "default": "live",
+          "enum": [
+            "live",
+            "someday",
+            "past"
+          ],
+          "type": "string"
+        },
+        "photos": {
+          "type": "integer"
+        },
+        "restaurants": {
+          "type": "integer"
+        },
+        "scheduled": {
+          "type": "integer"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cover",
+        "date",
+        "destination",
+        "doc",
+        "end",
+        "kind",
+        "live",
+        "outings",
+        "phase",
+        "photos",
+        "restaurants",
+        "scheduled",
+        "slug",
+        "start",
+        "status",
+        "title",
+        "when"
+      ],
+      "title": "TripEntry",
+      "type": "object"
+    },
+    "VisitBank": {
+      "description": "`hn travel bank --json`: the resolved visit and its merged bank.",
+      "properties": {
+        "doc": {
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "groups": {
+          "items": {
+            "$ref": "#/$defs/BankGroup"
+          },
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/BankItem"
+          },
+          "type": "array"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "outings_title": {
+          "type": "string"
+        },
+        "restaurants_title": {
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "visit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "doc",
+        "end",
+        "groups",
+        "items",
+        "notes",
+        "outings_title",
+        "restaurants_title",
+        "start",
+        "title",
+        "visit"
+      ],
+      "title": "VisitBank",
+      "type": "object"
+    },
+    "VisitSchedule": {
+      "description": "`hn travel schedule --json`: the resolved visit, a column per date, and its bank.",
+      "properties": {
+        "availability_groups": {
+          "items": {
+            "$ref": "#/$defs/AvailabilityGroup"
+          },
+          "type": "array"
+        },
+        "bank": {
+          "$ref": "#/$defs/VisitBank"
+        },
+        "day_end": {
+          "type": "string"
+        },
+        "day_start": {
+          "type": "string"
+        },
+        "days": {
+          "items": {
+            "$ref": "#/$defs/ScheduleDay"
+          },
+          "type": "array"
+        },
+        "doc": {
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evening_start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "marker_cats": {
+          "items": {
+            "$ref": "#/$defs/MarkerCat"
+          },
+          "type": "array"
+        },
+        "marker_label": {
+          "type": "string"
+        },
+        "precip_unit": {
+          "type": "string"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "temp_unit": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "visit": {
+          "type": "string"
+        },
+        "weather_note": {
+          "type": "string"
+        },
+        "weather_place": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "availability_groups",
+        "bank",
+        "day_end",
+        "day_start",
+        "days",
+        "doc",
+        "end",
+        "evening_start",
+        "marker_cats",
+        "marker_label",
+        "precip_unit",
+        "start",
+        "subtitle",
+        "temp_unit",
+        "title",
+        "visit",
+        "weather_note",
+        "weather_place"
+      ],
+      "title": "VisitSchedule",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "BarsReport": {
+      "$ref": "#/$defs/BarsReport"
+    },
+    "CampaignReport": {
+      "$ref": "#/$defs/CampaignReport"
+    },
+    "CorrelationReport": {
+      "$ref": "#/$defs/CorrelationReport"
+    },
+    "GateItem": {
+      "$ref": "#/$defs/GateItem"
+    },
+    "GatesBoard": {
+      "$ref": "#/$defs/GatesBoard"
+    },
+    "GlobalQuote": {
+      "$ref": "#/$defs/GlobalQuote"
+    },
+    "PlanningCalendar": {
+      "$ref": "#/$defs/PlanningCalendar"
+    },
+    "PocketSnapshot": {
+      "$ref": "#/$defs/PocketSnapshot"
+    },
+    "RolesReport": {
+      "$ref": "#/$defs/RolesReport"
+    },
+    "TripBanks": {
+      "$ref": "#/$defs/TripBanks"
+    },
+    "VisitBank": {
+      "$ref": "#/$defs/VisitBank"
+    },
+    "VisitSchedule": {
+      "$ref": "#/$defs/VisitSchedule"
+    }
+  },
+  "title": "Contracts",
+  "type": "object"
+}

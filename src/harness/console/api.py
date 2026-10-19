@@ -14,6 +14,9 @@ Gating (the door is read-only by design):
 - `ack_events` is allowed: it is the SAME write capability the shipped `/api/bus/ack` route
   already carries (bus writes ride the already-shipped routes) — door-aliased, not a new
   write class.
+- `pocket_send` / `pocket_stop` / `pocket_reset` drop a prompt or a request flag into the pocket
+  runner's spool directory — never the transcript, never a process. The runner (its own unit, its
+  own seal) is the only thing that acts on them; the door stays unable to run an agent.
 - `set_active_pack` / `run_producer` are WRITE-GATED (403) — packs are the native console's
   scenario-switcher, producers are the standing agents' job.
 - `list_viz` / `read_viz` are mirrored (the viz.rs discover/sniff port);
@@ -54,13 +57,15 @@ from starlette.routing import Route
 from harness import __version__
 from harness.bus.service import BusService
 from harness.bus.store import default_db_path
+from harness.paths import augmented_path
 from harness.settings import BaseToolkitSettings
 
 # ————— roots + shared config reads ————————————————————————————————————————————————————————————
 
 # Lanes the spawn allowlist accepts — the read-only engine surface the dashboards/surfaces use.
 ALLOWED_LANES = {"finance", "career", "travel", "bus", "beads"}
-# Mirrors commands.rs VAULT_SKIP/VAULT_MAX_DEPTH/IMG_EXT — keep in sync (three-surface contract).
+# Mirrors commands.rs VAULT_SKIP/VAULT_MAX_DEPTH/IMG_EXT — keep in sync (the native app, the served
+# console and the webview must list the same files).
 VAULT_SKIP = {"node_modules", "__pycache__", "target", "dist", "screenshots", "tmp"}
 VAULT_MAX_DEPTH = 8
 IMG_MIME = {
@@ -70,8 +75,7 @@ IMG_MIME = {
 MAX_IMAGE_BYTES = 16 * 1024 * 1024
 
 
-class CommandError(Exception):
-    """A handler failure reported to the client as the Tauri error-string shape (HTTP 400)."""
+from harness.console.errors import CommandError  # noqa: E402 — re-exported: handlers raise it
 
 
 def _vault_root() -> Path:
@@ -121,7 +125,28 @@ def resolve_vault_path(path: str) -> Path:
     return canon
 
 
+# The text types the door will hand out. Defense-in-depth over the containment guard (which only
+# proves "inside the vault"): the console lists .md + images, so an arbitrary-extension read was
+# reachable only by hand-crafted request — .git/config, .beads/*.jsonl, a stray .env — with the
+# bearer token as the only barrier. Images have their own guarded path (read_image); anything
+# else needs a deliberate addition here. Mirrored in commands.rs read_vault_file — keep both
+# extension lists in sync.
+READABLE_EXT = frozenset({"md", "txt", "json", "yaml", "yml", "csv"})
+
+
+def _check_readable(path: str) -> None:
+    """Refuse hidden components (`.git`, `.beads`, `.obsidian`, dotfiles) and non-text types
+    BEFORE touching the filesystem — same rules the native app applies."""
+    parts = [seg for seg in path.replace("\\", "/").split("/") if seg not in ("", ".")]
+    if any(seg.startswith(".") and seg != ".." for seg in parts):
+        raise CommandError(f"{path}: hidden paths are not readable")
+    ext = parts[-1].rsplit(".", 1)[-1].lower() if parts and "." in parts[-1] else ""
+    if ext not in READABLE_EXT:
+        raise CommandError(f"{path}: not a readable text type ({'.' + ext if ext else 'no extension'})")
+
+
 def _read_vault_file(path: str) -> str:
+    _check_readable(path)
     try:
         return resolve_vault_path(path).read_text()
     except OSError as exc:
@@ -142,8 +167,17 @@ def _validate_tool(cmd: str, args: list[str]) -> None:
     else:
         raise CommandError(f"command not allowlisted: {cmd} {' '.join(args[:2])}")
     lane = tool_args[0] if tool_args else ""
-    if lane not in ALLOWED_LANES:
+    if lane not in ALLOWED_LANES and lane not in _private_lanes():
         raise CommandError(f"lane not allowlisted: {lane or '(none)'}")
+
+
+def _private_lanes() -> list[str]:
+    """Lanes mounted by the private extension seam (`harness.cli.PRIVATE_LANES`) are trusted by
+    construction — the operator's own branch put them there — so the door accepts their spawns
+    without the public allowlist naming them. Lazy import: cli imports the lanes, not the door."""
+    from harness.cli import PRIVATE_LANES
+
+    return PRIVATE_LANES
 
 
 _TODAY_RE = re.compile(r"\{today(?:\+(\d+))?\}")
@@ -161,10 +195,11 @@ def _substitute_dates(args: list[str]) -> list[str]:
 # ————— the spawn cache — cold dashboard load was minutes, not seconds ——————————
 # Three cooperating layers over the same key (the RESOLVED spawn tuple):
 #   1. in-flight dedupe — concurrent identical calls share ONE subprocess (a dashboard fans out
-#      the same networth verb from several widgets; the server twin of the webview promise-dedupe)
+#      the same CLI command from several widgets; the server twin of the webview promise-dedupe)
 #   2. short-TTL result cache — repeat loads (a second tab, the phone, a poll tick) serve warm
 #      results without a spawn; TTL is deliberately shorter than the fastest widget cadence
-#      (market10m), so staleness is bounded well inside what the native console already shows
+#      (the 10-minute market refresh), so staleness is bounded well inside what the native
+#      console already shows
 #   3. both are process-local + size-bounded — a serve restart clears them by construction
 _CACHE_TTL_S = 120.0
 _CACHE_MAX = 256
@@ -204,13 +239,27 @@ def _cached_spawn(key: tuple[str, ...], execute: Callable[[], str]) -> str:
             _inflight.pop(key, None)
 
 
+def _active_pack() -> str:
+    """The native registry's active pack, resolved once per call — feeds BOTH the spawn env and
+    the cache key, so a pack switch can never serve the prior scenario's cached panels."""
+    pack = str(_app_config().get("active_pack") or "").strip()
+    return str(Path(pack).expanduser()) if pack else ""
+
+
+def _spawn_key(cmd: str, args: list[str], cwd: str) -> tuple[str, ...]:
+    # The pack is part of the identity of a spawn: the same command under a different WEIGHTS_PACK
+    # is a different read (without it, a pack switch would serve up to one cache TTL of the
+    # previous pack's data).
+    return (cmd, *args, cwd, f"pack={_active_pack()}")
+
+
 def _run_json_command(cmd: str, args: list[str], cwd: str, label: str) -> str:
     """Spawn a registered read-only command and return its validated JSON stdout — the shared
     engine behind surfaces and command-widgets, now cached + deduped. A registered
     command MUST emit JSON; config errors surface loudly, never as blank panels."""
     _validate_tool(cmd, args)
     args = _substitute_dates(args)
-    key = (cmd, *args, cwd)
+    key = _spawn_key(cmd, args, cwd)
     return _cached_spawn(key, lambda: _execute_json_command(cmd, args, cwd, label))
 
 
@@ -224,27 +273,23 @@ def _execute_json_command(cmd: str, args: list[str], cwd: str, label: str) -> st
     # isn't an optimization, it's what makes uv-configured widgets work. Absent → as configured.
     import shutil
 
-    hn = shutil.which("hn")
+    env = dict(os.environ)
+    # The augmented_path() port (commands.rs): launchd starts processes with a minimal PATH
+    # (/usr/bin:/bin:…, no /opt/homebrew/bin or ~/.local/bin), so a bare `uv` spawn would fail.
+    # Fix in the spawn helper, NEVER the plist (autostart managers rewrite plists; the env belongs
+    # to code).
+    env["PATH"] = augmented_path(env.get("PATH", ""))
+    # Resolved on the AUGMENTED path so `hn` is the installed tool (the same one the server runs),
+    # not a `uv run hn` fallback in the source checkout.
+    hn = shutil.which("hn", path=env["PATH"])
     if cmd == "uv" and args[:1] == ["run"] and "hn" in args and hn:
         cmd, args = hn, args[args.index("hn") + 1 :]
-
-    env = dict(os.environ)
-    # The augmented_path() port (commands.rs) — instance #5 of the minimal-launch-context class:
-    # under launchd this server gets /usr/bin:/bin:… with no /opt/homebrew/bin or ~/.local/bin, so
-    # a bare `uv` spawn dies FileNotFoundError (caught when the server ran under launchd). Fix in the
-    # spawn helper, NEVER the plist (autostart managers rewrite plists; the env belongs to code).
-    home = Path.home()
-    tool_dirs = [str(home / ".local/bin"), "/opt/homebrew/bin", "/usr/local/bin"]
-    current = env.get("PATH", "")
-    prepend = [d for d in tool_dirs if Path(d).is_dir() and d not in current.split(":")]
-    if prepend:
-        env["PATH"] = ":".join([*prepend, current]) if current else ":".join(prepend)
     # Scenario parity with the native console: an active pack shapes on-demand panel reads.
-    pack = str(_app_config().get("active_pack") or "").strip()
+    pack = _active_pack()
     if pack:
-        env["WEIGHTS_PACK"] = str(Path(pack).expanduser())
+        env["WEIGHTS_PACK"] = pack
     try:
-        out = subprocess.run(# noqa: S603 — allowlisted above; config is operator-owned
+        out = subprocess.run(  # noqa: S603 — allowlisted above; config is operator-owned
             [cmd, *args],
             cwd=Path(cwd).expanduser() if cwd else None,
             env=env,
@@ -284,7 +329,9 @@ def _h_list_events(args: dict[str, Any]) -> list[dict[str, Any]]:
             unread_only=bool(args.get("unreadOnly", False)),
             lane=args.get("lane") or None,
             kind=args.get("kind") or None,
-            limit=int(args.get("limit") or 100),
+            # Same ceiling as the bus route (`/api/bus/events` caps at 500): the door mirrors the
+            # native command, but a browser-side caller must not be able to pull the whole store.
+            limit=min(int(args.get("limit") or 100), MAX_EVENTS_LIMIT),
         )
         return [_event_wire(e) for e in events]
     finally:
@@ -404,10 +451,8 @@ def _h_list_dashboards(_: dict[str, Any]) -> list[dict[str, Any]]:
 def _h_list_portfolio_symbols(_: dict[str, Any]) -> list[str]:
     """The quotable portfolio symbols (`symbols_from: portfolio`) — in-process
     via the corpus reader (no spawn; the served console runs
-    beside the corpus). Returns the BARE list: the native command returns Vec<String>, and
-    the door must mirror the native shape exactly (the contract-mirror rule) — the first
-    deploy returned a {"symbols": …} wrapper here and the webview silently fell back to the
-    static list (chips rendered in fallback order)."""
+    beside the corpus). Must return a bare list, mirroring the native command's Vec<String>
+    (the webview falls back silently otherwise)."""
     from harness.finance.corpus.reader import CorpusReader
 
     seed = CorpusReader().read_portfolio()
@@ -442,7 +487,12 @@ def _h_run_widget(args: dict[str, Any]) -> str:
     sym: str | None = None
     if symbol is not None:
         symbol = str(symbol)
-        if widget.get("symbols_from"):
+        if widget.get("symbols_from") in ("visit", "trip", "company"):
+            # a trip/visit picker or a company pick: a slug, lowercase words and dashes — injection-safe for
+            # the {symbol} substitution (no flags, spaces or paths); the verb rejects unknown ones
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", symbol):
+                raise CommandError(f"selection {symbol} fails the slug grammar")
+        elif widget.get("symbols_from"):
             if not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", symbol):
                 raise CommandError(f"symbol {symbol} fails the ticker grammar")
         elif symbol not in (widget.get("symbols") or []):
@@ -552,7 +602,8 @@ def _h_read_image(args: dict[str, Any]) -> str:
 
 # ————— viz mirrors (the viz.rs discover/sniff port) ————————————————————————————————————————————
 
-# Mirrors viz.rs SKIP_DIRS/MAX_DEPTH — keep in sync (three-surface contract).
+# Mirrors viz.rs SKIP_DIRS/MAX_DEPTH — keep in sync (the native app and the served console must
+# discover the same visuals).
 VIZ_SKIP = {".git", ".obsidian", ".beads", "node_modules", "tmp", "screenshots"}
 VIZ_MAX_DEPTH = 7
 VIZ_SUPPORTED = {
@@ -611,6 +662,37 @@ def _sniff(v: Any) -> str:
     return "unknown"
 
 
+# Visit/trip schedules are LIVE entries discovered from the corpus (no config): one per
+# travel/{visits,trips}/<slug>/schedule.json, newest first, rendered by the Visits tab's themed
+# schedule component from the built `hn travel schedule --json` payload. Mirrored in commands.rs.
+_SCHEDULE_SCOPES = (("visits", "visit"), ("trips", "trip"))
+_SCHEDULE_ENTRY = re.compile(r"live:schedule/(visit|trip)/([a-z0-9][a-z0-9-]{0,79})")
+
+
+def _schedule_entries(vault: Path) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for folder, scope in _SCHEDULE_SCOPES:
+        root = vault / "travel" / folder
+        if not root.is_dir():
+            continue
+        for d in sorted((c for c in root.iterdir() if (c / "schedule.json").is_file()), reverse=True):
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", d.name):
+                continue
+            try:
+                raw = json.loads((d / "schedule.json").read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            title = str(raw.get("title", "")) if isinstance(raw, dict) else ""
+            out.append({
+                "path": f"live:schedule/{scope}/{d.name}", "doc": "travel · LIVE",
+                "name": title or d.name, "viz_type": "visit-schedule", "title": title or d.name,
+                "supported": True,
+            })
+    # newest first across visits AND trips (slugs lead with their date)
+    out.sort(key=lambda e: e["path"].rsplit("/", 1)[-1], reverse=True)
+    return out
+
+
 def _h_list_viz(_: dict[str, Any]) -> list[dict[str, Any]]:
     # live entries (config-registered commands) first, then vault discovery — the commands.rs order
     out: list[dict[str, Any]] = [
@@ -636,7 +718,7 @@ def _h_list_viz(_: dict[str, Any]) -> list[dict[str, Any]]:
         except OSError:
             return
         # a data JSON is a viz candidate only where the co-located convention holds: its dir
-        # carries a visuals/ sibling (the two-consumer contract's on-disk signature)
+        # carries a visuals/ sibling (the layout both the native app and the served console expect)
         has_visuals = any(c.is_dir() and c.name == "visuals" for c in children)
         for c in children:
             if c.is_dir():
@@ -663,11 +745,22 @@ def _h_list_viz(_: dict[str, Any]) -> list[dict[str, Any]]:
 
     walk(vault, 0)
     found.sort(key=lambda e: (not e["supported"], e["doc"], e["name"]))
-    return out + found
+    # a visit/trip schedule.json is listed once, as its LIVE entry (not also as a raw vault file)
+    found = [e for e in found if not re.fullmatch(r"travel/(visits|trips)/[^/]+/schedule\.json", e["path"])]
+    return out + _schedule_entries(vault) + found
 
 
 def _h_read_viz(args: dict[str, Any]) -> str:
     path = str(args.get("path") or "")
+    if path.startswith("live:schedule/"):
+        m = _SCHEDULE_ENTRY.fullmatch(path)
+        if not m:
+            raise CommandError(f"schedule entry {path!r} fails the scope/slug grammar")
+        scope, slug = m.groups()
+        return _run_json_command(
+            "uv", ["run", "hn", "travel", "schedule", "--scope", scope, "--visit", slug, "--json"],
+            ".", f"schedule {slug}",
+        )
     if path.startswith("live:"):
         lid = path.removeprefix("live:")
         lv = next(
@@ -691,6 +784,31 @@ def _h_get_active_pack(_: dict[str, Any]) -> None:
     return None
 
 
+def _h_article_card(args: dict[str, Any]) -> dict[str, str]:
+    """The opened catalyst's article card (lead image, outlet, dek). Takes a bus EVENT id, never a
+    URL: the server only ever fetches a link a producer wrote onto that event (the resolved
+    publisher URL, else the original), so the door can't be pointed at arbitrary addresses."""
+    from harness.bus.service import BusService
+    from harness.finance.providers.article_provider import article_card
+
+    try:
+        event_id = int(args.get("id"))  # type: ignore[arg-type]
+    except (TypeError, ValueError) as e:
+        raise CommandError("article_card needs an event id") from e
+    svc = BusService()
+    try:
+        ev = svc.get_event(event_id)
+    finally:
+        svc.close()
+    if ev is None:
+        raise CommandError(f"no event {event_id}")
+    payload = ev.payload or {}
+    url = str(payload.get("resolved_url") or payload.get("url") or "")
+    if not url.startswith(("http://", "https://")):
+        return {"url": url, "error": "no article link on this event"}
+    return article_card(url)
+
+
 HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "list_events": _h_list_events,
     "ack_events": _h_ack_events,
@@ -712,9 +830,18 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "get_active_pack": _h_get_active_pack,
     "list_viz": _h_list_viz,
     "read_viz": _h_read_viz,
+    "article_card": _h_article_card,
 }
-# 403 — desktop-console features + the Studio save/reset: native-only for now; an authed
-# write carve-out for served-console dashboard edits is tracked.
+
+# The pocket agent's door commands live in its own package (harness.pocket.door) — one merge here.
+from harness.pocket.door import HANDLERS as _POCKET_HANDLERS  # noqa: E402
+
+HANDLERS.update(_POCKET_HANDLERS)
+# 403 — desktop-console features + the dashboard-editor save/reset: native-only; served-console
+# dashboard edits are not yet supported.
+MAX_BODY_BYTES = 64 * 1024  # invoke args are tiny; see the check in invoke()
+MAX_EVENTS_LIMIT = 500  # the bus route's ceiling, mirrored on the door
+
 WRITE_GATED = {"set_active_pack", "run_producer", "save_dashboard", "reset_dashboard",
                # Settings-panel writes: connection config is the NATIVE console's to edit —
                # a served browser must never rewrite the host's bus wiring.
@@ -771,7 +898,15 @@ def console_routes(token: str) -> list[Route]:
         handler = HANDLERS.get(cmd)
         if handler is None:
             return JSONResponse({"error": f"unknown command: {cmd}"}, status_code=404)
+        # Invoke bodies are small arg objects (a path, a lane+id, a list of ids). Anything past the
+        # cap is not a console call — refuse before parsing rather than JSON-decode an arbitrary
+        # upload on the event loop. Header first (cheap), then the read body as the real check.
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > MAX_BODY_BYTES:
+            return JSONResponse({"error": "request body too large"}, status_code=413)
         body = await request.body()
+        if len(body) > MAX_BODY_BYTES:
+            return JSONResponse({"error": "request body too large"}, status_code=413)
         try:
             args: Any = json.loads(body) if body else {}
         except json.JSONDecodeError:
@@ -780,9 +915,8 @@ def console_routes(token: str) -> list[Route]:
             return JSONResponse({"error": "body must be a JSON object of args"}, status_code=400)
         try:
             # run_in_threadpool — the spawn_blocking port: a sync handler (subprocess, filesystem
-            # walk) must never sit on the event loop, or concurrent widget calls SERIALIZE (the
-            # native app's nine-queued-sync-commands lockup, reproduced server-side as the 2-min
-            # cold dashboard load). The pool gives true widget concurrency; the
+            # walk) must never sit on the event loop: sync handlers on the event loop serialize
+            # concurrent widget calls. The pool gives true widget concurrency; the
             # dedupe above keeps identical spawns from multiplying under it.
             from starlette.concurrency import run_in_threadpool
 

@@ -148,8 +148,8 @@ def classify_lots(lots: list[Lot], price: float, *, poisoned: bool, today: date)
     """Each lot's live gain/loss + harvestability at ``price``. Pure — the what-if scrubber's core.
 
     A lot is harvestable_now when it's underwater AND today isn't wash-poisoned. (The
-    harvest-bigger-than-replacement path can still harvest inside a poisoned window — see the TLH
-    plan; this flag is the conservative, calendar-clean reading the dashboard signals on.)
+    harvest-bigger-than-replacement path can still harvest inside a poisoned window;
+    this flag is the conservative, calendar-clean reading the dashboard signals on.)
     """
     out: list[LotView] = []
     for lot in lots:
@@ -172,6 +172,34 @@ def classify_lots(lots: list[Lot], price: float, *, poisoned: bool, today: date)
                 days_held=(today - date.fromisoformat(lot.acquired)).days,
             )
         )
+    return out
+
+
+def vest_gates(
+    vest_calendar: list[VestEvent], symbol: str | None, today: date, horizon_days: int
+) -> list[Any]:
+    """Upcoming vests as plan GATES — the `vest` kind on `hn finance gates`.
+
+    A vest is a calendar binary like a print or a macro date: new shares land, the wash window
+    re-arms around it, and a sell-at-vest pattern fires — so it belongs on the same ranked
+    countdown board. Units ride the label; the dollar sizing stays on the unwind surface (the
+    gates verb takes no quotes by design). Pure: no I/O, so the board's vest rows are testable
+    without the earnings provider the print rows need."""
+    from harness.finance.models import GateItem
+
+    out: list[GateItem] = []
+    for v in sorted(vest_calendar, key=lambda x: x.date):
+        try:
+            d = (date.fromisoformat(v.date) - today).days
+        except ValueError:
+            continue
+        if 0 <= d <= horizon_days:
+            name = symbol or "RSU"
+            units = f" · {v.units:,}u" if v.units else ""
+            out.append(GateItem(
+                kind="vest", symbol=symbol, label=f"{name} vest{units}",
+                date=v.date, days=d, confirmed=True,
+            ))
     return out
 
 
@@ -225,7 +253,7 @@ def _merge_ranges(ranges: list[tuple[date, date]]) -> list[tuple[date, date]]:
 
 def _price_chart(symbol: str, bars: list[Bar], avg_cost: float, costs: list[float]) -> dict[str, Any]:
     """LineChart `line` contract: closes + a clean basis band (avg / low / high) as reference lines.
-    Per-lot basis lines are a Tier-2 (cockpit) feature — kept to 3 lines here to stay readable."""
+    Per-lot basis lines are a possible future detail view — kept to 3 lines here to stay readable."""
     levels = [{"label": f"avg basis ${avg_cost:,.2f}", "y": round(avg_cost, 2)}]
     if costs:
         levels += [

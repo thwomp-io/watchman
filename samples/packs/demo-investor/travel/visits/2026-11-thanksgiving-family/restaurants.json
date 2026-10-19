@@ -1,0 +1,75 @@
+{
+  "title": "Food bank",
+  "subtitle": "Fictional sample bank (Thanksgiving week)",
+  "groups": [
+    {
+      "key": "near-home",
+      "label": "Near home"
+    },
+    {
+      "key": "downtown",
+      "label": "Downtown"
+    }
+  ],
+  "restaurants": [
+    {
+      "name": "Sample Diner",
+      "group": "near-home",
+      "area": "Neighborhood",
+      "cuisine": "American breakfast",
+      "meals": [
+        "breakfast",
+        "lunch"
+      ],
+      "price": "$",
+      "rating": 4.5,
+      "reviews": 620,
+      "note": "Walk-in; busy before 9.",
+      "status": "new",
+      "confirm": "hours",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Diner"
+      }
+    },
+    {
+      "name": "Sample Trattoria",
+      "group": "downtown",
+      "area": "Downtown",
+      "cuisine": "Italian",
+      "meals": [
+        "dinner"
+      ],
+      "price": "$$",
+      "rating": 4.6,
+      "reviews": 1840,
+      "note": "Book a table for four.",
+      "status": "new",
+      "confirm": "reservation",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Trattoria",
+        "website": "https://example.com"
+      }
+    },
+    {
+      "name": "Sample Bakery",
+      "group": "near-home",
+      "area": "Neighborhood",
+      "cuisine": "Bakery",
+      "meals": [
+        "breakfast"
+      ],
+      "price": "$",
+      "rating": 4.8,
+      "reviews": 310,
+      "note": "Pastries to bring home.",
+      "status": "new",
+      "confirm": "hours",
+      "image": null,
+      "links": {
+        "maps": "https://www.google.com/maps/search/?api=1&query=Sample+Bakery"
+      }
+    }
+  ]
+}

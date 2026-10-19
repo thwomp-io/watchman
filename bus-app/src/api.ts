@@ -62,6 +62,12 @@ export const readDoc = (path: string): Promise<string> => invoke("read_doc", { p
 export const listVaultDir = (path: string): Promise<DirDoc[]> => invoke("list_vault_dir", { path });
 export const readImage = (path: string): Promise<string> => invoke("read_image", { path });
 
+// An opened catalyst's article card (lead image, outlet, dek). Takes the bus EVENT id — the server
+// fetches only the link a producer stored on that event. Served console only; the desktop app has no
+// such command, so the call rejects there and the reader simply shows no picture.
+export interface ArticleCard { url: string; final_url?: string; image?: string; site?: string; dek?: string; error?: string }
+export const articleCard = (id: number): Promise<ArticleCard> => invoke("article_card", { id });
+
 export const listDashboards = (): Promise<Dashboard[]> => invoke("list_dashboards");
 // Dashboard Studio save. Native-only until a follow-up opens the door's write
 // carve-out — on the served console this invoke lands in WRITE_GATED and 403s (by design).
@@ -89,3 +95,4 @@ export const onBusSelect = (cb: (id: number) => void): Promise<Unlisten> =>
   transport().listen("bus-select", (payload) => cb(payload as number));
 export const onVaultChanged = (cb: () => void): Promise<Unlisten> =>
   transport().listen("vault-changed", () => cb());
+

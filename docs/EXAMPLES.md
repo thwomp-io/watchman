@@ -35,7 +35,7 @@ from recent history:
 The **gates board** (Plans, in the tour above) ranks what's coming — each held name's next print
 and each macro date inside the horizon — as bars whose length is imminence, hot within two days,
 `est` chips on dates the calendar could only estimate. And the **vest timeline** — vest events sized by value,
-wash-sale poison windows in amber, clean harvest windows in green — lives on the VIZ rail as a
+wash-sale windows (where selling at a loss would be disallowed) in amber, clean harvest windows in green — lives on the VIZ rail as a
 live chart over the concentration-unwind verb:
 
 ![The vest timeline — sell-planning calendar](assets/viz-vest-timeline.png)
@@ -58,10 +58,11 @@ The full walkthrough lives in [`BEADS.md`](BEADS.md).
 
 ## The career lane
 
-The career board: the openings shortlist with posted comp, the application pipeline, and the
-company × role-shape hiring map — fed by keyless scans:
+Four tabs over keyless job-board scans: **Campaign** (the conversations in flight, next steps,
+milestones), **Openings** (every matched role ranked by fit, with its likely level and expected comp),
+**Pool** (the companies on your list) and **Ladders** (each company's pay by level):
 
-![The career board](assets/demo-career.gif)
+![The career tabs](assets/demo-career.gif)
 
 ## The travel lane
 
@@ -99,6 +100,17 @@ Three utilitarian daily drivers (NIGHT, BRIGHT, PAPER) and a creative fleet (pho
 redwatch, fjord, abyss, dusk, outrun, solar, mono) — one toggle in the footer:
 
 ![Cycling the theme fleet](assets/themes-cycle.gif)
+
+## CHAT — your agent, from anywhere
+
+A conversation with the agent on your always-on machine, sealed read-only by the runner (see
+[`POCKET.md`](POCKET.md)). Replies stream; tool steps fold into one row, with refusals marked; the status
+pill carries the model, context and plan limits. Every sample pack ships a scripted conversation
+(`hn pocket replay`), so the tab works without an agent:
+
+<img src="assets/pocket-chat.gif" alt="The CHAT tab on a phone" width="360">
+
+![The CHAT tab on a desktop, status card open](assets/pocket-desktop.png)
 
 ## On your phone
 

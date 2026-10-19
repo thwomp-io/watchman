@@ -1,0 +1,9 @@
+# college-grad's user overlay — FICTIONAL sample data (the pack-precedence demo: an active pack's
+# config/harness.yaml wins over the corpus-resident file). Only the blocks the demo needs.
+career:
+  global_settings:
+    # The comp anchor the pool's item model + the reports rail measure a median against — the
+    # anchor this persona negotiates from (FICTIONAL sample value).
+    comp_anchor:
+      anchor_tc: 150000
+      bands: [staff, principal]

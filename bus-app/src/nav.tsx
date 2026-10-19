@@ -14,7 +14,7 @@
 import { createContext, useContext } from "react";
 import { listVaultDir } from "./api";
 
-export type Zone = "inbox" | "dash" | "surfaces" | "viz" | "vault";
+export type Zone = "inbox" | "dash" | "surfaces" | "viz" | "vault" | "chat";
 
 export interface Ref {
   zone: Zone;
@@ -22,6 +22,12 @@ export interface Ref {
   dir?: string;
   viz?: string;
   widget?: string; // a dashboard widget id — DASH renders just that widget full-bleed (expand-in-place)
+  dash?: string; // a dashboard lane id — DASH opens that subtab (DASH reports it, so ◀ restores the tab)
+  // "the subtab that follows this picker scope" (a widget there declares `symbols_from: trip|visit`),
+  // resolved by DASH within the current group, with `pick` selected in it — a card on one tab can
+  // land on the trip it names without the config spelling out where trips live.
+  follows?: string;
+  pick?: string;
 }
 
 export interface Nav {

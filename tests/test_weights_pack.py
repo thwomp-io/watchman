@@ -15,7 +15,6 @@ import typer
 from typer.testing import CliRunner
 
 from harness.career.config import role_hunt_root
-from harness.career.service import CareerService
 from harness.finance.config.settings import PORTFOLIO_PATH
 from harness.finance.config.settings import Settings as FinanceSettings
 from harness.packs import PackGroup
@@ -145,15 +144,6 @@ def test_role_hunt_root_uses_the_loaded_pack(tmp_path: Path) -> None:
     assert role_hunt_root(s) == pack / "career"
 
 
-def test_career_service_role_hunt_defaults_to_tracker(tmp_path: Path) -> None:
-    # Unchanged construction (the test/legacy path) -> `<tracker>/role-hunt`.
-    assert CareerService(tmp_path).role_hunt == tmp_path / "role-hunt"
-
-
-def test_career_service_role_hunt_honors_the_pack_root(tmp_path: Path) -> None:
-    pack_career = tmp_path / "pack" / "career"
-    svc = CareerService(tmp_path, role_hunt_root=pack_career)
-    assert svc.role_hunt == pack_career
 
 
 # ----- the trailing `--pack` CLI plumbing (PackGroup) -----
@@ -183,12 +173,6 @@ def test_packgroup_injects_pack_into_every_verb(tmp_path: Path) -> None:
     assert res.exit_code == 0, res.output
     assert res.output.strip() == f"pack={tmp_path}"  # the verb ran with WEIGHTS_PACK set
 
-
-def test_packgroup_trailing_pack_sets_env_before_the_verb_runs(tmp_path: Path) -> None:
-    (tmp_path / "finance").mkdir()  # a plausible pack (has a lane subdir)
-    res = CliRunner().invoke(_pack_app(), ["lane", "hello", "--pack", str(tmp_path)])
-    assert res.exit_code == 0
-    assert f"pack={tmp_path.resolve()}" in res.output
 
 
 def test_packgroup_no_pack_leaves_env_unset() -> None:

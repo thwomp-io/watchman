@@ -16,10 +16,14 @@
 //   sub:NAME    — click a DASH subtab in the .substrip (Core/Plans/Market/Tickets/...)
 //   wait:MS     — dwell (readability pause; becomes GIF hold time)
 //   settle      — bounded wait for ACQUIRING widgets to clear
+//   type:TEXT   — type TEXT into the CHAT composer at a human pace, then send
+//
+// --steps may also be a JSON array of step strings (for TEXT that contains commas).
+// --standalone emulates the installed PWA (the phone layout's bottom tab bar), as console-shot does.
 //
 // The video lands wherever Playwright puts it inside --video-dir (we rename to <out.webm>).
-// Convert downstream with the house ffmpeg GIF pipeline; ALWAYS frame-extract-review the
-// output before shipping (the gate this script exists to serve).
+// Convert downstream to a GIF (ffmpeg trim → palettegen → paletteuse, then gifsicle); ALWAYS
+// frame-extract-review the output before shipping (the gate this script exists to serve).
 
 import { readFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -40,7 +44,10 @@ const [vw, vh] = (arg("--viewport", "1280x800")).split("x").map(Number);
 const viewport = { width: vw || 1280, height: vh || 800 };
 const tokenFile = arg("--token-file", `${homedir()}/.config/harness/bus-token`);
 const theme = arg("--theme", "dark");
-const steps = (arg("--steps", "settle,wait:3000")).split(",").map((s) => s.trim()).filter(Boolean);
+const rawSteps = arg("--steps", "settle,wait:3000");
+const steps = rawSteps.trim().startsWith("[")
+  ? JSON.parse(rawSteps)
+  : rawSteps.split(",").map((s) => s.trim()).filter(Boolean);
 
 const videoDir = dirname(out) + "/.tour-video";
 mkdirSync(videoDir, { recursive: true });
@@ -56,7 +63,12 @@ if (tokenFile) {
   await page.addInitScript((t) => window.localStorage.setItem("watchman.token", t), token);
 }
 await page.addInitScript((th) => window.localStorage.setItem("watchman.theme", th), theme);
+
 await page.goto(url, { waitUntil: "domcontentloaded" });
+// the installed-PWA root class, AFTER navigation (as console-shot does — pre-goto it doesn't stick)
+if (process.argv.includes("--standalone")) {
+  await page.evaluate(() => document.documentElement.classList.add("pwa"));
+}
 await page.waitForSelector(".widget, .inbox, .vault, .viz-rail", { timeout: 30_000 }).catch(() => {});
 
 async function settle(maxMs = 20_000) {
@@ -86,6 +98,13 @@ for (const step of steps) {
   } else if (op === "hover") await page.locator(val).first().hover({ force: true }).catch(() => {});
   else if (op === "click") await page.locator(val).first().click({ force: true }).catch(() => {});
   else if (op === "esc") await page.keyboard.press("Escape").catch(() => {});
+  else if (op === "type") {
+    const box = page.locator(".chat-composer textarea").first();
+    await box.click().catch(() => {});
+    await box.pressSequentially(val, { delay: 28 }).catch(() => {});
+    await page.waitForTimeout(350);
+    await page.locator(".chat-send").first().click().catch(() => {});
+  }
   else console.error(`unknown step: ${step}`);
 }
 

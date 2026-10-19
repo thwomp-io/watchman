@@ -68,10 +68,11 @@ class TicketmasterEventProvider:
         classification: str | None,
         size: int,
         page: int = 0,
+        near: tuple[float, float, int] | None = None,
+        keyword: str | None = None,
     ) -> dict[str, str | int]:
         params: dict[str, str | int] = {
             "apikey": self._api_key or "",
-            "city": city,
             # Discovery expects ISO8601 UTC with a trailing Z.
             "startDateTime": f"{start_date.isoformat()}T00:00:00Z",
             "endDateTime": f"{end_date.isoformat()}T23:59:59Z",
@@ -79,6 +80,15 @@ class TicketmasterEventProvider:
             "page": page,
             "sort": "date,asc",
         }
+        if keyword:
+            # a name search (a team's whole schedule, home + away); the city narrows it only if given
+            params["keyword"] = keyword
+        if near:
+            # a radius around a point: a suburb with no venues of its own still has a metro nearby
+            lat, lon, radius = near
+            params.update({"latlong": f"{lat:.4f},{lon:.4f}", "radius": radius, "unit": "miles"})
+        elif city:
+            params["city"] = city
         if classification:
             params["classificationName"] = classification
         return params
@@ -102,6 +112,8 @@ class TicketmasterEventProvider:
         *,
         classification: str | None = None,
         size: int = _PAGE_SIZE,
+        near: tuple[float, float, int] | None = None,
+        keyword: str | None = None,
     ) -> list[EventResult]:
         if not self._api_key:
             raise ProviderError(
@@ -117,7 +129,9 @@ class TicketmasterEventProvider:
         raw: list[dict[str, Any]] = []
         for page in range(_MAX_PAGES):
             payload = self._raw_search(
-                self._params(city, start_date, api_end, classification, size, page)
+                self._params(
+                    city, start_date, api_end, classification, size, page, near=near, keyword=keyword
+                )
             )
             events = payload.get("_embedded", {}).get("events", [])
             if not isinstance(events, list) or not events:

@@ -1,9 +1,9 @@
 """Read the finance corpus.
 
 Reads the machine-readable seed (`config/portfolio.yaml`) for the structured figures — holdings,
-the fund-proxy basket, the values screen. Honors the hybrid-config principle (the toolkit's
-weights.yaml ↔ preferences.md): the prose in `narratives/finance.md` is the canonical *rationale*;
-this YAML is the canonical *figures*, kept in manual sync. We never parse the prose for numbers.
+the fund-proxy basket, the values screen. The prose in `narratives/finance.md` holds the
+*rationale*; this YAML holds the *figures*; the two are kept in sync by hand.
+We never parse the prose for numbers.
 """
 
 from __future__ import annotations
@@ -12,9 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from harness.finance.config.settings import get_settings
+from harness.yamlio import load_yaml
 
 
 @dataclass
@@ -209,7 +208,7 @@ class CorpusReader:
         self._path = portfolio_path or get_settings().portfolio_path
 
     def read_portfolio(self) -> PortfolioSeed:
-        data: dict[str, Any] = yaml.safe_load(self._path.read_text()) or {}
+        data: dict[str, Any] = load_yaml(self._path.read_text()) or {}
 
         holdings = [
             Holding(

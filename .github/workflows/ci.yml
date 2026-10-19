@@ -101,21 +101,19 @@ jobs:
         # the engine automatically, but bare cargo runs need it staged first.
         run: node ../scripts/stage-engine.mjs
       - name: clippy
-        # advisory for now (runs + reports, doesn't gate on warnings); cleaning the pre-existing
-        # lints + restoring `-- -D warnings` is a tracked follow-up. `cargo test` still gates.
-        run: cargo clippy --all-targets
+        # warnings are errors.
+        run: cargo clippy --all-targets -- -D warnings
       - name: test
         run: cargo test
 
-  # ---- Security: the OSS Wiz-analog. Trivy scans the repo (dep CVEs + secrets + misconfig). -----
+  # ---- Security: dependency CVE + secret + misconfig scan (Trivy over the repo). ----------------
   security:
     name: security (trivy fs)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Trivy filesystem scan
-        # Run Trivy from its official image (no binary-install step — the trivy-action's install.sh
-        # was failing on the runner). Auth the DB pull with the repo token to dodge ghcr rate-limits.
+        # Run Trivy from its official image (no binary-install step). Auth the DB pull with the repo token to dodge ghcr rate-limits.
         # Fails the stage on a fixable HIGH/CRITICAL — the gate-before-publish.
         run: |
           docker run --rm \

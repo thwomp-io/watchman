@@ -1,0 +1,102 @@
+{
+  "lane": "travel-trips",
+  "title": "Trips",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "picker",
+      "title": "Trips — pick one",
+      "kind": "picker",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "banks",
+          "--scope",
+          "trip",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
+    },
+    {
+      "id": "schedule",
+      "title": "Trip schedule — day by day",
+      "kind": "schedule",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "schedule",
+          "--scope",
+          "trip",
+          "--visit",
+          "{symbol}",
+          "--no-weather",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "trip",
+      "columns": [],
+      "rows": 6
+    },
+    {
+      "id": "bank",
+      "title": "Trip bank — outings + restaurants",
+      "kind": "bank",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "bank",
+          "--scope",
+          "trip",
+          "--visit",
+          "{symbol}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "trip",
+      "columns": [],
+      "rows": 3
+    }
+  ]
+}

@@ -71,6 +71,22 @@ class SupportLevel(BaseModel):
     touches: int
     last_touch: str  # ISO date of the most recent swing low in the cluster
     distance_pct: float  # signed % from last close (negative = below price)
+    # "support" = at/below the last close; "overhead" = a swing-low cluster price has since broken
+    # below (former support, now above the market) — never shown as support.
+    kind: str = "support"
+
+
+class BarsReport(BaseModel):
+    """`hn finance bars --json`: daily bars + the clustered levels — the price chart's input."""
+
+    symbol: str
+    days: int
+    last_close: float | None  # None only when there are no bars (see notes)
+    as_of: str | None  # ISO date of the last bar
+    sessions: int
+    levels: list[SupportLevel]
+    bars: list[Bar]  # serialized by alias: t/o/h/l/c/v
+    notes: list[str] = Field(default_factory=list)  # why a report is empty (the keyless demo)
 
 
 class TrapRung(BaseModel):
@@ -135,7 +151,7 @@ class Position(BaseModel):
 
 class PortfolioSnapshot(BaseModel):
     """Read-only portfolio view: live-quoted where possible, last-known / static otherwise. Never a
-    recommendation — an observation surface for the sounding-board."""
+    recommendation — an observation surface for the assistant."""
 
     positions: list[Position] = Field(default_factory=list)
     quoted_market_value: float = 0.0  # sum of live-quoted positions only
@@ -198,6 +214,10 @@ class ProxyEstimate(BaseModel):
     weighted: bool = False  # True = cap-weighted basket; False = legacy equal-weight
     coverage_pct: float | None = None  # sum of basket weights = % of the FUND the basket represents
     live_coverage_pct: float | None = None  # weights of the names that actually quoted this run
+    # Which US session the day % measures (finance.sessions): "live" = today's regular session;
+    # "pre-open"/"closed" = the last completed session + thin off-hours ticks — say so on the read.
+    session_state: str | None = None
+    session_date: str | None = None
 
 
 class DayGLRow(BaseModel):
@@ -214,7 +234,8 @@ class DayGLRow(BaseModel):
 class DayGL(BaseModel):
     """Full-book intraday day-G/L estimate: live quotes exact + fund NAV estimated via the proxy +
     statics flat by definition. An at-a-glance observation surface — the est sleeve reconciles at
-    the EOD NAV sync; statics stay honest via the manual screenshot ritual. Never a recommendation."""
+    the EOD NAV sync; statics stay honest via manual balance updates from broker
+    statements. Never a recommendation."""
 
     total_day_gl: float | None = None  # exact + est (None only if nothing priced at all)
     total_day_pct: float | None = None  # vs the implied prior-day total
@@ -280,7 +301,7 @@ class Fundamentals(BaseModel):
     """Reported (GAAP/XBRL) financials for a holding, from SEC EDGAR — read-only.
 
     Reported figures LAG real-time: the newest point is the most recent 10-Q/10-K, not a live number.
-    The sounding-board surfaces these; the user judges (e.g. 'did the quarterly subscription-revenue
+    The assistant surfaces these; the user judges (e.g. 'did the quarterly subscription-revenue
     print confirm the thesis?')."""
 
     symbol: str
@@ -304,6 +325,7 @@ class MultiplesComponent(BaseModel):
     tag: str = ""
     period: str = ""  # 4Q | annual | instant | live
     note: str = ""
+    period_date: str = ""  # the balance-sheet date an instant figure was built on (debt)
 
 
 class Multiples(BaseModel):
@@ -350,7 +372,7 @@ class CompareRow(BaseModel):
     cap, EDGAR + live price), `quote` (price + day move), and `screen` (the values verdict). The
     multiples stay `float | str | None` so the honesty strings carry through ("N/M" unprofitable,
     "unavailable" un-tagged) — never a fabricated number. A per-row `note` flags caveats (a failed
-    EDGAR resolve, or the mega-cap P/S sanity-guard for the TTM mis-tag)."""
+    EDGAR resolve, or the mega-cap P/S sanity-guard for the Q4-in-10-K TTM mis-tag)."""
 
     symbol: str
     entity_name: str = ""
@@ -364,7 +386,7 @@ class CompareRow(BaseModel):
     screen_category: str | None = None
     # tracker-relative research dir (finance/research/.../SYM), existence-checked — "" if none yet.
     # The deep-link anchor: a compare card wikilinks the symbol to its profile; the bus-app nav Ref
-    # resolves dir→newest doc at click time (same contract as the bench-map ref.dir).
+    # resolves dir→newest doc at click time.
     research_dir: str = ""
     note: str = ""
 
@@ -399,6 +421,14 @@ class NewsItem(BaseModel):
     holdings_hit: list[str] = Field(default_factory=list)  # held/watchlist symbols named in the title
     #                    (deterministic match vs name/aliases/cashtag) — the "is the wire talking about
     #                    MY book?" signal that drives the reader's relevance badge + "my book" filter.
+    # — what the feed itself ships beyond the headline (absent → ""; most market feeds are bare):
+    image_url: str = ""  # media:content / media:thumbnail / an image <enclosure>
+    author: str = ""  # dc:creator / <author>
+    tags: list[str] = Field(default_factory=list)  # the item's own <category> tags
+    publisher: str = ""  # the outlet — Google News's <source>, else "" (the link's domain stands in)
+    publisher_url: str = ""  # the outlet's home page (Google News <source url>)
+    resolved_url: str = ""  # a Google News link resolved to the publisher's article ("" = unresolved)
+    filtered: str = ""  # the catalyst junk rule this item matched ("" = real news)
 
 
 class Filing(BaseModel):
@@ -481,14 +511,16 @@ class PrintCountdown(BaseModel):
 
 
 class GateItem(BaseModel):
-    """One upcoming binary on the plan's calendar — a held-name print or a macro event.
+    """One upcoming binary on the plan's calendar — a held-name print, a macro event, or an RSU
+    vest of the concentrated holding (a vest re-arms the wash window + fires the
+    sell-at-vest pattern, so it ranks on the same countdown).
 
     The structured twin of what pulse's print_soon/macro_soon flags carry as prose: the
     gates board renders these as countdown bars, so every
     field a bar needs is first-class here instead of parsed out of a message string."""
 
-    kind: str  # "print" | "macro"
-    symbol: str | None = None  # held-name prints only; macro rows carry label alone
+    kind: str  # "print" | "macro" | "vest"
+    symbol: str | None = None  # prints + vests carry the symbol; macro rows carry label alone
     label: str  # the display line ("ACME Q2 print AC" / the macro_events label)
     date: str | None = None  # ISO date when known; None = unresolvable estimate
     days: int | None = None  # days out from today (0 = today); None mirrors date
@@ -589,6 +621,12 @@ class MarketBreadth(BaseModel):
     credit_hy_minus_tsy_pct: float | None = None  # HYG% − IEF% — day-scale spread-widening proxy:
     # negative = credit underperforming duration (spreads widening / risk-off in credit); a FACT,
     # never a verdict — same doctrine as the equity breadth tells above.
+    kre_pct: float | None = None  # regional banks' day move — the equity face of financing stress
+    tsy_long_minus_short_pct: float | None = None  # TLT% − SHY% — intraday curve-shape proxy: negative
+    # = the long end selling harder than the front (a bear steepener in ETF terms); positive = the
+    # long end bid (flattening/bull-steepening depends on the front — read with the cash curve)
+    tip_minus_ief_pct: float | None = None  # TIP% − IEF% — breakeven-inflation DIRECTION: positive =
+    # inflation-linked outperforming nominals (breakevens widening), negative = narrowing
 
 
 class MarketOverview(BaseModel):
@@ -601,7 +639,8 @@ class MarketOverview(BaseModel):
     sectors: list[MarketQuote] = Field(default_factory=list)
     semis: list[MarketQuote] = Field(default_factory=list)
     megacap: list[MarketQuote] = Field(default_factory=list)
-    credit: list[MarketQuote] = Field(default_factory=list)  # HYG/LQD/IEF — the credit-stress rail
+    credit: list[MarketQuote] = Field(default_factory=list)  # HYG/LQD/IEF/KRE — the credit-stress rail
+    rates: list[MarketQuote] = Field(default_factory=list)  # SHY/IEF/TLT/TIP — the curve as ETFs
     leaders: list[MarketMover] = Field(default_factory=list)
     laggards: list[MarketMover] = Field(default_factory=list)
     breadth: MarketBreadth = Field(default_factory=MarketBreadth)

@@ -128,12 +128,15 @@ if (vizItem) {
     .click().catch(() => {});
 }
 // bounded settle: let ACQUIRING widgets resolve (cold spawns are ~0.7s each after the perf pass)
-const deadline = Date.now() + 25_000;
-while (Date.now() < deadline) {
-  const busy = await page.getByText("ACQUIRING").count().catch(() => 0);
-  if (!busy) break;
-  await page.waitForTimeout(500);
+async function settle() {
+  const deadline = Date.now() + 25_000;
+  while (Date.now() < deadline) {
+    const busy = await page.getByText("ACQUIRING").count().catch(() => 0);
+    if (!busy) break;
+    await page.waitForTimeout(500);
+  }
 }
+await settle();
 await page.waitForTimeout(settleMs); // paint/chart-animation grace
 // --hover: park the cursor on a selector so hover-born UI (tooltips, relationship cards) is IN
 // the capture — the agent's eye can now verify what only exists under the pointer.
@@ -148,6 +151,9 @@ if (clickSel) {
     await page.locator(sel).first().click({ force: true }).catch(() => {});
     await page.waitForTimeout(700); // popup/tab content fetch + paint
   }
+  // a click can navigate (a deep link into another subtab): its widgets fetch now — settle again
+  await settle();
+  await page.waitForTimeout(1000);
 }
 // fullPage captures the whole scrollable document — which mis-renders position:fixed chrome
 // (bars paint at scroll-top, not the viewport edge). --standalone implies viewport-true capture

@@ -1,0 +1,36 @@
+{
+  "actor": "pocket",
+  "model": "claude-opus-5-5",
+  "context_window": 1000000,
+  "cwd": "~/corpus",
+  "limits": {"five_hour": 0.22, "seven_day": 0.09},
+  "turns": [
+    {
+      "user": "On the train. Any new platform/SRE roles worth a look, and where's HashiCorp at?",
+      "context_used": 41300,
+      "cost_usd": 0.36,
+      "duration_ms": 14100,
+      "steps": [
+        {"tool": "mcp__harness__career_roles", "input": {"new_only": true},
+         "result": "{\"roles\": [{\"company\": \"Datadog\", \"title\": \"Senior SRE, Platform\", \"fit\": \"on-profile\", \"expected_comp\": \"~$285k\"}, {\"company\": \"Grafana Labs\", \"title\": \"Staff Platform Engineer\", \"fit\": \"on-profile\", \"expected_comp\": \"~$310k\"}], \"new\": 2}"},
+        {"tool": "mcp__harness__career_campaign", "input": {},
+         "result": "{\"in_flight\": [{\"company\": \"HashiCorp\", \"stage\": \"interviewing\", \"next_step\": \"System design round, Thu\"}]}"}
+      ],
+      "reply": "**Two new on-profile roles:**\n- **Grafana Labs, Staff Platform Engineer.** Expected comp is around $310k, a level up from where you are.\n- **Datadog, Senior SRE, Platform.** Around $285k.\n\n**HashiCorp:** you're interviewing, and the **system design round is Thursday.**\n\nWant the Grafana posting's requirements next to your résumé?"
+    },
+    {
+      "user": "Yes, and add Grafana to my applications list.",
+      "context_used": 47800,
+      "cost_usd": 0.29,
+      "duration_ms": 11900,
+      "steps": [
+        {"tool": "Read", "input": {"file_path": "career/discoveries/grafana-staff-platform.md"},
+         "result": "Requirements: Kubernetes at scale, observability pipelines, Terraform, on-call leadership…"},
+        {"tool": "Bash", "input": {"command": "sed -i '' 's/^applications:/applications:\\n  - company: Grafana Labs/' career/applications.yaml"}, "denied": true},
+        {"tool": "Bash", "input": {"command": "bd create --title \"write: add Grafana Labs (Staff Platform Engineer) to applications.yaml, stage researching\" -l defer,career"},
+         "result": "✓ Created issue: demo-33"}
+      ],
+      "reply": "**Grafana asks for:** Kubernetes at scale, observability pipelines, Terraform, and on-call leadership. Your Kafka-to-ClickHouse pipeline work and the on-call rotation you ran cover the second and fourth. Lead with those.\n\n**Applications list:** files are read-only from here, so I've queued it as **`demo-33`** (stage: researching). It'll be on your desk."
+    }
+  ]
+}

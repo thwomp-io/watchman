@@ -21,8 +21,15 @@ uv run hn bus serve --console --ui bus-app/dist
 - `--console` mounts the RPC door the frontend talks to (`POST /api/invoke/{cmd}` — a read-only mirror
   of the desktop shell's command layer). `--ui` implies it.
 - The server binds `127.0.0.1:8787` by default. To reach it from other devices, bind a private-network
-  address deliberately (`--host 100.x.y.z`, or `0.0.0.0` if the network itself is trusted) — every
-  `/api` route requires the token regardless of bind.
+  address deliberately (`--host 100.x.y.z`) — every `/api` route requires the token regardless of bind.
+  Prefer the overlay/mesh address over `0.0.0.0`: the plain-HTTP unit carries the bearer token in
+  cleartext, so a wildcard bind also puts that token on whatever wifi segment the node sits on. A
+  node reaches its own overlay address too, so local tooling (screenshot tooling, health probes)
+  can use it instead of loopback.
+- Changing `--host` in a launchd plist needs a **bootout + bootstrap** (`launchctl bootout gui/$UID/<label>`
+  then `launchctl bootstrap gui/$UID <plist>`) — `kickstart -k` restarts the *loaded* definition and
+  keeps the old arguments. If bootstrap returns `Input/output error` right after the bootout, wait a
+  couple of seconds and retry; the unload is asynchronous.
 - Open `http://<host>:8787/`. The page prompts for the token on first visit and remembers it.
 
 ## The token
@@ -45,6 +52,10 @@ iOS/Android installs it standalone — no browser chrome, safe-area aware, with 
 bottom where thumbs live. Day-to-day it reads like a native finance app pointed at your own data.
 At phone widths the VAULT zone is a master-detail flow: the document tree is the page, opening a doc
 swaps to a full-width reader with a **◀ back** control.
+
+The **CHAT** zone (served console only) is a read-only conversation with an agent lane running on the
+serving node — streamed replies, tool activity folded into one row, and a status pill for context and
+plan limits. It needs the pocket runner unit; setup and the security model: [`POCKET.md`](POCKET.md).
 
 <img src="assets/phone-core.png" alt="The console installed as a PWA — one column, zone tabs at the thumb line" width="360">
 

@@ -1,7 +1,7 @@
 """Scenario-grid projections — the deterministic data layer behind the Watchman PROJECTIONS tab.
 
 The params registry (`finance/reference/projection-params.yaml`, tracker-resident; pack-overridable)
-is a THIN machine projection authored by the operating agent at research/grade time — one entry per
+is a THIN machine projection authored by the agent (or you) at research time — one entry per
 name, carrying the scenario inputs (forward EPS + a growth band + a multiple band) and their
 provenance. The rich reasoning stays in the research artifact the entry points at; this module only
 loads, validates, and runs the arithmetic (price = EPS × multiple, compounded per horizon). No
@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
+from harness.yamlio import load_yaml
 
 # Horizons: (label, years). ≤1y renders as "estimate"; beyond that the compounding makes any
 # point-band a sketch — the tier is part of the contract so every surface inherits the honesty.
@@ -57,8 +57,8 @@ class ProjectionParams:
     as_of: _dt.date
     provenance: str  # vault path of the research artifact the numbers derive from
     notes: str | None = None
-    # Values-screen status line, when the screen affects this name (screened-out / undecided /
-    # look-through-only). Screened-out names stay visible on the tab: the item
+    # Values-screen status line, when the screen affects this name (e.g. excluded /
+    # under review). Excluded names stay visible on the tab: the item
     # renders MARKED, never hidden — the screen gates what gets BOUGHT, not what gets seen.
     screen_note: str | None = None
 
@@ -78,6 +78,17 @@ class ProjectionParams:
             "notes": self.notes,
             "screen_note": self.screen_note,
         }
+
+
+def _symbol(v: object, idx: int) -> str:
+    """A ticker must load as a string. A number (an HK/TW code like 0700) or a boolean would be
+    stringified into a symbol no quote ever matches — refuse it, naming the fix."""
+    if not isinstance(v, str):
+        raise ProjectionError(
+            f"projections[{idx}]: symbol {v!r} loaded as {type(v).__name__}, not text — quote it "
+            f'(symbol: "{v}")'
+        )
+    return v.upper()
 
 
 def _parse_entry(raw: dict[str, Any], idx: int) -> ProjectionParams:
@@ -117,7 +128,7 @@ def _parse_entry(raw: dict[str, Any], idx: int) -> ProjectionParams:
             f"low ≤ mid ≤ high (got {mult_low}/{mult_mid}/{mult_high})"
         )
     return ProjectionParams(
-        symbol=str(need("symbol")).upper(),
+        symbol=_symbol(need("symbol"), idx),
         fwd_eps=num("fwd_eps"),
         eps_basis=str(need("eps_basis")),
         growth_pct_low=growth_low,
@@ -135,7 +146,7 @@ def _parse_entry(raw: dict[str, Any], idx: int) -> ProjectionParams:
 
 def load_params(path: Path) -> list[ProjectionParams]:
     """Load + validate the registry, alphabetical by symbol (the tab re-sorts as it likes)."""
-    data = yaml.safe_load(path.read_text()) or {}
+    data = load_yaml(path.read_text()) or {}
     entries = data.get("projections")
     if entries is None:
         raise ProjectionError("registry has no top-level 'projections:' list")

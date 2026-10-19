@@ -1,9 +1,10 @@
 """Applications-pipeline corpus loader — `corpus/role-hunt/applications.yaml` is the source of truth.
 
-The application/opportunity pipeline as domain state (hand-edited corpus YAML — the tool
-reads it, never writes it). The CAREER dashboard's PIPELINE table reads this
-via `hn career applications --json`. Read-only here; advancing a stage is the user's edit, never the
-tool's act (the read-rich / execute-gated doctrine — applying/contacting is the user's act).
+The application/opportunity pipeline as domain state (hand-edited corpus YAML). The CAREER
+dashboard's PIPELINE table reads this via `hn career applications --json`. Read-only here; the
+ONE tool write is `hn career apply --submit --confirm` advancing a row to `applied` after the
+human confirms a submission (`harness.career.submit.advance_pipeline` — a line-level patch, so
+the hand-edited file keeps its comments). Every other stage change is the user's edit.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import yaml
 from pydantic import BaseModel, field_validator
 
 from harness.errors import ProviderError
+from harness.yamlio import load_yaml
 
 # Pipeline stages, ordered earliest → latest (display/sort hint; not enforced).
 STAGES = (
@@ -35,6 +37,10 @@ class Application(BaseModel):
 
     company: str
     role: str = ""
+    # The application folder key under role-hunt/applications/{slug}/ (set by `hn career posting`,
+    # matched by `apply --submit` when it advances this row). Optional: rows that never went
+    # through the capture path (recruiter inbounds) simply have none.
+    slug: str = ""
     stage: str = "inbound"
     source: str = ""  # how it arrived (recruiter / referral / direct apply / inbound)
     next_step: str = ""
@@ -70,7 +76,7 @@ def load_applications(tracker_path: Path, *, root: Path | None = None) -> Pipeli
     if not path.exists():
         return Pipeline()
     try:
-        raw = yaml.safe_load(path.read_text()) or {}
+        raw = load_yaml(path.read_text()) or {}
     except yaml.YAMLError as e:
         raise ProviderError(f"applications YAML parse failed: {e}") from e
     return Pipeline.model_validate(raw)

@@ -126,5 +126,21 @@
   "IEF": {
     "price": 95.3,
     "prev_close": 96.93
+  },
+  "KRE": {
+    "price": 61.2,
+    "prev_close": 61.36
+  },
+  "SHY": {
+    "price": 82.1,
+    "prev_close": 83.09
+  },
+  "TLT": {
+    "price": 88.4,
+    "prev_close": 87.42
+  },
+  "TIP": {
+    "price": 107.3,
+    "prev_close": 108.66
   }
 }

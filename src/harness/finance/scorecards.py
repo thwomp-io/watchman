@@ -1,7 +1,7 @@
 """Print-scorecard registry reader — the deterministic data layer behind the Watchman PRINTS tab.
 
 The registry (`finance/reference/print-scorecards.yaml`, tracker-resident; pack-overridable) is a
-THIN machine projection appended by the operating agent at grade time — one entry per print event.
+THIN machine projection appended by the agent (or you) at grade time — one entry per print event.
 The rich record stays in the card/take markdown the entry points at (`card_doc` is the DocPopup
 target). This module only loads, validates, and sorts; no synthesis, no model in the loop
 (determinism doctrine).
@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
+from harness.yamlio import load_yaml
 
 # The grade enum — the scorecard book's banner colors key on these exactly.
 GRADES = ("GREAT", "GOOD", "OK", "BAD", "DISASTER", "PENDING")
@@ -104,7 +104,7 @@ def _parse_entry(raw: dict[str, Any], idx: int) -> Scorecard:
 def load_scorecards(path: Path) -> list[Scorecard]:
     """Load + validate the registry. Newest print first (PENDING entries sort with their date,
     which is the *scheduled* print date — an upcoming card naturally leads the book)."""
-    data = yaml.safe_load(path.read_text()) or {}
+    data = load_yaml(path.read_text()) or {}
     entries = data.get("scorecards")
     if entries is None:
         raise ScorecardError("registry has no top-level 'scorecards:' list")

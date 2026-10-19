@@ -279,6 +279,99 @@
       "layout": null
     },
     {
+      "id": "duration",
+      "title": "Duration · TLT − SHY",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.tsy_long_minus_short_pct",
+      "prefix": null,
+      "suffix": "%",
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "breakevens",
+      "title": "Breakevens · TIP − IEF",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "breadth.tip_minus_ief_pct",
+      "prefix": null,
+      "suffix": "%",
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "rates",
+      "title": "Rates (Treasury ETFs)",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "market",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "rates",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "label",
+        "day_change_pct",
+        "day_change",
+        "price"
+      ],
+      "rows": 1,
+      "layout": null
+    },
+    {
       "id": "leaders",
       "title": "Leaders",
       "kind": "table",

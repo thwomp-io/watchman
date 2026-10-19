@@ -20,9 +20,29 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-# repo root: src/harness/viz.py → parents[2] == repo root (editable/uv-run layout)
-_REPO_ROOT = Path(__file__).resolve().parents[2]
+from harness.paths import REPO_ROOT as _REPO_ROOT
+from harness.paths import resolve_node_tree
+
+# This checkout's renderer — the DEFAULT location; `viz_render_js()` is what the engine runs,
+# resolved to an INSTALLED tree (env → this checkout → the worktree's main checkout).
 VIZ_RENDER_JS = _REPO_ROOT / "viz" / "render.js"
+VIZ_MARKERS = ("render.js", "node_modules/jsdom/package.json")
+
+
+def viz_render_js() -> Path:
+    """The render.js to run: the first `viz/` tree with the script AND its deps — `HARNESS_VIZ_DIR`,
+    this checkout, then the main checkout when this is a git worktree (a worktree has no
+    viz/node_modules, so running from it would die in a Node ERR_MODULE_NOT_FOUND). A miss refuses
+    naming every path looked in; never an auto-install."""
+    tree, looked = resolve_node_tree("viz", "HARNESS_VIZ_DIR", VIZ_MARKERS)
+    if tree is None:
+        raise VizError(
+            "the viz renderer is not installed in any checkout — looked in: "
+            + " · ".join(str(c) for c in looked)
+            + ". Run `cd <main checkout>/viz && npm install` (never automatic), or set "
+            "HARNESS_VIZ_DIR to a viz/ dir that has node_modules."
+        )
+    return tree / "render.js"
 
 KNOWN_TYPES = (
     "timeline", "schedule", "schedule-bank", "food-bank", "radial", "compare", "matrix",
@@ -54,8 +74,7 @@ def render_diagram(
         raise VizError(f"unknown diagram type {diagram_type!r}; known: {', '.join(KNOWN_TYPES)}")
     if theme not in THEMES:
         raise VizError(f"unknown theme {theme!r}; known: {', '.join(THEMES)}")
-    if not VIZ_RENDER_JS.exists():
-        raise VizError(f"renderer not found at {VIZ_RENDER_JS} — run `npm install` in viz/")
+    render_js = viz_render_js()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path: Path | None = None
     try:
@@ -64,7 +83,7 @@ def render_diagram(
             tmp_path = Path(fh.name)
         try:
             proc = subprocess.run(
-                ["node", str(VIZ_RENDER_JS), diagram_type, str(tmp_path), str(out_path), theme],
+                ["node", str(render_js), diagram_type, str(tmp_path), str(out_path), theme],
                 capture_output=True,
                 text=True,
                 check=False,

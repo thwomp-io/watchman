@@ -36,3 +36,46 @@ career:
     resume:
       source_md: null          # e.g. "resume_v2.md" — the markdown SoT under docs/career/
       output_stem: null        # e.g. "jane_doe_resume" — render output name stem (default "resume")
+    # Applicant identity for `hn career apply`: a form's system fields (name / email / phone /
+    # location / profile links) fill from here, never from engine code. All optional — a missing
+    # value is a named packet failure only when the form REQUIRES that field.
+    applicant:
+      first_name: null
+      last_name: null
+      email: null
+      phone: null
+      location: null           # e.g. "Springfield, IL" — city/state as forms ask for it
+      country: null            # e.g. "United States" — the phone widget's country picker
+      linkedin: null           # profile URL
+      github: null             # profile URL
+      website: null            # portfolio / personal site URL
+    # The comp anchor the pool's item model + the reports rail measure a median against — the total
+    # comp you negotiate from (`hn career pool`, `hn career comp --report`).
+    comp_anchor:
+      anchor_tc: null          # e.g. 300000
+      bands: [staff, principal]  # the applicant's band words (site-stated titles / level codes)
+    # The comp report's default metro and named `--location` aliases (levels.fyi geo slugs).
+    comp:
+      metro: null              # e.g. "san-francisco-bay-area" (default: united-states)
+      locations: {}            # e.g. {sf: "region/San-Francisco-Bay-Area"}
+    # levels.fyi surface knobs (`hn career comp`).
+    levels:
+      user_agent: null         # "browser" = the explicit opt-in: a browser UA + identity headers on the .md fetch
+      contact: null            # e.g. a repo URL — sent as X-Harness-Contact with the opt-in
+      feed_limit: 40           # `comp --refresh-stale`: ladders fetched per run (the standing feed's cap)
+
+backup:
+  global_settings:
+    # Offsite snapshots (`hn backup snapshot|status`): git bundles + consistent sqlite copies +
+    # config/state tars, sealed with `age -r <recipient>` BEFORE landing in an E2E-synced folder.
+    # The private identity never lives on this machine — keep it in a password manager.
+    sync_dir: null           # e.g. "~/Library/CloudStorage/<Provider>-you@example.com-folder"
+    subdir: backup           # folder inside sync_dir the snapshots land in
+    recipient: null          # e.g. "age1…" — the age PUBLIC key (age-keygen -y identity.txt)
+    keep: 8                  # snapshots retained (oldest pruned after each run)
+    max_age_days: 9          # `status` flags the newest snapshot stale past this
+    sync_process: null       # e.g. "Dropbox" — `status` checks the sync app is running
+    repos: []                # git checkouts to bundle, e.g. ["~/projects/corpus"]
+    dirs: []                 # dirs to tar, e.g. ["~/.config/harness", "~/.local/state/harness"]
+    sqlite: []               # live sqlite files copied consistently, e.g. ["~/.local/state/harness/bus.db"]
+    exclude: []              # patterns skipped inside dirs, e.g. [".beads/backup", "*.log", "engine-venv"]

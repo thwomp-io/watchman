@@ -222,7 +222,7 @@
     },
     {
       "id": "allocation",
-      "title": "Allocation (current → target)",
+      "title": "Allocation (current \u2192 target)",
       "kind": "viz",
       "source": {
         "type": "command",
@@ -303,8 +303,8 @@
     },
     {
       "id": "chart",
-      "title": "Position chart — bars + support levels",
-      "kind": "viz",
+      "title": "Position chart \u2014 candles + levels",
+      "kind": "chart",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -315,8 +315,8 @@
           "bars",
           "{symbol}",
           "--days",
-          "120",
-          "--viz"
+          "180",
+          "--json"
         ],
         "cwd": "."
       },
@@ -340,6 +340,31 @@
       "columns": [],
       "rows": 1,
       "layout": null
+    },
+    {
+      "id": "correlation",
+      "title": "Book correlation \u2014 daily returns",
+      "kind": "correlation",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "correlate",
+          "--held",
+          "--days",
+          "120",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "symbols": [],
+      "columns": [],
+      "rows": 1
     }
   ]
 }

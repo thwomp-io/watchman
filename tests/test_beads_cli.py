@@ -1,4 +1,4 @@
-"""`hn beads` CLI — the --section pluck (the live-viz source path follow-on)."""
+"""`hn beads` CLI — the --section pluck (the live-viz source path)."""
 
 from __future__ import annotations
 

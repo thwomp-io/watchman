@@ -14,6 +14,7 @@ import yaml
 from pydantic import BaseModel
 
 from harness.errors import ProviderError
+from harness.yamlio import load_yaml
 
 
 class WatchCompany(BaseModel):
@@ -56,7 +57,7 @@ def load_watchlist(tracker_path: Path, *, root: Path | None = None) -> Watchlist
     if not path.exists():
         raise ProviderError(f"watchlist not found at {path} — seed role-hunt/watchlist.yml first")
     try:
-        raw = yaml.safe_load(path.read_text()) or {}
+        raw = load_yaml(path.read_text()) or {}
     except yaml.YAMLError as e:
         raise ProviderError(f"watchlist YAML parse failed: {e}") from e
     return Watchlist.model_validate(raw)

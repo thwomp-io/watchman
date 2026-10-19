@@ -28,3 +28,4 @@ viz/node_modules/
 bus-app/node_modules/
 bus-app/src-tauri/target/
 bus-app/dist/
+.hypothesis/

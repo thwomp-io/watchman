@@ -16,6 +16,8 @@ from pathlib import Path
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from harness.yamlio import load_yaml
+
 DEFAULT_TRACKER = Path.home() / "projects" / "corpus"
 
 
@@ -24,7 +26,15 @@ def _env_files() -> tuple[str, ...]:
     (not just the repo — the global-CLI gap, cousin of the bus-app PATH fix). Priority order:
     `~/.config/harness/.env` (portable user-config home; multi-device-friendly) → the repo-root
     `.env` (resolved via the package location, so editable installs work from anywhere) → CWD `.env`
-    (legacy / running from the repo). Missing files are skipped; OS env vars still override all."""
+    (legacy / running from the repo). Missing files are skipped; OS env vars still override all.
+
+    A set `HARNESS_CONFIG_DIR` is a SEAL: only that dir's `.env` is read, never the operator's real
+    config or the repo's (a sealed demo console must not pick up live API keys)."""
+    import os
+
+    sealed = os.environ.get("HARNESS_CONFIG_DIR", "").strip()
+    if sealed:
+        return (str(Path(sealed).expanduser() / ".env"),)
     candidates = (
         Path.home() / ".config" / "harness" / ".env",
         Path(__file__).resolve().parents[2] / ".env",  # repo root (editable install)
@@ -105,7 +115,7 @@ def user_overlay(settings: BaseToolkitSettings | None = None) -> dict[str, objec
 
     path = overlay_path(settings)
     try:
-        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+        loaded = load_yaml(path.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError):
         return {}
     return loaded if isinstance(loaded, dict) else {}

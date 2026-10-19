@@ -47,6 +47,15 @@ def _raw(node: dict[str, Any] | None) -> float | None:
 def fetch_yahoo_ratings(symbol: str) -> AnalystRatings:
     """Analyst price-target consensus + recommendation for `symbol` (keyless, cookie+crumb)."""
     sym = symbol.upper()
+    try:
+        return _fetch_yahoo_ratings(sym)
+    except httpx.HTTPError as e:
+        # the cookie/crumb handshake fails as an HTTP error on a bad night — an honest
+        # "unavailable" for this name, never a traceback that kills a watch run
+        raise ProviderError(f"yahoo ratings {sym}: unavailable ({e.__class__.__name__})") from e
+
+
+def _fetch_yahoo_ratings(sym: str) -> AnalystRatings:
     with httpx.Client(timeout=30.0, follow_redirects=True) as client:
         # 1. seed the cookie jar (fc.yahoo.com 404s but still sets the cookie)
         get_with_retry(_COOKIE_URL, client=client, headers=_HDRS, allow_status={200, 404})

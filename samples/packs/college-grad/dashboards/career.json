@@ -1,13 +1,14 @@
 {
   "lane": "career",
-  "title": "Board",
+  "title": "Openings",
   "group": "Career",
   "owner": "default",
+  "order": 1,
   "widgets": [
     {
-      "id": "openings",
-      "title": "Matched openings",
-      "kind": "stat",
+      "id": "roles",
+      "title": "Openings — role items, by fit",
+      "kind": "roles",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -15,201 +16,25 @@
           "run",
           "hn",
           "career",
-          "shortlist",
+          "roles",
+          "--company",
+          "{symbol}",
           "--json"
         ],
         "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 1,
-      "value_path": "summary.total",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "leadership",
-      "title": "Leadership",
-      "kind": "stat",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "career",
-          "shortlist",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 1,
-      "value_path": "summary.leadership",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "ic_infra",
-      "title": "IC / infra",
-      "kind": "stat",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "career",
-          "shortlist",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 1,
-      "value_path": "summary.ic_infra",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "shortlist",
-      "title": "Shortlist — high-priority roles",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "career",
-          "shortlist",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 2,
-      "value_path": "roles",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [
-        "company",
-        "tier",
-        "shape",
-        "title",
-        "salary",
-        "url"
-      ],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "shape_bar",
-      "title": "Openings by role shape",
-      "kind": "viz",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "career",
-          "shortlist",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 2,
-      "value_path": "shape_bar",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "pipeline",
-      "title": "Pipeline — applications & inbound",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "career",
-          "applications",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "manual",
-      "span": 4,
-      "value_path": "applications",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [
-        "company",
-        "role",
-        "stage",
-        "next_step",
-        "updated"
-      ],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "scans",
-      "title": "Openings scans",
-      "kind": "doc_series",
-      "source": {
-        "type": "file",
-        "path": "role-hunt/discoveries"
       },
       "refresh": "local60s",
-      "span": 2,
+      "span": 4,
       "value_path": null,
       "prefix": null,
       "suffix": null,
       "signed": null,
       "title_path": null,
       "symbols": [],
-      "symbols_from": null,
+      "symbols_from": "company",
       "columns": [],
-      "rows": 1,
+      "tickers": [],
+      "rows": 4,
       "layout": null
     },
     {
@@ -238,6 +63,29 @@
       "symbols": [],
       "symbols_from": null,
       "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "scans",
+      "title": "Openings scans",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "role-hunt/discoveries"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
       "rows": 3,
       "layout": null
     }

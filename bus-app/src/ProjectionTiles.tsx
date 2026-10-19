@@ -193,6 +193,12 @@ export default function ProjectionTiles({ data }: { data: ProjectionData }) {
           </button>
         ))}
       </div>
+      {/* The tri-pane scrolls as ONE body under the fixed chip row (the widget container is
+          overflow:hidden with a definite height, so without a scroll container every tile past
+          the fold is simply unreachable — invisible at ~30-70 entries, a hard bug once the bank
+          passed ~130). The chips + disclaimer stay put; only the panes scroll. Holdings scrolls
+          its single grid directly; three stacked panes need the shared parent to own it. */}
+      <div className="projections-body">
       {[
         // Tri-pane scan order (held book first, then the unheld screen-clear names, then
         // the screen-gated landscape). A held name always ranks as held even if it carries a screen note.
@@ -258,6 +264,7 @@ export default function ProjectionTiles({ data }: { data: ProjectionData }) {
             </div>
           </section>
         ))}
+      </div>
       {hover && (() => {
         const p = tiles.find((t) => t.symbol === hover.symbol);
         return p ? <ItemTooltip p={p} pos={hover.pos} /> : null;

@@ -37,15 +37,15 @@ pub fn run() {
     // the capability exists only where updating is legitimate, instead of being an ignored runtime
     // no-op. process rides the same gate: relaunch() exists exclusively as the post-update restart.
     // Endpoint + pubkey live in tauri.conf.json `plugins.updater` — the base config points NOWHERE
-    // (empty endpoints: the dev daily-driver must never offer to overwrite itself with a public
+    // (empty endpoints: a dev build must never offer to overwrite itself with a public
     // release), and the release overlay `tauri.release.conf.json` supplies the published releases'
     // latest.json endpoint at release-build time. Full key/release mechanics: docs/UPDATER.md.
     // NOTE (update-path regression class): the bundled engine ships INSIDE the bundle the updater
     // replaces, while its venv lives in the user-writable state dir and survives — the startup
     // `uv sync --frozen` below is what reconciles the surviving venv with the NEW engine's lockfile.
     // On Windows that re-sync runs in the freshly-installed app's first launch — the same context
-    // as the known uv-junction "untrusted mount point" first-run class (installer-
-    // context execution) — so the UPDATE path must be regression-tested against that class on a
+    // as a known Windows first-run failure (uv, run in the installer's context, rejects a
+    // directory junction as an "untrusted mount point" and the sync fails) — so the UPDATE path must be regression-tested against that class on a
     // real Windows machine before the updater ships (docs/UPDATER.md, first-release checklist).
     #[cfg(not(debug_assertions))]
     let builder = builder

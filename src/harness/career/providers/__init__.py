@@ -6,9 +6,26 @@ drop-in seam. The residual `ats: none` set (static pages, vendor-proprietary API
 is covered by a planned Playwright-based fetcher.
 """
 
-from harness.career.providers.ashby import fetch_ashby
+from harness.career.providers.ashby import fetch_ashby, fetch_ashby_posting
 from harness.career.providers.eightfold import fetch_eightfold
-from harness.career.providers.greenhouse import fetch_greenhouse
+from harness.career.providers.greenhouse import (
+    fetch_greenhouse,
+    fetch_greenhouse_degrees,
+    fetch_greenhouse_posting,
+    fetch_greenhouse_schools,
+)
+from harness.career.providers.levels import fetch_levels_page, iter_sitemap_locs
 from harness.career.providers.workday import fetch_workday
 
-__all__ = ["fetch_ashby", "fetch_eightfold", "fetch_greenhouse", "fetch_workday"]
+__all__ = [
+    "fetch_ashby",
+    "fetch_ashby_posting",
+    "fetch_eightfold",
+    "fetch_greenhouse",
+    "fetch_greenhouse_degrees",
+    "fetch_greenhouse_posting",
+    "fetch_greenhouse_schools",
+    "fetch_levels_page",
+    "iter_sitemap_locs",
+    "fetch_workday",
+]

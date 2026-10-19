@@ -11,6 +11,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from harness._cli import fail as _fail
 from harness.packs import PackGroup
 from harness.travel.conditions import ConditionsReport
 from harness.travel.config.settings import get_settings
@@ -219,13 +220,18 @@ def images(
     ),
     provider: str = typer.Option("wikimedia", "--provider", help="wikimedia (keyless / free)"),
     width: int = typer.Option(480, "--width", help="Embed width for the suggested markdown"),
+    keep_original: bool = typer.Option(
+        False, "--keep-original",
+        help="Store the bytes as served (no downscale/re-encode) — the rare print-quality case; "
+        "default applies the vault cap (≤1600px long edge, JPEG q85, ~400KB)",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Fetch + locally store images for a destination report; print embed-ready markdown."""
     subj_list = [s.strip() for s in subjects.split(",") if s.strip()]
     try:
         results = TravelService().fetch_destination_images(
-            dest, subj_list, provider_name=provider
+            dest, subj_list, provider_name=provider, keep_original=keep_original
         )
     except (ProviderError, RuntimeError) as e:
         _fail(str(e))
@@ -293,10 +299,194 @@ def decision(as_json: bool = typer.Option(False, "--json")) -> None:
     if not data.get("candidates"):
         console.print("[dim]No live trip carries a compare radar yet.[/dim]")
         return
-    console.print(f"[bold]{data.get('title', 'Active decision')}[/bold]  [dim]({data.get('trip')})[/dim]")
-    for c in data.get("candidates", []):
-        label = c.get("label", "?") if isinstance(c, dict) else str(c)
-        console.print(f"  • {label}")
+    head = f"{data.get('trip_name') or data.get('trip')} — {data.get('window') or ''}".rstrip(" —")
+    console.print(f"[bold]{head}[/bold]  [dim]{data.get('title', '')}[/dim]")
+    for i, r in enumerate(data.get("ranked", []), start=1):
+        console.print(
+            f"  {i}. {r['label']}  [bold]{r['total']}[/bold]  "
+            f"[dim]strongest {r['strongest']} · weakest {r['weakest']}[/dim]"
+        )
+
+
+@app.command()
+def bank(
+    visit: str = typer.Option(
+        None, "--visit", "--trip", help="Visit/trip slug or 'auto' (default: the soonest live one)"
+    ),
+    scope: str = typer.Option("visit", "--scope", help="Default resolution among: visit | trip"),
+    kind: str = typer.Option("all", "--kind", help="outings | restaurants | all"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """A visit's idea bank — outings (schedule.json) + restaurants (restaurants.json) merged into
+    one tile contract: label, group, area, drive time, indoor, rating, image, links. Resolves the
+    soonest live visit whose folder carries a bank, like `decision`. The Visits tab's tile source."""
+    svc = TravelService()
+    try:
+        data = svc.visit_bank(visit, kind, scope=scope)
+    except ValueError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(data.model_dump_json())
+        return
+    if not data.items:
+        console.print(f"[dim]{data.title}[/dim]")
+        return
+    console.print(f"[bold]{data.title}[/bold]  [dim]({data.visit} · {len(data.items)} items)[/dim]")
+    for g in data.groups:
+        console.print(f"\n[bold]{g.label}[/bold] [dim]({g.kind}, {g.count})[/dim]")
+        for it in (i for i in data.items if i.kind == g.kind and i.group == g.key):
+            bits = [x for x in (
+                it.area,
+                f"{it.drive_min}m" if it.drive_min is not None else None,
+                "indoor" if it.indoor else ("outdoor" if it.indoor is False else None),
+                f"{it.rating}★" if it.rating is not None else None,
+                it.price,
+            ) if x]
+            console.print(f"  • {it.label}  [dim]{' · '.join(bits)}[/dim]")
+
+
+@app.command()
+def banks(
+    scope: str = typer.Option("visit", "--scope", help="visit | trip"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Every visit (or trip) as a picker entry — live soonest-first, then past — with its cover,
+    dates, countdown and what it carries (outings, restaurants, photos, scheduled items). The
+    Visits/Trips tab picker's source; `default` names the one the other widgets show first."""
+    data = TravelService().trip_banks(scope)
+    if as_json:
+        console.print_json(data.model_dump_json())
+        return
+    for e in data.entries:
+        mark = "→" if e.slug == data.default else " "
+        bits = [e.when, f"{e.outings} ideas", f"{e.restaurants} restaurants", f"{e.photos} photos",
+                f"{e.scheduled} scheduled"]
+        console.print(f"{mark} [bold]{e.slug}[/bold]  [dim]{' · '.join(bits)}[/dim]")
+
+
+@app.command()
+def schedule(
+    visit: str = typer.Option(
+        None, "--visit", "--trip", help="Visit/trip slug or 'auto' (default: the soonest live one)"
+    ),
+    scope: str = typer.Option("visit", "--scope", help="Default resolution among: visit | trip"),
+    no_weather: bool = typer.Option(False, "--no-weather", help="Skip the forecast (offline)"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """A visit's schedule day by day — planned items, pinned markers, who's around, the home
+    forecast (wet days flagged on the conditions thresholds) and the visit's bank. Resolves the
+    soonest live visit whose folder carries a schedule.json. The Visits tab's timeline source."""
+    svc = TravelService()
+    try:
+        data = svc.visit_schedule(visit, weather=not no_weather, scope=scope)
+    except ValueError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(data.model_dump_json())
+        return
+    if not data.days:
+        console.print(f"[dim]{data.title}[/dim]")
+        return
+    console.print(f"[bold]{data.title}[/bold]  [dim]({data.visit})[/dim]")
+    if data.weather_note:
+        console.print(f"[dim]{data.weather_note}[/dim]")
+    for d in data.days:
+        wx = d.weather
+        temps = (
+            f"{wx.condition} {wx.high:.0f}°/{wx.low:.0f}°"
+            if wx and wx.high is not None and wx.low is not None else ""
+        )
+        bits = [temps, "WET" if wx and wx.wet else "", "+".join(d.availability)]
+        console.print(f"\n[bold]{d.weekday} {d.date}[/bold]  [dim]{' · '.join(b for b in bits if b)}[/dim]")
+        for m in d.markers:
+            console.print(f"  ◆ {m.time + ' ' if m.time else ''}{m.label}")
+        for it in d.items:
+            span = f"{it.start}–{it.end} " if it.start else ""
+            link = f"  [dim]→ {it.bank_id}[/dim]" if it.bank_id else ""
+            console.print(f"  • {span}{it.label}{link}")
+
+
+@app.command(name="bank-enrich")
+def bank_enrich(
+    visit: str = typer.Option(
+        None, "--visit", "--trip", help="Visit/trip slug or 'auto' (default: the soonest live one)"
+    ),
+    scope: str = typer.Option("visit", "--scope", help="Default resolution among: visit | trip"),
+    refresh: bool = typer.Option(False, "--refresh", help="Re-fetch every place (spends quota)"),
+    cached_only: bool = typer.Option(
+        False, "--cached-only", help="Free only: enrich what the cache already holds, skip the rest"
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", help="Write (and spend for uncached places); without it a dry run"
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """QUOTA only for uncached places (1 search each): hours, a reservation / order link, phone,
+    coordinates and place id for every place in a bank, written to the folder's places.json and
+    merged into the tiles at read time. Places already resolved (bank-photos, a sweep) come from
+    the cache for free. Flags any place >100 mi from the bank's median point."""
+    svc = TravelService()
+    try:
+        run = svc.visit_bank_enrich(
+            visit, scope=scope, dry_run=not yes, refresh=refresh, cached_only=cached_only
+        )
+    except (ValueError, ProviderError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps(run))
+        return
+    spend = run["searches_spent"] if yes else run["searches_planned"]
+    mode = "spent" if yes else "dry run — would spend"
+    console.print(f"[bold]{run['visit']}[/bold]  [dim]{mode} {spend} SerpAPI searches[/dim]")
+    for it in run["items"]:
+        what = ", ".join(it["fields"]) or it["note"]
+        console.print(f"  • {it['label']}  [dim]{it['source']} · {what}[/dim]")
+    if run["outliers"]:
+        console.print(f"[yellow]⚠ more than 100 mi from the rest: {', '.join(run['outliers'])}[/yellow]")
+
+
+@app.command(name="bank-photos")
+def bank_photos(
+    visit: str = typer.Option(
+        None, "--visit", help="Visit slug (default: the soonest live visit with a bank)"
+    ),
+    kind: str = typer.Option("all", "--kind", help="outings | restaurants | all"),
+    ids: str = typer.Option("", "--ids", help="Comma-separated item ids (default: every place)"),
+    per_item: int = typer.Option(8, "--per-item", help="Max photos kept per item"),
+    refresh: bool = typer.Option(False, "--refresh", help="Re-fetch items that already have a gallery"),
+    yes: bool = typer.Option(False, "--yes", help="Spend the quota (without it: a dry run that prices it)"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """QUOTA (≤2 searches per item): photo galleries for a visit's bank tiles — resolves each place
+    on Google Maps, keeps up to --per-item photos under assets/gallery/<item-id>/ (videos,
+    thumbnails, panoramas and near-duplicates dropped), and records the place in places.json.
+    Items marked "gallery": false are skipped. Without --yes it only prices the run."""
+    id_set = {i.strip() for i in ids.split(",") if i.strip()} or None
+    svc = TravelService()
+    try:
+        run = svc.visit_bank_photos(
+            visit, kind, ids=id_set, per_item=per_item, refresh=refresh, dry_run=not yes
+        )
+    except (ValueError, ProviderError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps(run))
+        return
+    mode = "spent" if yes else "dry run — would spend up to"
+    console.print(
+        f"[bold]{run['visit']}[/bold]  [dim]{mode} "
+        f"{run['searches_spent'] if yes else run['searches_planned']}"
+        " SerpAPI searches[/dim]"
+    )
+    for it in run["items"]:
+        drops = ", ".join(f"{k} {v}" for k, v in it["dropped"].items())
+        place = f" → {it['place']}" if it["place"] and it["place"] != it["label"] else ""
+        bits = [x for x in (it["source"], f"{it['kept']} kept" if it["kept"] else "", drops, it["note"]) if x]
+        console.print(f"  • {it['label']}{place}  [dim]{' · '.join(bits)}[/dim]")
 
 
 @app.command()
@@ -314,12 +504,24 @@ def nudge(
     include_taken: bool = typer.Option(
         False, "--include-taken", help="Also nudge windows a live trip already occupies"
     ),
+    lane: list[str] = typer.Option(
+        None, "--lane", "-l",
+        help="Lanes to surface (weekend / games / long-lead / horizon / family; repeatable); default all",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Proactive trip nudges — windows × destinations, deterministically scored. Surfaces 'You
-    could be in X {window} — because Z' with Z assembled from the dominant scored components
-    (season / calendar / feasibility / events / weather / standing fit).
-    Reads the corpus nudge registry (weights.yaml `destination_nudge:`); spends NO paid quota."""
+    """Proactive trip nudges across the horizon axis — WEEKENDS (windows × destinations, 0-26 wk),
+    GAME WEEKENDS (the followed NBA/NFL markets' games as trip windows, game-first; needs --live),
+    LONG-LEAD (week blocks 3-12 months out, where the far destinations win), HORIZON (season-shaped
+    worth-a-look cards: never-tripped + screen-calibrated) and FAMILY (holidays the corpus names
+    as family time — never escape-nudged; one practical card). Every card carries its lane + the
+    scored components its reason was assembled from. Reads the corpus nudge registry
+    (weights.yaml `destination_nudge:` + `nudge:`); spends NO paid quota."""
+    valid = {"weekend", "games", "long-lead", "horizon", "family"}
+    bad = [x for x in (lane or []) if x not in valid]
+    if bad:
+        console.print(f"[red]unknown lane(s): {', '.join(bad)} (valid: {', '.join(sorted(valid))})[/red]")
+        raise typer.Exit(code=1)
     svc = TravelService()
     if not svc.weights.destination_nudge:
         # stderr, never stdout: `--json` consumers (the Planning tab's nudges widget) parse stdout
@@ -329,13 +531,18 @@ def nudge(
             "[yellow]nudge registry empty — falling back to bare destination list; author "
             "`destination_nudge:` entries in the travel weights.yaml for real scoring[/yellow]"
         )
-    result = svc.nudge(date.today(), horizon_days=weeks * 7, top=top, live=live, include_taken=include_taken)
+    result = svc.nudge(
+        date.today(), horizon_days=weeks * 7, top=top, live=live, include_taken=include_taken,
+        lanes=list(lane) if lane else None,
+    )
     nudges = result["nudges"]
     if as_json:
         payload = {
             "nudges": [n.model_dump(mode="json") | {"line": n.line} for n in nudges],
             "skipped": result["skipped"],
             "note": result["note"],
+            "lanes": result["lanes"],
+            "decision_trip": result["decision_trip"],
         }
         console.print_json(json.dumps(payload))
         return
@@ -343,8 +550,18 @@ def nudge(
         console.print(f"[yellow]{result['note']}[/yellow]")
     if not nudges:
         console.print("[dim]No nudges cleared the bar in this horizon (or every window is taken).[/dim]")
+    lane_titles = {
+        "weekend": "Weekends", "games": "Game weekends", "long-lead": "Long-lead (3–12 months)",
+        "horizon": "Horizon — worth a look", "family": "Family windows",
+    }
+    current = ""
     for i, n in enumerate(nudges, start=1):
+        if n.lane != current:
+            current = n.lane
+            console.print(f"\n[bold magenta]── {lane_titles.get(n.lane, n.lane)} ──[/bold magenta]")
         console.print(f"\n[bold]{i}. {n.line}[/bold]")
+        if n.lane == "family":
+            continue
         comp = " · ".join(f"{c.name} {c.points:+g}" for c in sorted(n.components, key=lambda c: -c.points))
         console.print(f"   [dim]score {n.score:g}  ·  {comp}[/dim]")
         for e in n.events[:3]:
@@ -389,6 +606,11 @@ def events(
         help="Also surface static-almanac entries (known games/holidays) for the window — the "
         "proactive merge with the live scan",
     ),
+    radius: int | None = typer.Option(
+        None, "--radius",
+        help="Search miles around each place instead of matching the city name (default: 25 for "
+        "the home base, city-name match for a named --city)",
+    ),
     flat: bool = typer.Option(
         False,
         "--flat",
@@ -416,7 +638,11 @@ def events(
                 raise typer.Exit(code=1)
             cities = city or [svc.weights.conditions.home]
             ref_start, ref_end = date.fromisoformat(frm), date.fromisoformat(to)
-            scans = svc.scan_events(cities, ref_start, ref_end, classification=category)
+            # the home base is a radius by default (a suburb has no venues of its own); a named
+            # --city matches the city unless --radius asks for a radius
+            radius_mi = radius if radius is not None else (0 if city else 25)
+            scans = svc.scan_events(cities, ref_start, ref_end, classification=category,
+                                    radius_mi=radius_mi)
             window = f"{frm} → {to}"
     except ProviderError as e:
         _fail(str(e))
@@ -554,19 +780,21 @@ def trips(
     """The travel horizon — every upcoming trip + visit from the corpus `trip:` frontmatter,
     countdown-ordered (the command-center spine read from corpus/travel/{trips,visits}/). `--all`
     appends completed/cancelled history (most-recent first). `--kind trip|visit` narrows the
-    pipeline to one mode — the dashboard splits Planning (outbound) from Visits (inbound) with it."""
+    pipeline to one mode. Parked ideas (status `idea`) are never in the horizon or its count; they
+    come back under their own `someday` key."""
     svc = TravelService()
     rows = svc.trip_pipeline(date.today(), include_past=all_trips)
-    # Optional kind filter: the Planning subtab passes --kind trip, the Visits subtab --kind visit,
-    # so each renders only its own mode from the one shared pipeline read (no separate emitter).
+    someday = svc.trip_pipeline(date.today(), phase="someday")
+    # Optional kind filter: one shared pipeline read, narrowed to one mode
     if kind:
         rows = [r for r in rows if r.get("kind") == kind]
+        someday = [r for r in someday if r.get("kind") == kind]
     if as_json:
-        console.print_json(
-            json.dumps({"as_of": date.today().isoformat(), "count": len(rows), "trips": rows})
-        )
+        console.print_json(json.dumps({
+            "as_of": date.today().isoformat(), "count": len(rows), "trips": rows, "someday": someday,
+        }))
         return
-    if not rows:
+    if not rows and not someday:
         console.print("[dim](no trips in the pipeline — add a `trip:` frontmatter block)[/dim]")
         return
     table = Table(title=f"Travel horizon — {len(rows)} trip(s)")
@@ -577,6 +805,132 @@ def trips(
             r["when"], r["date"], r["status"], r["kind"], r["destination"], r["anchor"], r["who"]
         )
     console.print(table)
+    if someday:
+        console.print("\n[bold]Someday[/bold] [dim](parked ideas — not on the horizon)[/dim]")
+        for r in someday:
+            console.print(f"  • {r['destination']}  [dim]{r['date']} · {r['kind']} · {r['who']}[/dim]")
+
+
+@app.command()
+def upcoming(as_json: bool = typer.Option(False, "--json")) -> None:
+    """What's on the calendar — one card per live trip or visit, soonest first: window, countdown,
+    who, cover photo and whether an open decision hangs on it. Undated live items and parked ideas
+    are listed apart under `someday`, never counted down. The Planning tab's top band."""
+    data = TravelService().planning_calendar()
+    if as_json:
+        console.print_json(data.model_dump_json())
+        return
+    if not data.upcoming and not data.someday:
+        console.print("[dim](nothing on the calendar)[/dim]")
+        return
+    for c in data.upcoming:
+        flag = "  [yellow]open decision[/yellow]" if c.decision else ""
+        console.print(f"[bold]{c.when:>8}[/bold]  {c.name}  [dim]{c.window} · {c.kind} · "
+                      f"{', '.join(c.who) or '—'}[/dim]{flag}")
+    if data.someday:
+        console.print("\n[bold]Someday[/bold]")
+        for c in data.someday:
+            console.print(f"  • {c.name}  [dim]{c.window} · {c.kind} · {c.status}[/dim]")
+
+
+@app.command()
+def explore(
+    origins: str = typer.Option(
+        "", "--from", help="Origin IATA codes, comma-separated (default: home airport + hub)"
+    ),
+    month: int = typer.Option(0, "--month", help="Flexible dates: month 1-12 (0 = the next six months)"),
+    duration: str = typer.Option(
+        "week", "--duration", help="Flexible trip length: weekend | week | two-weeks"
+    ),
+    depart: str = typer.Option("", "--depart", help="Exact dates instead: outbound YYYY-MM-DD"),
+    return_date: str = typer.Option("", "--return", help="Exact return YYYY-MM-DD (omit = one way)"),
+    cabin: str = typer.Option("economy", "--class", help="economy | premium | business | first"),
+    stops: str = typer.Option("any", "--stops", help="any | nonstop | 1 | 2 (max stops)"),
+    max_price: int = typer.Option(0, "--max-price", help="Per-person round-trip USD ceiling (0 = none)"),
+    to: str = typer.Option(
+        "", "--to", help="Region (caribbean, mexico, hawaii, central-america, south-america, europe, "
+        "asia, japan, canada), a Google /m/ id, or one airport code (default: Google's picks)",
+    ),
+    limit: int = typer.Option(25, "--limit", help="Rows to show (0 = all)"),
+    refresh: bool = typer.Option(False, "--refresh", help="Force fresh searches (skip the 24h cache)"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Where can we fly, and for how much: Google Travel Explore (via SerpAPI) lists destinations
+    with the cheapest per-person fare from each origin, for exact dates or a flexible month + trip
+    length. Merged across origins, cheapest first; the avoid list is excluded; destinations already
+    profiled in the corpus are marked. **Quota: 1 search per origin** (24h cache, re-views free)."""
+    svc = TravelService()
+    try:
+        res = svc.explore_destinations(
+            origins=[o.strip() for o in origins.split(",") if o.strip()] or None,
+            outbound=date.fromisoformat(depart) if depart else None,
+            return_=date.fromisoformat(return_date) if return_date else None,
+            month=month, duration=duration, travel_class=cabin, stops=stops,
+            max_price=max_price or None, to=to or None, limit=limit, refresh=refresh,
+        )
+    except (ProviderError, ValueError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps(res.model_dump(mode="json")))
+        return
+    spent = f"{res.searches} live search(es) — {res.searches} quota" if res.searches else "cached — 0 quota"
+    console.print(f"\n[bold]Explore from {' + '.join(res.origins)}[/bold]  "
+                  f"[dim]{res.dates}, {cabin}, per person[/dim]  [dim]({spent})[/dim]")
+    for n in res.notes:
+        console.print(f"[yellow]{n}[/yellow]")
+    if not res.destinations:
+        console.print("[yellow]No priced destinations (widen --month / --max-price / --stops).[/yellow]")
+        return
+    table = Table()
+    for col in ("Destination", "Fare", *(f"{o}" for o in res.origins), "Dates", "Stops", "Flight",
+                "Airline", "Hotel/n", "Corpus"):
+        table.add_column(col)
+    for d in res.destinations:
+        best = d.best
+        by_origin = {f.origin: f for f in d.fares}
+        per_origin = []
+        for o in res.origins:
+            f = by_origin.get(o)
+            per_origin.append("—" if f is None or f.price_usd is None else f"${f.price_usd:,.0f}")
+        mins = best.flight_minutes if best else None
+        when = best.start_date if best else ""
+        if best and best.end_date:
+            when = f"{best.start_date[5:]} → {best.end_date[5:]}"
+        table.add_row(
+            f"{d.name}, {d.country}" if d.country and d.country != "United States" else d.name,
+            f"${best.price_usd:,.0f}" if best and best.price_usd is not None else "—",
+            *per_origin,
+            when,
+            "—" if not best or best.stops is None else ("nonstop" if best.stops == 0 else str(best.stops)),
+            f"{mins // 60}h{mins % 60:02d}" if mins else "—",
+            best.airline if best else "",
+            f"${best.hotel_price_usd:,.0f}" if best and best.hotel_price_usd else "—",
+            ", ".join(d.corpus),
+        )
+    console.print(table)
+
+
+@app.command()
+def quota(as_json: bool = typer.Option(False, "--json")) -> None:
+    """The SerpAPI budget: searches left this month, usage, renewal date. Free: the Account API
+    does not count against the quota."""
+    from harness.travel.config.settings import get_settings
+    from harness.travel.providers.serpapi_explore_provider import account_quota
+
+    try:
+        q = account_quota(get_settings().serpapi_key)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps(q))
+        return
+    console.print(
+        f"SerpAPI {q.get('plan_name') or ''}: [bold]{q.get('total_searches_left')}[/bold] searches left of "
+        f"{q.get('searches_per_month')} · used {q.get('this_month_usage')} this month · "
+        f"{q.get('this_hour_searches')} this hour · renews {q.get('plan_renewal_date') or '—'}"
+    )
 
 
 @app.command()
@@ -591,6 +945,10 @@ def hotels(
     vacation_rentals: bool = typer.Option(False, "--vacation-rentals", help="Homes/cabins, not hotels"),
     report: str = typer.Option("", "--report", help="Write a {dest}/lodging/ report (slug or vault path)"),
     photos: int = typer.Option(5, "--photos", help="Photos per property in the report (API returns ~9+)"),
+    pick: str = typer.Option(
+        "", "--pick", help="Comma-separated name fragments: keep exactly these properties (in this "
+        "order) from the FULL result list, not the first --limit (e.g. 'Parker,Sparrows')",
+    ),
     force: bool = typer.Option(False, "--force", help="Overwrite an existing lodging report"),
     refresh: bool = typer.Option(False, "--refresh", help="Force a fresh search (skip the cache)"),
     as_json: bool = typer.Option(False, "--json"),
@@ -608,13 +966,21 @@ def hotels(
             adults=adults,
             min_hotel_class=min_class,
             max_price=max_price or None,
-            limit=limit,
+            limit=100 if pick else limit,  # --pick chooses from the whole list (same search, 0 extra quota)
             vacation_rentals=vacation_rentals,
             refresh=refresh,
         )
     except ProviderError as e:
         _fail(str(e))
         raise typer.Exit(code=1) from e
+    if pick:
+        from harness.travel.service import pick_offers
+
+        try:
+            res.offers = pick_offers(res.offers, [t for t in pick.split(",") if t.strip()])
+        except ValueError as e:
+            _fail(str(e))
+            raise typer.Exit(code=1) from e
 
     if as_json:
         console.print_json(json.dumps(res.model_dump(mode="json")))
@@ -805,7 +1171,9 @@ def _publish_morning_to_bus(rep: ConditionsReport, report_rel: str) -> str:
 def _conditions_log(rep: ConditionsReport, bus_note: str = "") -> None:
     """Append one line to ~/.local/state/harness/travel-pulse.log (the did-it-run audit) — always,
     quiet or not. Mirrors the finance pulse-log; the bus is the human transport (no osascript)."""
-    state_dir = Path.home() / ".local" / "state" / "harness"
+    from harness.bus.store import harness_state_dir
+
+    state_dir = harness_state_dir()  # HARNESS_STATE_DIR-sealed, like the finance pulse log
     state_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     if rep.quiet:
@@ -818,6 +1186,52 @@ def _conditions_log(rep: ConditionsReport, bus_note: str = "") -> None:
         fh.write(line + "\n")
 
 
+def _commit_conditions_reports(root: Path) -> str:
+    """Auto-commit the standing agent's report dir to the corpus repo.
+
+    The scheduled run WRITES reports/{date}.md; without a commit they accumulate as untracked drift.
+    Discipline, multi-agent-safe by construction:
+      - commits ONLY the reports pathspec (`git commit -- <dir>`), so another session's staged
+        work is never swept into the standing agent's commit;
+      - push is FAST-FORWARD-ONLY best-effort: a headless agent never mutates the working tree
+        (no pull --rebase here — a dirty tree is common, and
+        an autostash reapply-conflict could strand a live session's edits in a stash). If the
+        remote has moved, the commit stays local and rides the next interactive session's routine
+        pull-rebase + push. NEVER force;
+      - every git failure degrades to a returned note for the pulse log — the morning run must
+        never die on repo state.
+    Deterministic side effect — no model in the loop; the message is a fixed template.
+    """
+    import subprocess
+
+    rel = "travel/conditions/reports"
+
+    def _git(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, timeout=120
+        )
+
+    try:
+        st = _git("status", "--porcelain", "--", rel)
+        if st.returncode != 0:
+            return f"commit:skip ({(st.stderr.strip() or 'git status failed')[:80]})"
+        if not st.stdout.strip():
+            return "commit:clean"
+        if _git("add", "--", rel).returncode != 0:
+            return "commit:add-failed"
+        # count AFTER add — porcelain collapses a fully-untracked dir into one "?? dir/" line
+        staged = _git("diff", "--cached", "--name-only", "--", rel)
+        n = len(staged.stdout.strip().splitlines()) or 1
+        msg = f"travel(conditions): standing-agent morning-report auto-commit ({n} file(s))"
+        if _git("commit", "-m", msg, "--", rel).returncode != 0:
+            return "commit:commit-failed"
+        if _git("push", "--quiet").returncode != 0:
+            return f"commit:ok({n}) push:deferred (remote moved or unreachable — rides the next session push)"
+        return f"commit:ok({n}) push:ok"
+    except Exception as e:  # noqa: BLE001 — git trouble is a note, never a dead morning run
+        return f"commit:error ({str(e)[:80]})"
+
+
 @app.command()
 def pulse(
     as_json: bool = typer.Option(False, "--json", help="Machine output for the scheduled agent"),
@@ -825,6 +1239,11 @@ def pulse(
         False, "--report",
         help="The 6am morning mode (launchd): write the digest to travel/conditions/reports/{date}.md "
         "+ publish ONE escalating morning event to the bus. The always-fires daily ritual.",
+    ),
+    commit: bool = typer.Option(
+        False, "--commit",
+        help="After --report: commit the reports dir to the corpus repo + pull-rebase + push "
+        "(path-scoped; any git failure degrades to a log note — the run never dies on repo state).",
     ),
     notify: bool = typer.Option(
         False, "--notify",
@@ -850,6 +1269,8 @@ def pulse(
         path = write_morning_report(rep, root)
         notes.append(_publish_morning_to_bus(rep, str(path.relative_to(root))))
         notes.append(f"report:{path.name}")
+        if commit:
+            notes.append(_commit_conditions_reports(root))
     if notify:
         notes.append(_publish_conditions_to_bus(rep))
     if report or notify:
@@ -955,21 +1376,30 @@ def food_photos(
     radius: int = typer.Option(1500, "--radius", help="Match the sweep's radius"),
     limit_per: int = typer.Option(12, "--limit-per", help="Max gallery photos per place"),
     refresh: bool = typer.Option(False, "--refresh", help="Bypass the per-place photo cache"),
+    archive: str = typer.Option(
+        "", "--archive",
+        help="Vault-relative dir under travel/ to store the first N photos per place through the "
+        "size cap (e.g. destinations/x/food/2026-09-assets) — the tool for the gallery-archive "
+        "case; never curl originals into the vault",
+    ),
+    per_place: int = typer.Option(2, "--per-place", help="Photos stored per place with --archive"),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """QUOTA (1 search PER NAME): full Google-Maps photo galleries for named finalists —
     deliberate-spend, finalists only (thumbnails already ride the live-ratings sweep free).
     Requires the sweep to have run (names resolve → data_id via its cache; the read costs 0)."""
     name_list = [n.strip() for n in names.split(",") if n.strip()]
+    svc = TravelService()
     try:
-        galleries = TravelService().food_photos(
+        galleries = svc.food_photos(
             near, name_list, radius_m=radius, limit_per=limit_per, refresh=refresh
         )
     except ProviderError as e:
         _fail(str(e))
         raise typer.Exit(code=1) from e
+    stored = svc.archive_food_photos(galleries, archive, per_place=per_place) if archive else {}
     if as_json:
-        console.print_json(json.dumps(galleries))
+        console.print_json(json.dumps({"galleries": galleries, "archived": stored}))
         return
     for name, photos in galleries.items():
         console.print(f"\n[bold]{name}[/bold]  [dim]{len(photos)} photos[/dim]")
@@ -977,6 +1407,52 @@ def food_photos(
             console.print(f"  {u}")
         if not photos:
             console.print("  [yellow]no match in the sweep (name spelling? sweep not run?)[/yellow]")
+        for rel in stored.get(name, []):
+            console.print(f"  [green]archived[/green] {rel}")
+
+
+@app.command(name="shrink-images")
+def shrink_images(
+    path: str = typer.Argument(
+        ..., help="Vault-relative dir (e.g. travel/destinations/x/food/2026-09-assets)"
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Report without writing"),
+    skip_png: bool = typer.Option(
+        False, "--skip-png",
+        help="Leave PNGs untouched (map canvases that SVG overlays are registered against)",
+    ),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Apply the vault image-size discipline (≤1600px long edge · JPEG q85 · ~400KB) to images
+    already on disk, IN PLACE with extensions kept so every embed still resolves. Prints
+    before/after per file + the total saved. Pair with a git history rewrite for old blobs."""
+    try:
+        reports = TravelService().shrink_images(path, dry_run=dry_run, skip_png=skip_png)
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps([
+            {"path": str(r.path), "before": r.before, "after": r.after, "width": r.width,
+             "height": r.height, "over_cap": r.over_cap, "changed": r.changed}
+            for r in reports
+        ]))
+        return
+    table = Table(title=f"shrink-images → {path}{' (dry run)' if dry_run else ''}")
+    for col in ("File", "Before", "After", "Dims", "Note"):
+        table.add_column(col)
+    changed = [r for r in reports if r.changed]
+    for r in changed:
+        table.add_row(
+            r.path.name, f"{r.before // 1024}KB", f"{r.after // 1024}KB", f"{r.width}x{r.height}",
+            "over cap (best effort)" if r.over_cap else "",
+        )
+    console.print(table)
+    console.print(
+        f"{len(changed)} of {len(reports)} images shrunk · "
+        f"saved {sum(r.saved for r in changed) / 1e6:.1f}MB"
+        + (" · nothing written" if dry_run else "")
+    )
 
 
 @app.command()
@@ -1207,7 +1683,7 @@ def traffic(
 @app.command()
 def ferry(
     route: str | None = typer.Option(
-        None, "--route", help="'Departing-Arriving', e.g. 'Seattle-Bainbridge Island' → today's sailings"
+        None, "--route", help="'Departing-Arriving', e.g. 'Edmonds-Kingston' → today's sailings"
     ),
     space: bool = typer.Option(
         False, "--space", help="Live drive-up space per upcoming departure (a route's terminal, or all)"
@@ -1443,8 +1919,6 @@ def _event_table(events_list: list[EventResult]) -> Table:
     return table
 
 
-def _fail(msg: str) -> None:
-    console.print(f"[red]error:[/red] {msg}")
 
 
 def _mins(v: int | None) -> str:
@@ -1460,15 +1934,17 @@ def _delay(t: TravelTime) -> str:
     return f"[red]{s}[/red]" if t.congested else s
 
 
-_PACIFIC = ZoneInfo("America/Los_Angeles")
+# Ferry sailings and vessel ETAs print in the ferry network's own zone (Washington State Ferries run on
+# Pacific time), so a schedule reads the same wherever the terminal is queried from.
+_FERRY_TZ = ZoneInfo("America/Los_Angeles")
 
 
 def _ptime(iso: str | None) -> str:
-    """An ISO-8601 UTC timestamp → local Pacific 'h:MM AM/PM' (ferry times read in local time)."""
+    """An ISO-8601 UTC ferry timestamp → the ferry network's local time as 'h:MM AM/PM'."""
     if not iso:
         return "—"
     try:
-        return datetime.fromisoformat(iso).astimezone(_PACIFIC).strftime("%-I:%M %p")
+        return datetime.fromisoformat(iso).astimezone(_FERRY_TZ).strftime("%-I:%M %p")
     except ValueError:
         return "—"
 

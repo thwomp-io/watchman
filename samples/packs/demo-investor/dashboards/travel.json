@@ -5,9 +5,9 @@
   "owner": "default",
   "widgets": [
     {
-      "id": "active",
-      "title": "Active trips",
-      "kind": "stat",
+      "id": "calendar",
+      "title": "On the calendar",
+      "kind": "calendar",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -15,28 +15,19 @@
           "run",
           "hn",
           "travel",
-          "trips",
+          "upcoming",
           "--json"
         ],
         "cwd": "."
       },
       "refresh": "local60s",
-      "span": 1,
-      "value_path": "count",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
+      "span": 4,
+      "rows": 1
     },
     {
       "id": "decision",
-      "title": "Active decision — candidate radar",
-      "kind": "viz",
+      "title": "The open decision",
+      "kind": "decision",
       "source": {
         "type": "command",
         "cmd": "uv",
@@ -50,21 +41,12 @@
         "cwd": "."
       },
       "refresh": "local60s",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 2,
-      "layout": null
+      "span": 4,
+      "rows": 1
     },
     {
       "id": "nudges",
-      "title": "Trip nudges — upcoming windows",
+      "title": "Trip nudges \u2014 weekends \u00b7 games \u00b7 long-lead \u00b7 horizon \u00b7 family",
       "kind": "nudges",
       "source": {
         "type": "command",
@@ -84,77 +66,7 @@
       },
       "refresh": "local30m",
       "span": 4,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 2,
-      "layout": null
-    },
-    {
-      "id": "pipeline",
-      "title": "Trip pipeline — the horizon",
-      "kind": "table",
-      "source": {
-        "type": "command",
-        "cmd": "uv",
-        "args": [
-          "run",
-          "hn",
-          "travel",
-          "trips",
-          "--kind",
-          "trip",
-          "--json"
-        ],
-        "cwd": "."
-      },
-      "refresh": "local60s",
-      "span": 4,
-      "value_path": "trips",
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [
-        "when",
-        "date",
-        "status",
-        "destination",
-        "anchor",
-        "who",
-        "doc"
-      ],
-      "rows": 1,
-      "layout": null
-    },
-    {
-      "id": "signals",
-      "title": "Travel signals",
-      "kind": "feed",
-      "source": {
-        "type": "bus",
-        "lane": "travel",
-        "limit": 12
-      },
-      "refresh": "local60s",
-      "span": 2,
-      "value_path": null,
-      "prefix": null,
-      "suffix": null,
-      "signed": null,
-      "title_path": null,
-      "symbols": [],
-      "symbols_from": null,
-      "columns": [],
-      "rows": 1,
-      "layout": null
+      "rows": 1
     }
   ]
 }

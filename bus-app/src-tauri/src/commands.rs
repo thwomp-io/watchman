@@ -49,7 +49,10 @@ pub(crate) fn tool_command(cmd: &str, args: &[String], cwd: &str) -> Command {
         // command. UTF-8 mode makes stdio encoding platform-independent (harmless elsewhere).
         .env("PYTHONUTF8", "1")
         .env("TRACKER_PATH", config::harness_home().join("projects/corpus"))
-        .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness"));
+        .env("HARNESS_STATE_DIR", config::harness_home().join(".local/state/harness"))
+        // the provider caches (seen-cache, earnings dates, hotel/food sweeps) — isolates provider
+        // caches so demo runs never touch real state.
+        .env("HARNESS_CACHE_DIR", config::harness_home().join(".cache/harness"));
     // Demo-pack full seal: while a BUNDLED sample persona is active, every spawn — widget,
     // live viz, producer — reads the pack and nothing else. TRACKER_PATH points at the pack
     // itself, so a lane the pack doesn't provide resolves empty instead of falling back to a
@@ -61,7 +64,8 @@ pub(crate) fn tool_command(cmd: &str, args: &[String], cwd: &str) -> Command {
             .env("TRACKER_PATH", &pack)
             .env("WEIGHTS_PACK", &pack)
             .env("HARNESS_STATE_DIR", &seal_state)
-            .env("HARNESS_BUS_DB", seal_state.join("bus.db"));
+            .env("HARNESS_BUS_DB", seal_state.join("bus.db"))
+            .env("HARNESS_CACHE_DIR", seal_state.join("cache"));
     }
     command
 }
@@ -279,7 +283,7 @@ fn run_json_command(cmd: &str, args: &[String], cwd: &str, label: &str) -> Resul
     let cfg = config::load();
     // tool_command seals the corpus to harness_home: the spawned `hn` (Python) does NOT honor
     // HARNESS_HOME (it's a Rust concept), so without the seal it falls back to the REAL
-    // ~/projects/corpus even in a sandbox — the "Real data"/no-pack path then reads the real
+    // corpus at the configurable default path even in a sandbox — the "Real data"/no-pack path then reads the real
     // corpus on a machine that has one. `hn` honors `TRACKER_PATH` (the one place every lane
     // resolves the corpus root), so it's set explicitly: a sandboxed instance reads its OWN
     // (absent → empty) corpus, the published app never reaches real data. Behavior-preserving in
@@ -343,7 +347,7 @@ pub async fn list_portfolio_symbols(lane: String, id: String) -> Result<Vec<Stri
 
 #[tauri::command]
 pub fn list_dashboards() -> Result<Vec<dash::Dashboard>, String> {
-    // Pack-described dashboards (v2): an active pack that ships a `dashboards/` dir owns the
+    // Pack-described dashboards: an active pack that ships a `dashboards/` dir owns the
     // whole tab-set (full-set override). No pack → the real console's compiled defaults.
     let cfg = config::load();
     let pack = cfg
@@ -455,8 +459,17 @@ pub async fn run_widget(
         // so they get a closed GRAMMAR instead: a strict ticker shape that is injection-safe
         // for the {symbol} substitution (no flags/spaces/paths can pass) while admitting
         // whatever the portfolio currently holds. Static widgets keep the exact closed list.
-        // (Mirrored in the python door's _h_run_widget — the two-parsers rule.)
+        // (Mirrored in the Python web server's _h_run_widget — the desktop Rust parser and the
+        // Python web server must agree.)
         let sym = match symbol {
+            // a trip/visit picker or a company pick: a slug (lowercase words + dashes), injection-safe
+            // for {symbol}; the verb itself rejects a slug that names nothing
+            Some(s) if is_slug_scope(widget.symbols_from.as_deref()) => {
+                if !is_slug(&s) {
+                    return Err(format!("selection {s} fails the slug grammar"));
+                }
+                Some(s)
+            }
             Some(s) if widget.symbols_from.is_some() => {
                 let ok = (1..=10).contains(&s.len())
                     && s.chars().next().is_some_and(|c| c.is_ascii_uppercase())
@@ -533,7 +546,34 @@ fn resolve_vault_path(path: &str) -> Result<PathBuf, String> {
     Ok(canon)
 }
 
+/// The text types a vault read will hand out — the console lists `.md` + images, so any other
+/// extension was reachable only by a hand-crafted request (`.git/config`, `.beads/*.jsonl`).
+/// Images ride `read_image`. Mirrored in console/api.py `READABLE_EXT` (the
+/// desktop Rust parser and the Python web server must agree).
+const READABLE_EXT: &[&str] = &["md", "txt", "json", "yaml", "yml", "csv"];
+
+/// Hidden components (`.git`, `.beads`, `.obsidian`, dotfiles) + non-text types are refused before
+/// the filesystem is touched — the same rules, in the same order, as the served door.
+fn check_readable(path: &str) -> Result<(), String> {
+    let normalized = path.replace('\\', "/");
+    let parts: Vec<&str> = normalized.split('/').filter(|s| !s.is_empty() && *s != ".").collect();
+    if parts.iter().any(|seg| seg.starts_with('.') && *seg != "..") {
+        return Err(format!("{path}: hidden paths are not readable"));
+    }
+    let ext = parts
+        .last()
+        .and_then(|last| last.rsplit_once('.'))
+        .map(|(_, e)| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    if !READABLE_EXT.contains(&ext.as_str()) {
+        let shown = if ext.is_empty() { "no extension".to_string() } else { format!(".{ext}") };
+        return Err(format!("{path}: not a readable text type ({shown})"));
+    }
+    Ok(())
+}
+
 fn read_vault_file(path: &str) -> Result<String, String> {
+    check_readable(path)?;
     std::fs::read_to_string(resolve_vault_path(path)?).map_err(|e| format!("{path}: {e}"))
 }
 
@@ -552,8 +592,64 @@ pub fn list_viz() -> Result<Vec<viz::VizEntry>, String> {
             supported: true,
         })
         .collect();
-    entries.extend(viz::discover(&config::vault_root(&cfg)));
+    let vault = config::vault_root(&cfg);
+    entries.extend(schedule_entries(&vault));
+    // a visit/trip schedule.json is listed once, as its LIVE entry (not also as a raw vault file)
+    entries.extend(viz::discover(&vault).into_iter().filter(|e| !is_schedule_file(&e.path)));
     Ok(entries)
+}
+
+/// Visit/trip schedules as LIVE entries discovered from the corpus (no config): one per
+/// travel/{visits,trips}/<slug>/schedule.json, newest first — rendered by the Visits tab's themed
+/// schedule component from `hn travel schedule --json`. Mirrored in the Python web server
+/// (_schedule_entries).
+fn schedule_entries(vault: &std::path::Path) -> Vec<viz::VizEntry> {
+    let mut out = Vec::new();
+    for (folder, scope) in [("visits", "visit"), ("trips", "trip")] {
+        let Ok(rd) = std::fs::read_dir(vault.join("travel").join(folder)) else { continue };
+        let mut dirs: Vec<std::path::PathBuf> =
+            rd.flatten().map(|e| e.path()).filter(|p| p.join("schedule.json").is_file()).collect();
+        dirs.sort();
+        dirs.reverse();
+        for d in dirs {
+            let Some(slug) = d.file_name().and_then(|n| n.to_str()).map(str::to_string) else { continue };
+            if !is_slug(&slug) {
+                continue;
+            }
+            let title = std::fs::read_to_string(d.join("schedule.json"))
+                .ok()
+                .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+                .and_then(|v| v.get("title").and_then(|x| x.as_str()).map(str::to_string))
+                .filter(|t| !t.is_empty())
+                .unwrap_or_else(|| slug.clone());
+            out.push(viz::VizEntry {
+                path: format!("live:schedule/{scope}/{slug}"),
+                doc: "travel · LIVE".into(),
+                name: title.clone(),
+                viz_type: "visit-schedule".into(),
+                title,
+                supported: true,
+            });
+        }
+    }
+    // newest first across visits AND trips (slugs lead with their date)
+    out.sort_by(|a, b| b.path.rsplit('/').next().cmp(&a.path.rsplit('/').next()));
+    out
+}
+
+fn is_schedule_file(path: &str) -> bool {
+    let parts: Vec<&str> = path.split('/').collect();
+    parts.len() == 4
+        && parts[0] == "travel"
+        && matches!(parts[1], "visits" | "trips")
+        && parts[3] == "schedule.json"
+}
+
+/// `live:schedule/<visit|trip>/<slug>` → (scope, slug), grammar-checked (injection-safe argv).
+fn parse_schedule_entry(path: &str) -> Option<(&str, &str)> {
+    let rest = path.strip_prefix("live:schedule/")?;
+    let (scope, slug) = rest.split_once('/')?;
+    (matches!(scope, "visit" | "trip") && is_slug(slug)).then_some((scope, slug))
 }
 
 #[tauri::command]
@@ -565,6 +661,16 @@ pub async fn read_viz(path: String) -> Result<String, String> {
 
 fn read_viz_blocking(path: String) -> Result<String, String> {
     let cfg = config::load();
+    if path.starts_with("live:schedule/") {
+        let (scope, slug) = parse_schedule_entry(&path)
+            .ok_or_else(|| format!("schedule entry {path} fails the scope/slug grammar"))?;
+        let args: Vec<String> =
+            ["run", "hn", "travel", "schedule", "--scope", scope, "--visit", slug, "--json"]
+                .iter()
+                .map(|a| (*a).to_string())
+                .collect();
+        return run_json_command("uv", &args, ".", &format!("schedule {slug}"));
+    }
     // live entries run their registered command — the data is derived fresh per read
     if let Some(id) = path.strip_prefix("live:") {
         let lv = cfg
@@ -582,7 +688,7 @@ fn read_viz_blocking(path: String) -> Result<String, String> {
 
 /// Dirs the corpus browser never descends into (build/tooling noise). Any dotdir is skipped too.
 /// `visuals/` stays out — those rendered diagram SVGs are the VIZ zone's domain; `assets/` (report
-/// photos) IS browsable by design (operator ruling), so it's no longer skipped.
+/// photos) IS browsable by design, so it's not skipped.
 const VAULT_SKIP: &[&str] = &["node_modules", "__pycache__", "target", "dist", "screenshots", "tmp"];
 const VAULT_MAX_DEPTH: usize = 8;
 /// Image files the browser surfaces as standalone, viewable tree entries (Obsidian-style).
@@ -605,7 +711,7 @@ fn walk_docs(dir: &Path, depth: usize, vault: &Path, out: &mut Vec<VaultDoc>) {
     }
     let Ok(entries) = std::fs::read_dir(dir) else { return };
     for entry in entries.flatten() {
-        // never follow symlinks (the `memory` symlink escapes the vault; its canonical path would
+        // never follow symlinks (a symlink may point outside the vault; its canonical path would
         // fail the containment check — so a listed-but-unreadable entry is worse than absent)
         if entry.file_type().map(|ft| ft.is_symlink()).unwrap_or(true) {
             continue;
@@ -786,8 +892,79 @@ pub fn refresh_all_producers<R: Runtime>(app: AppHandle<R>) {
     }
 }
 
+/// The picker scopes whose `{symbol}` is a slug (a trip/visit pick, a company pick) rather than a
+/// ticker. Mirrored in the Python web server's `_h_run_widget` — the
+/// desktop Rust parser and the Python web server must agree.
+fn is_slug_scope(scope: Option<&str>) -> bool {
+    matches!(scope, Some("visit") | Some("trip") | Some("company"))
+}
+
+/// Lowercase words + dashes, 1-80 chars, no leading dash: injection-safe for `{symbol}`.
+fn is_slug(s: &str) -> bool {
+    (1..=80).contains(&s.len())
+        && s.chars().next().is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
+        && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn schedule_entries_parse_and_list() {
+        assert_eq!(super::parse_schedule_entry("live:schedule/visit/2030-06-14-sample-visit"),
+                   Some(("visit", "2030-06-14-sample-visit")));
+        assert_eq!(super::parse_schedule_entry("live:schedule/trip/x"), Some(("trip", "x")));
+        for bad in ["live:schedule/visit/--help", "live:schedule/house/x", "live:schedule/visit/../x",
+                    "live:schedule/visit"] {
+            assert_eq!(super::parse_schedule_entry(bad), None, "{bad}");
+        }
+        assert!(super::is_schedule_file("travel/visits/2030-08-22-visit-b/schedule.json"));
+        assert!(!super::is_schedule_file("travel/visits/2030-08-22-visit-b/places.json"));
+        let base = std::env::temp_dir().join(format!("harness-sched-{}", std::process::id()));
+        for slug in ["2030-08-22-visit-b", "2030-06-14-sample-visit"] {
+            let d = base.join("travel/visits").join(slug);
+            std::fs::create_dir_all(&d).unwrap();
+            std::fs::write(d.join("schedule.json"), format!(r#"{{"title": "T {slug}"}}"#)).unwrap();
+        }
+        std::fs::create_dir_all(base.join("travel/visits/no-schedule")).unwrap();
+        let t = base.join("travel/trips/2030-09-01-sample-trip");
+        std::fs::create_dir_all(&t).unwrap();
+        std::fs::write(t.join("schedule.json"), "{}").unwrap();
+        let got: Vec<String> = super::schedule_entries(&base).into_iter().map(|e| e.path).collect();
+        assert_eq!(got, ["live:schedule/trip/2030-09-01-sample-trip", "live:schedule/visit/2030-08-22-visit-b",
+                         "live:schedule/visit/2030-06-14-sample-visit"]);
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn picker_scopes_take_the_slug_grammar() {
+        for scope in ["visit", "trip", "company"] {
+            assert!(super::is_slug_scope(Some(scope)), "{scope}");
+        }
+        assert!(!super::is_slug_scope(Some("portfolio")) && !super::is_slug_scope(None));
+        for ok in ["auto", "acme-cloud", "2030-06-14-sample-visit"] {
+            assert!(super::is_slug(ok), "{ok}");
+        }
+        for bad in ["--help", "Acme Cloud", "../x", "a/b", "-x", ""] {
+            assert!(!super::is_slug(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn readable_gate_refuses_hidden_paths_and_non_text_types() {
+        use super::check_readable;
+        assert!(check_readable("plans/note.md").is_ok());
+        assert!(check_readable("finance/research/x/data.json").is_ok());
+        assert!(check_readable("travel/prefs.YAML").is_ok()); // case-insensitive extension
+        assert!(check_readable("../outside.md").is_ok()); // `..` is the guard's job, not this gate's
+        assert!(check_readable(".git/config").unwrap_err().contains("hidden"));
+        assert!(check_readable("a/.beads/issues.jsonl").unwrap_err().contains("hidden"));
+        assert!(check_readable("finance/.env").unwrap_err().contains("hidden"));
+        assert!(check_readable(".beads\\issues.jsonl").unwrap_err().contains("hidden"));
+        assert!(check_readable("ops/beads/x.jsonl").unwrap_err().contains("not a readable"));
+        assert!(check_readable("bin/tool").unwrap_err().contains("no extension"));
+        assert!(check_readable("plans/pixel.png").unwrap_err().contains("not a readable"));
+    }
+
     use super::base64_encode;
 
     #[test]

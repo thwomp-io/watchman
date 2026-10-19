@@ -1,308 +1,168 @@
 # Watchman
 
-**A personal agentic harness — a corpus of who you are, and tools that act on live data and reason against it.**
+**A console for your own life's data, and a secure line to the agent that works on it.**
 
-Watchman renders live, deterministic views over your own data — finance, career, travel — through a CLI
-and a resident desktop console. It's built on one thesis:
+Watchman renders live views over your finances, career search and travel from plain files you own. It
+also lets you talk to an agent running on your own machine from any device you own, phone included,
+over your private network, with the agent sealed to read-only.
 
-> **The corpus is the product.** Every output — a net-worth read, a role shortlist, a market take (a dated market note), a
-> ghost-written note — is bespoke *only to the degree the corpus knows you*. The corpus is a **narrative**:
-> your stories, the *why* behind your decisions, your preferences and their emotional texture, **in your own
-> voice**. That voice is the moat — it's what makes the output sound like *you* instead of generic AI. The
-> machine-readable weights the tools read are a thin derived projection of it. The dashboards are just a surface.
-
-**Three layers** make it work — the diagram below traces how they connect:
-
-- **Corpus** — *who you are.* Your stories, decisions, and preferences, in your own voice. The product;
-  everything else is downstream. The tools read a thin, legible projection of it — `portfolio.yaml`,
-  `watchlist.yml`, `weights.yaml` ([real examples below](#the-weight-packs)).
-- **Harness** (`hn`) — *the tools.* A CLI of domain lanes — finance · career · travel — that read the corpus
-  + live data and reason against it. No model in the loop.
-- **Watchman** — *the console.* Dashboards + a notification bus rendering the harness's output, live and
-  always-on — as a resident desktop app, or served to any browser on your own network.
+> **Try it:** the console runs on bundled fictional personas, with no setup beyond [uv](https://docs.astral.sh/uv/).
+> **[⬇ Windows](../../releases/latest/download/Watchman-Setup-x64.exe)** ·
+> **[⬇ macOS](../../releases/latest/download/Watchman-aarch64.dmg)** ·
+> **[⬇ Linux .deb](../../releases/latest/download/watchman-amd64.deb)** · [all releases](../../releases)
 
 ![How Watchman works](docs/assets/architecture.svg)
 
-> **Try the demo console** — prebuilt and self-contained (engine bundled; just install
-> [uv](https://docs.astral.sh/uv/) first), loads a fictional sample persona out of the box:
-> **[⬇ Windows](../../releases/latest/download/Watchman-Setup-x64.exe)** ·
-> **[⬇ Linux .deb](../../releases/latest/download/watchman-amd64.deb)** ·
-> [all releases](../../releases) — details in [Download the console](#download-the-console--one-prerequisite-no-toolchain).
+## Talk to your agent from your phone
 
-## See it move
+The **CHAT** tab is a conversation with an agent on your always-on machine: the Claude Code you already
+run, on your own plan. Ask from the phone, and the reply streams back. Tool steps fold into one row.
+A status pill shows the model, context use and plan limits.
 
-A weight **pack is a persona** — a complete sample profile across every lane. Loading one swaps the *whole*
-console; the dashboards are just weights over the corpus.
+<img src="docs/assets/pocket-chat.gif" alt="Asking the pocket agent for a book check and a market take from a phone" width="360">
 
-![Touring the finance console on a sample persona](docs/assets/demo-finance.gif)
+_A sample persona's pack, replaying a scripted conversation. The packs ship one so you can see the tab
+without an agent._
 
-_Finance console on a bundled sample persona — net worth and trend, the market-take reader, an
-execution ticket beside the GTC ladder, the graded print book, projection and holdings tiles, and
-the event plan with its gates board, all rendering **live, deterministic data** as the widgets
-refresh. (Recorded headlessly against a sealed demo instance — fictional data only.)_
+**What the agent can and can't do is enforced by the runner, not by the prompt:**
 
-![The career board on a sample persona](docs/assets/demo-career.gif)
+| | |
+|---|---|
+| **Reads** | your files, git history, your issue tracker, and the harness's read tools (quotes, net worth, the news wire, roles, trips) |
+| **Writes** | issues in your [beads](https://github.com/gastownhall/beads) tracker (its handoff channel), and nothing else unless you grant one narrow writer — the only one today creates a new market-take file and never overwrites one |
+| **Never** | file edits, git writes, orders, mail, shell network, or your secrets (config, SSH keys, credentials), which are denied by rule and by the OS sandbox |
+| **Reachable** | only through the console's token-authed door on your network; the runner itself opens no port |
+| **Proven** | the runner self-tests the seal on every start and serves nothing while a check fails |
+| **Audited** | every prompt, tool call and refusal lands in the Inbox |
 
-_The career board: shortlist, pipeline, and the company × role-shape hiring map — same persona,
-same seal._
+Setup, the runbook and the full threat model: **[`docs/POCKET.md`](docs/POCKET.md)**.
 
-![Cycling the theme fleet](docs/assets/themes-cycle.gif)
+## See it
 
-_Eleven built-in themes — three utilitarian daily drivers and a creative fleet, picked in
-**⚙ Settings → General** or the theme menu on the app footer._
+![The finance console on a sample persona](docs/assets/demo-finance.gif)
 
-**A clip for every lane — the full tour lives in [`docs/EXAMPLES.md`](docs/EXAMPLES.md).**
+_Finance: net worth, the market-take reader, order tickets, earnings-report scorecards, projections and
+holdings._
 
-## What's in the box
+![The career console on a sample persona](docs/assets/demo-career.gif)
 
-- **`hn` CLI** — one root binary, four mountable lanes:
-  - `hn finance` — read-only market data: quotes · positions · net worth · **market** (regime/breadth) ·
-    fundamentals (SEC EDGAR) · **filing** (read an 8-K press-release exhibit straight from EDGAR) ·
-    multiples · **correlate** (diversification/beta vs. a factor) · **gauges** (options-positioning
-    read: put/call, IV30 vs HV30, the braced/neutral/complacent spread) · news · wire
-    (broad-market headlines) · research · watch · **trap-map** (your resting GTC orders as price ladders) ·
-    **scorecards** (your graded earnings-print history as a browsable registry) · **projections** (scenario-grid
-    risk/reward bands from your own authored params) · **holdings** (the held book appraised through that lens) ·
-    **gates** (upcoming prints + macro events as a countdown board) · screen. **No trading; observation only.**
-  - `hn career` — a read-only role-hunt lane: keyless openings scans (Greenhouse/Ashby) with posted comp,
-    company profiles, and D3 visuals.
-  - `hn travel` — live-travel research hands: flight ranking · hotels · events + an **events calendar**
-    (almanac + ticketed events as a month grid) · restaurant discovery (optional ratings + reviews
-    tiers) · traffic · ferries · weather/air/quake senses with feels-like-aware alerts + an
-    **outdoor-windows solver** ("when today is it actually nice out") · destination viz.
-  - `hn beads` — a read-only board over a [beads](https://github.com/gastownhall/beads) issue tracker's
-    export: counts, presence, an honest ready queue, per-issue ticket pages.
-- **Watchman console** — a small resident desktop app (Tauri): domain **dashboards** that self-refresh from
-  the CLI's `--json` verbs (Finance ▸ Core · Market · Tickets · News · Compare · Prints · Projections · Holdings ·
-  **Plans**; Travel ▸ Planning · Landscape · Conditions · Calendar · Big Calendar · Visits; Career;
-  Ops ▸ Backlog), a **notification
-  bus** for standing agents, and an interactive **viz** layer. No model is ever in the render loop.
-- **The web console** — the same console, served: `hn bus serve --console --ui` puts it in any browser on
-  your network or private mesh — including your phone, installable as a PWA. One server, one token; see
-  [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
-- **A D3 viz engine** — one Python↔Node renderer shared across lanes (the diagram above is rendered by it).
+_Career: the campaign in flight, openings ranked by fit with expected comp, the company pool and pay
+ladders._
 
-## Your backlog, on the console
+More clips, one per lane: **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
 
-Tracks work with [beads](https://github.com/gastownhall/beads) (a git-native issue tracker built
-for humans and AI agents sharing a backlog)? Watchman renders it first-class:
+## What's inside
 
-- **Ops ▸ Backlog tab** — counts, the presence board, an honest ready queue, shipped-this-week
-- **Dependency graph** — epics/children as an org chart, blocking edges on hover, tile quick-looks
-- **Ticket pages** — generated docs that cross-link like a linked-issues panel
-- **Read-only by construction** — `bd` stays the source of truth
-- Every sample persona ships a fictional backlog, so the tab demos out of the box
+| Part | What it is |
+|---|---|
+| **Console** | Dashboards that refresh themselves. **Finance:** Core, Market, Tickets, News, Compare, Prints, Projections, Holdings, Plans. **Career:** Campaign, Openings, Pool, Ladders. **Travel:** Planning, Trips, Visits, Calendar, Conditions. **Ops:** Backlog. Plus an Inbox, a viz gallery, a document vault, and **CHAT** |
+| **`hn` CLI** | The engine, one lane per domain: `finance` (quotes, net worth, the wire, SEC filings, options gauges, scenario bands) · `career` (keyless job-board scans, pay ladders) · `travel` (flights, hotels, events, weather and conditions) · `beads` (a read-only board over a [beads](https://github.com/gastownhall/beads) tracker) · `pocket` (the CHAT runner) |
+| **Bus** | Standing agents publish events; the console shows them, and urgent ones push to your devices |
+| **Packs** | Fictional personas that drive every lane, so a fresh install has something to show |
 
-![Hover cards, the relationship card, and the ticket quick-look](docs/assets/beads-interact.gif)
+Everything the console shows comes from deterministic commands. No model sits in the render loop or the
+alert path; the agent is a separate, opt-in tab.
 
-**Full walkthrough + screenshots: [`docs/BEADS.md`](docs/BEADS.md).**
+## Run it
 
-## Quickstart — runs out of the box on bundled sample packs
-
-No personal data required: Watchman ships **fictional sample personas** so a fresh install runs
-immediately — download the console (below), and it opens on one.
-
-### ⚙ Settings — the console's control panel
-
-<img src="docs/assets/settings-general.png" alt="The Settings modal" width="860">
-
-Everything about *your* Watchman is configured in one place — hit **⚙ SETTINGS** in the masthead:
-
-- **General** — version, the 11-theme picker (AUTO follows your OS), update posture.
-- **Connection** — where this console reads its bus, and the **online-bus connect flow**: paste a
-  served URL + token, **Test** it live, **Connect** (the flow clears any active demo pack, which
-  would otherwise silently override remote mode). **Disconnect** returns to local.
-- **Weight packs** — swap the active persona or **Load…** your own pack folder; the whole console
-  re-renders from it.
-- **Producers & surfaces** — the roster of everything the console runs, human-readable.
-- **Personal** — your `config/harness.yaml` user overlay (display names, fund identity, home
-  city/airports), rendered per lane. Read-only by design: the file is the interface.
-
-Prefer the shell? The engine runs headless too — lanes, packs, and keys from the CLI are covered
-in **[`docs/CLI.md`](docs/CLI.md)**.
-
-### Download the console — one prerequisite, no toolchain
-
-The full demo console, prebuilt and **self-contained**: each installer carries the engine inside it
-(no clone, no `npm`, no Rust). The one prerequisite is [uv](https://docs.astral.sh/uv/), which manages
-the console's Python runtime — on first launch the console prepares its environment (about a minute,
-one time). Download, install, pick a persona in **⚙ Settings → Weight packs** — done:
-
-| Platform | Direct download | Notes |
+| Platform | Install | Note |
 |---|---|---|
-| **Windows 10/11** | **`winget install thwomp-io.Watchman`** · or **[⬇ Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** · [.msi](../../releases/latest/download/Watchman-x64.msi) | winget install is silent + SmartScreen-free; direct downloads are unsigned — see the note below |
-| **Linux (deb)** | **[⬇ watchman-amd64.deb](../../releases/latest/download/watchman-amd64.deb)** | `sudo apt install ./watchman-amd64.deb` |
-| **macOS** | **[⬇ Watchman-aarch64.dmg](../../releases/latest/download/Watchman-aarch64.dmg)** (Apple Silicon) | unsigned — first open needs one Gatekeeper step (below); Intel: build from source |
+| **Windows 10/11** | [.exe](../../releases/latest/download/Watchman-Setup-x64.exe) · [.msi](../../releases/latest/download/Watchman-x64.msi) | unsigned: SmartScreen asks once |
+| **macOS** (Apple Silicon) | [.dmg](../../releases/latest/download/Watchman-aarch64.dmg) | unsigned: right-click → Open the first time |
+| **Linux** | [.deb](../../releases/latest/download/watchman-amd64.deb) | `sudo apt install ./watchman-amd64.deb` |
 
-**Windows install, start to finish:**
+Install [uv](https://docs.astral.sh/uv/) first. The console bundles its engine, and on first launch it
+spends about a minute preparing its Python environment. It opens on a sample persona; switch personas in
+**⚙ Settings → Weight packs**.
 
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (PowerShell:
-   `irm https://astral.sh/uv/install.ps1 | iex`).
-2. Download **[Watchman-Setup-x64.exe](../../releases/latest/download/Watchman-Setup-x64.exe)** and run it.
-3. SmartScreen will warn — the installer is open-source but **unsigned** (no paid code-signing cert).
-   Click **More info → Run anyway**. (Audit the source right here if you'd rather build it yourself:
-   Node + Rust with the MSVC build tools rustup installs; WebView2 ships with Windows 10/11.)
-4. Launch **Watchman** — it opens on a bundled **fictional sample persona**. The first launch spends
-   about a minute preparing the bundled engine's Python environment; the dashboards go live as it
-   completes.
-5. Swap personas in **⚙ Settings → Weight packs**; the whole console re-renders.
+<details>
+<summary><b>Unsigned installers, step by step</b></summary>
 
-**macOS install, start to finish:**
+- **Windows:** SmartScreen warns because the installer has no paid signing certificate. Choose **More info →
+  Run anyway**.
+- **macOS:** right-click the app → **Open → Open**. If it is still blocked: **System Settings → Privacy &
+  Security → Open Anyway**, or `xattr -d com.apple.quarantine /Applications/Watchman.app`.
+- Building from source and running the engine from a shell: [`docs/CLI.md`](docs/CLI.md).
 
-1. Install [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`).
-2. Download **[Watchman-aarch64.dmg](../../releases/latest/download/Watchman-aarch64.dmg)**, open it, drag **Watchman** to Applications.
-3. First open: **right-click the app → Open → Open** (it's open-source but **unsigned** — no Apple
-   Developer cert). If macOS still blocks it: **System Settings → Privacy & Security → Open Anyway**,
-   or clear the quarantine flag: `xattr -d com.apple.quarantine /Applications/Watchman.app`.
-4. It opens on a bundled **fictional sample persona** (first launch preps the engine's Python
-   environment, about a minute). Swap personas in **⚙ Settings → Weight packs**.
+</details>
 
-Running the engine from the shell (any platform) and building the console from source:
-**[`docs/CLI.md`](docs/CLI.md)**.
-
-> Platform notes:
-> - **Standing agents** (scheduled headless runs): macOS-`launchd` today; Task Scheduler / systemd
->   ports on the roadmap — Windows/Linux render a calm *standby* state until configured
-> - State lives under `~/.local/state/harness` + `~/.config/harness` everywhere (yes, dot-dirs on
->   Windows — one convention)
-
-## The web console — any browser on your network
-
-The bus server serves the **same UI** over HTTP — a laptop, a second desktop, your phone as a PWA:
+**In a browser, on any device.** The bus server serves the same console:
 
 ```bash
-cd bus-app && npm install && npm run build     # build the console once
-uv run hn bus serve --console --ui bus-app/dist
-# → http://127.0.0.1:8787/  (the page prompts for the bearer token on first visit)
+cd bus-app && npm install && npm run build
+uv run hn bus serve --console --ui bus-app/dist     # → http://127.0.0.1:8787/ (asks for the token once)
 ```
 
-- **One server, one token, one bind** — the bus process serves the console; every `/api` route
-  requires the bearer token (auto-generated, `0600`); binds localhost unless you point it at a
-  private-network address
-- **Run it always-on over a mesh/VPN** (Tailscale/Headscale) → every device you own, one URL —
-  phone included (installable as a PWA)
-- **Connect a satellite console in Settings, not a config file** — **⚙ Settings → Connection →
-  Online bus**: paste URL + token, **Test**, **Connect** (auto-clears any demo pack that would
-  silently override remote mode)
-- Details — tokens, phones/PWA, variant mounts: [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md)
+Bind it to a private-network address (Tailscale, Headscale, a VPN) and every device you own gets one URL,
+with the phone installable as an app. Tokens, phones and push notifications:
+[`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
 
-## Run as a container
-
-The container image carries the **engine and the web console**: the `hn` CLI, the standing agents, the
-notification bus, and the served UI — one `docker run` from a console in the browser. Your corpus is
-**mounted**, never baked in. *(The desktop app still ships as native platform bundles, not in the image.)*
+**In a container:**
 
 ```bash
-# pull the published image (built + scanned + smoke-tested in CI, published to GHCR)
-docker run --rm ghcr.io/thwomp-io/watchman --help
-
-# run a lane against your own mounted corpus (defaults to /corpus inside the container):
-docker run --rm -v "$PWD/corpus:/corpus" ghcr.io/thwomp-io/watchman finance networth
-
-# or serve the web console from the image:
 docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman \
   ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
 ```
 
-- Tagged by release (`:<version>`) + a moving `:latest` — **pin the version tag** for anything durable
-- Volumes, the token, standing agents from the image: [`docs/DOCKER.md`](docs/DOCKER.md)
+Pin a version tag for anything durable. More: [`docs/DOCKER.md`](docs/DOCKER.md).
 
-## A pack is a persona
+## Your data, as plain files
+
+A **pack** is a complete persona: one folder per lane, plain YAML and Markdown. Swapping packs re-renders
+the whole console.
 
 ![The same console under three personas](docs/assets/pack-cycle.gif)
 
-_The Finance Core view re-rendering under three bundled personas — same widgets, different life._
-
 ```
 samples/packs/<persona>/
-  pack.yaml          # identity: name, title, description, lanes, default
-  finance/           # narrative + machine weights (portfolio.yaml, networth-history.json)
-  career/            # the role-hunt root (watchlist.yml, applications.yaml, discoveries/)
-  travel/            # preferences + weights.yaml, trips/
-  dashboards/        # (optional) a curated console the pack describes for itself
+  pack.yaml        name, title, lanes
+  finance/         portfolio.yaml, net-worth history, narrative
+  career/          watchlist.yml, applications.yaml, company notes
+  travel/          weights.yaml, trips/
+  pocket/          replay.json — the scripted CHAT demo
+  dashboards/      the console this persona describes (optional)
 ```
 
-- A pack only needs subdirs for the lanes it covers
-- Your **real** corpus lives **outside** this repo (`TRACKER_PATH` / `WEIGHTS_PACK`) — nothing
-  personal is ever committed
-- **`hn init <dir>`** scaffolds your own (dirs + template weights, non-destructive)
-- The [corpus-operator skill](skills/corpus-operator/SKILL.md) teaches an AI agent to build *your*
-  corpus — passively, from conversation, in your voice — and keep it current
-
-## The weight packs
-
-The "weights" aren't a black box — they're plain, legible config: the criteria each lane scores against.
-A taste from the bundled `demo-investor` persona (fictional data):
-
-`finance/portfolio.yaml` — holdings, a watchlist, and the thresholds that drive day-flags:
+The weights are readable config, not a model. From the bundled `demo-investor` persona:
 
 ```yaml
+# finance/portfolio.yaml
 holdings:
   - {symbol: VTI,  account: taxable, shares: 900, avg_cost: 238.40, type: etf}
-  - {symbol: AAPL, account: taxable, shares: 200, avg_cost: 168.25, type: stock}
 watchlist:
-  - {symbol: NVDA, note: "megacap semis — AI bellwether"}
-pulse:                        # standing-watch thresholds
-  day_move_pct: 5.0           # flag a holding moving more than this on the day
-  index_move_pct: 1.5
+  - {symbol: NVDA, note: "megacap semis"}
+pulse:
+  day_move_pct: 5.0      # flag a holding that moves more than this in a day
 ```
 
-`career/watchlist.yml` — which companies to scan + what counts as a match:
-
-```yaml
-companies:
-  - {name: ExampleCo, ats: greenhouse, token: exampleco, tier: "Tier 1"}
-filters:
-  title_any:     [backend, platform, devops]
-  seniority_any: [mid, senior]
-  title_none:    [sales, intern]
-```
-
-`travel/weights.yaml` — home base + what makes an event worth a trip:
-
-```yaml
-conditions:
-  home: "Minneapolis, MN"                # drives the conditions watch + flight ranking
-events:
-  centerpiece_subgenres: ["NBA", "NFL"]  # leagues worth planning a trip around
-```
-
-Change a number, reload, and every dashboard reprojects. An [AI agent maintains these *for*
-you](skills/corpus-operator/SKILL.md) from conversation — but they stay plain files you own and can read.
+Your real data lives outside the repo (`TRACKER_PATH`). `hn init <dir>` scaffolds one. The
+[corpus-operator skill](skills/corpus-operator/SKILL.md) teaches an AI agent to build and maintain it from
+conversation, in your own words.
 
 ## Posture
 
-- **Privacy by construction.** Every outbound call carries a tool-only `User-Agent` (no name/email). Your
-  real corpus stays out of the repo. The finance lane reads public prices and a local file — no brokerage
-  credentials, no account in the loop.
-- **Demo mode is sealed.** While a bundled sample persona is active, the console renders *only* that
-  pack — widgets, producers, the vault browser, everything. A lane the pack doesn't cover reads empty;
-  it never falls back to a real corpus that happens to exist on the machine. (Packs you load yourself
-  keep blend semantics: their lanes override, the rest reads your corpus.)
-- **First launch fetches packages.** The installed console prepares the bundled engine's Python
-  environment once via uv (standard package-manager traffic against the shipped lockfile — no personal
-  data leaves the machine).
-- **Corpus is the source of truth; live data disciplines it.** The machine-readable weights are kept in
-  *manual* sync with the human-edited narrative; the prose is never parsed for numbers.
-- **Deterministic core, agent periphery.** Detection, thresholds, and dashboards are model-free at runtime;
-  an agent designs, narrates, and writes artifacts out-of-band. No model sits in a render or alert loop.
+- **Read-only by default.** The finance lane reads public prices and a local file. No brokerage
+  credentials, and nothing places an order. The agent is sealed the same way.
+- **Private by construction.** Outbound calls carry a tool-only User-Agent. The server binds localhost
+  unless you point it at your private network, and every API route requires the token.
+- **Demo mode is sealed.** With a sample persona active, the console renders only that pack and never
+  falls back to a real corpus on the machine.
+- **Deterministic core.** Thresholds, alerts and dashboards run without a model; agents work alongside,
+  out of the loop.
 
 ## Docs
 
-- [`skills/corpus-operator/SKILL.md`](skills/corpus-operator/SKILL.md) — the heart of the project: how an AI
-  agent builds and maintains *your* narrative corpus, in your voice.
-- [`skills/console-operator/SKILL.md`](skills/console-operator/SKILL.md) — the companion: how an agent
-  *operates* the console and drives each lane (operate-the-tool vs. build-the-corpus).
-- [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md) — the console in a browser: serving, tokens, phones/PWA,
-  variant mounts, remote satellites.
-- [`docs/DOCKER.md`](docs/DOCKER.md) — the container image: engine commands, the served console, volumes,
-  version pinning.
-- [`docs/EXAMPLES.md`](docs/EXAMPLES.md) — **the tour**: a clip for every lane, recorded against
-  the bundled sample personas.
-- [`docs/BEADS.md`](docs/BEADS.md) — the beads issue-tracker integration: the Backlog tab, the
-  dependency graph, and ticket pages.
-- [`docs/BUS.md`](docs/BUS.md) — the notification-bus producer contract (publish events from any language).
-- [`SECURITY.md`](SECURITY.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md)
+| | |
+|---|---|
+| [`docs/POCKET.md`](docs/POCKET.md) | the CHAT agent: setup, runbook, threat model |
+| [`docs/EXAMPLES.md`](docs/EXAMPLES.md) | a clip for every lane |
+| [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md) | serving the console, tokens, phones, push |
+| [`docs/CLI.md`](docs/CLI.md) | the engine from a shell, building from source |
+| [`docs/BEADS.md`](docs/BEADS.md) | the beads backlog tab and ticket pages |
+| [`docs/BUS.md`](docs/BUS.md) | publishing events from any language |
+| [`docs/DOCKER.md`](docs/DOCKER.md) | the container image |
+| [`skills/`](skills/) | agent skills: building your corpus, operating the console |
+| [`SECURITY.md`](SECURITY.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) | |
 
 ## License
 
