@@ -515,15 +515,9 @@ pub async fn run_widget(
 fn active_pack_base(cfg: &config::AppConfig, path: &str) -> Option<(PathBuf, String)> {
     let pack = cfg.active_pack.as_deref().map(str::trim).filter(|s| !s.is_empty())?;
     let pack_dir = config::expand_home(pack);
-    let (lane, rest) = if let Some(r) = path.strip_prefix("finance/") {
-        ("finance", r)
-    } else if let Some(r) = path.strip_prefix("travel/") {
-        ("travel", r)
-    } else if let Some(r) = path.strip_prefix("role-hunt/") {
-        ("career", r)
-    } else {
-        return None;
-    };
+    let (lane, rest) = [("finance/", "finance"), ("travel/", "travel"), ("role-hunt/", "career")]
+        .into_iter()
+        .find_map(|(prefix, lane)| path.strip_prefix(prefix).map(|r| (lane, r)))?;
     let lane_dir = pack_dir.join(lane);
     // Only when the pack ACTUALLY provides the lane. Once it does, reads stay in the pack even if a
     // file is absent (a missing pack file errors / lists empty — it never leaks the real corpus).

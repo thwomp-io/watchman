@@ -15,7 +15,10 @@ export async function render(schema) {
     declareExternallyReferenced: true,
     format: false,
   });
-  return ts;
+  // The compiler leaves "* " on blank doc-comment lines. Strip trailing whitespace so the committed
+  // file survives whitespace-normalizing tools (the public publish transform trims it) and the
+  // drift test still compares equal.
+  return ts.replace(/[ \t]+$/gm, "");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

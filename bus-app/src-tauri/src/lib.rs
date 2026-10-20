@@ -152,6 +152,8 @@ pub fn run() {
             // Dock-icon click (or app-switcher activate) must re-show a hidden window. With the
             // close-to-hide handler above, after a close the window is hidden, not gone — so without
             // this the Dock icon would be a dead click. macOS-only Reopen event.
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 if let Some(w) = app.get_webview_window("main") {

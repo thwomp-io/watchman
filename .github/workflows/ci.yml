@@ -288,13 +288,17 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Trivy image scan
         # Same install-free approach; mount the docker socket so Trivy can read the just-built local image.
+        # The one skipped file is yt-dlp's Shahid extractor, which ships the site's public API key in
+        # source; Trivy's secret rule reads it as an AWS access key. A third-party constant, not ours.
         run: |
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -e TRIVY_USERNAME="${{ github.actor }}" \
             -e TRIVY_PASSWORD="${{ secrets.GITHUB_TOKEN }}" \
             aquasec/trivy:0.65.0 image \
-              --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress "${IMAGE}:ci"
+              --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress \
+              --skip-files '/app/.venv/lib/python3.12/site-packages/yt_dlp/extractor/shahid.py' \
+              "${IMAGE}:ci"
       - name: Smoke test (the engine actually runs)
         run: |
           docker run --rm "${IMAGE}:ci" --help

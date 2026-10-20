@@ -3,6 +3,17 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.13.1] - 2026-10-19
+
+v0.13.0's release build failed before the installers were built. 0.13.1 carries the same features
+with the build fixed.
+
+### Fixed
+- The desktop app passes clippy on Linux (unused macOS-only event bindings) and newer toolchains.
+- The generated TypeScript contracts no longer carry trailing whitespace, so the drift check passes.
+- The container image scan skips one file: yt-dlp's Shahid extractor ships that site's public API key
+  in its source, which the secret scanner reported as an AWS access key.
+
 ## [0.13.0] - 2026-10-19
 
 This release adds the pocket agent: the console's CHAT tab and `hn pocket` let you talk to a sealed,
