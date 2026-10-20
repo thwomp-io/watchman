@@ -100,6 +100,10 @@ jobs:
         # The Tauri build script validates bundle.resources at compile time; the app build stages
         # the engine automatically, but bare cargo runs need it staged first.
         run: node ../scripts/stage-engine.mjs
+      - name: stub the console UI
+        # bundle.resources also carries the built console (`../dist` → ui/), which only the bundle
+        # jobs build; lint and unit tests need the path to exist, not its contents.
+        run: mkdir -p ../dist && test -f ../dist/index.html || echo '<!doctype html>' > ../dist/index.html
       - name: clippy
         # warnings are errors.
         run: cargo clippy --all-targets -- -D warnings
