@@ -1,32 +1,55 @@
-// The transport seam: api.ts is the webview's single door onto the backend,
-// and this module is the single door's HINGE — every api.ts call goes through a Transport, which is
-// either the Tauri IPC bridge (the native console, unchanged behavior) or an HTTP client (the
-// browser-served web console, served over HTTP by the bus server). Keeping BOTH implementations
-// behind one two-method interface is what makes maintaining the two form-factors nearly free; protect
-// this seam in review — a feature that imports @tauri-apps/* outside this file (or api.ts's event
-// re-exports) forks the door and breaks the web build silently.
+// The transport seam: api.ts is the webview's single door onto the backend, and every call goes
+// through a Transport. The backend is always the engine's served console: in a browser, on a phone,
+// and inside the desktop app, which is a thin shell that loads the same served page. The interface
+// stays two methods so tests can install a fake (src/test/setup.ts) without touching api.ts.
 
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 
-// Structurally identical to Tauri's UnlistenFn — redefined here so the Transport interface (and any
-// HTTP-side code) never needs a type import from the Tauri packages.
+// Structurally identical to Tauri's UnlistenFn, redefined so callers never import Tauri types.
 export type Unlisten = () => void;
 
 export interface Transport {
-  /** Run a backend command (a commands.rs name) with camelCase args; resolves its deserialized result. */
+  /** Run a backend command (a door command name) with camelCase args; resolves its deserialized result. */
   invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
   /** Subscribe to a backend push event (bus-updated / bus-select / vault-changed). */
   listen(event: string, cb: (payload: unknown) => void): Promise<Unlisten>;
 }
 
-// --- native: the Tauri IPC bridge -------------------------------------------------------------------
-// Exactly the pre-refactor behavior — same modules, same call shapes — so the existing vitest mock of
-// @tauri-apps/api/core|event keeps intercepting at the same boundary.
-export const tauriTransport: Transport = {
-  invoke: <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => tauriInvoke<T>(cmd, args),
-  listen: (event, cb) => tauriListen(event, (e) => cb(e.payload)),
-};
+// --- the desktop shell ---------------------------------------------------------------------------
+// The shell opens the console with `?shell=desktop` (remembered for the tab's session, since the
+// token bootstrap rewrites the URL). It grants IPC only to its own local server's origin, for the
+// few things a browser can't do: the connection settings, the native folder picker, the updater,
+// and the tray's jump-to-event. Everything else is the served console, exactly as on any device.
+const SHELL_KEY = "watchman.shell";
+export function inShell(): boolean {
+  try {
+    if (new URL(window.location.href).searchParams.get("shell") === "desktop") {
+      try { window.sessionStorage.setItem(SHELL_KEY, "desktop"); } catch { /* no storage */ }
+      return true;
+    }
+    return window.sessionStorage.getItem(SHELL_KEY) === "desktop";
+  } catch {
+    return false;
+  }
+}
+
+/** True when the page may call the shell's native commands (the shell's own local origin only). */
+export function shellIpc(): boolean {
+  return inShell() && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+/** Call a shell-native command. Rejects outside the shell. */
+export function shellInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!shellIpc()) return Promise.reject(new Error(`${cmd}: only available in the desktop app`));
+  return tauriInvoke<T>(cmd, args);
+}
+
+/** Subscribe to a shell event (the tray's bus-select). A quiet no-op outside the shell. */
+export async function shellListen(event: string, cb: (payload: unknown) => void): Promise<Unlisten> {
+  if (!shellIpc()) return () => {};
+  return tauriListen(event, (e) => cb(e.payload));
+}
 
 // --- web: the HTTP client ----------------------------------------------------------------------------
 // Wire contract (mirrored by the server's RPC door): one RPC-style
@@ -184,27 +207,12 @@ export function httpTransport(opts: HttpTransportOptions = {}): Transport {
 }
 
 // --- selection ---------------------------------------------------------------------------------------
-// Tauri v2 injects __TAURI_INTERNALS__ into its webview; a plain browser doesn't have it. The vitest
-// setup stubs it so jsdom tests keep exercising the (mocked) Tauri path. VITE_TRANSPORT=http|tauri
-// overrides detection for dev against a local RPC server without leaving the Tauri shell.
-export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
-
 export function resolveTransport(): Transport {
-  const forced = import.meta.env?.VITE_TRANSPORT as string | undefined;
-  const http = () => {
-    // Run the bootstrap for its SIDE EFFECT (ingest ?token= / storage into the memo) but do NOT
-    // pass it as an explicit token: an explicit opts.token means "the owner decided — never
-    // prompt", which silently disabled 401-recovery for a stored-but-wrong token (case 3:
-    // the $-polluted token lived in localStorage, so the prompt never fired). Call-time memo
-    // resolution + an undefined opts.token keeps the 401→prompt→retry path live.
-    bootstrapToken();
-    return httpTransport({ base: import.meta.env?.VITE_API_BASE ?? "" });
-  };
-  if (forced === "http") return http();
-  if (forced === "tauri") return tauriTransport;
-  return isTauri() ? tauriTransport : http();
+  // Run the bootstrap for its SIDE EFFECT (ingest ?token= / storage into the memo) but do NOT pass it
+  // as an explicit token: an explicit opts.token means "never prompt", which would disable 401
+  // recovery for a stored-but-wrong token. Call-time memo resolution keeps 401→prompt→retry live.
+  bootstrapToken();
+  return httpTransport({ base: import.meta.env?.VITE_API_BASE ?? "" });
 }
 
 // Lazy singleton: resolved on first api.ts call (not at module load), so test setup / env stubs are in

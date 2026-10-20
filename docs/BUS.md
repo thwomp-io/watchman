@@ -140,9 +140,9 @@ requires this server; the local-file path stays the default; sample packs never 
 out-of-box demo is mesh-free by design — multi-device is an opt-in layer with its own setup doc).
 
 - `hn bus serve [--host 127.0.0.1] [--port 8787] [--token-file ~/.config/harness/bus-token]`
-- `--console` additionally mounts the **web-console RPC door** (`POST /api/invoke/{cmd}` — a
-  read-only Python mirror of the native console's commands; same token), and `--ui <dist>` serves
-  the console UI itself. Both off by default: the plain bus serve stays exactly what satellites
+- `--console` additionally mounts the **web-console RPC door** (`POST /api/invoke/{cmd}`, the
+  console's one backend; read-only unless `--writes` names writes; same token), and `--ui <dist>`
+  serves the console UI itself. Both off by default: the plain bus serve stays exactly what satellites
   depend on. Full form-factor doc: [`WEB-CONSOLE.md`](WEB-CONSOLE.md).
 - **Auth**: every `/api/*` route requires `Authorization: Bearer <token>` (constant-time compare);
   the token auto-generates to a 0600 file on first run. `/health` is open (liveness + version only)
@@ -197,11 +197,12 @@ services (which only ever see ciphertext: the Web Push protocol encrypts payload
 
 ### The watchman in remote mode — connect via ⚙ Settings
 
-**⚙ Settings → Connection → Online bus** is the way to flip a watchman from the local file to a
-served bus: paste the served URL + the server's bearer token, **Test** (a live
-probe against the served stats endpoint), **Connect**. The flow **auto-clears any active demo
-pack** — the first-run footgun below can't happen on this path. **Disconnect** returns to local
-mode and drops the stored token.
+**⚙ Settings → Connection → Online bus** flips the desktop app from its own local server to a served
+console: paste the server's URL + bearer token, **Test** (a live probe against the served stats
+endpoint), **Connect**. The window then shows that server's console (so it must serve one: `--ui`), and
+the app's poller delivers notifications off that server's bus. The flow **auto-clears any active demo
+pack**, so the first-run footgun below can't happen on this path. The tray's **Use this computer's
+console** (or **Disconnect** on the local page) returns to the local server and drops the stored token.
 
 <details><summary>Manual fallback (older builds / headless recovery): the two config keys</summary>
 
@@ -214,7 +215,7 @@ Two keys in `~/.config/harness/bus-app.json` are what the Settings flow writes:
 }
 ```
 
-Editing by hand also requires `"active_pack": null` (see the demo-seal note below) + a restart.
+Editing by hand also requires `"active_pack": null` (see the demo-seal note below) + a restart of the app.
 </details>
 
 - **Prefer the MagicDNS name over the tailnet IP**: the overlay IP (`100.64.0.1`) is stable across

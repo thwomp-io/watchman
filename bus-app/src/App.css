@@ -984,6 +984,19 @@ table.readout { width: 100%; border-collapse: collapse; font-size: 11px; margin:
 }
 .theme-menu select:hover { color: var(--amber); border-color: rgba(var(--amber-rgb), 0.45); }
 
+/* `hn console demo`: the persona switcher in the header — the demo's one control, so it reads amber */
+.demo-pack {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 10px;
+  color: var(--amber); font-size: 10px; letter-spacing: 0.16em;
+}
+.demo-pack select {
+  appearance: none; -webkit-appearance: none;
+  background: transparent; color: inherit;
+  border: 1px solid rgba(var(--amber-rgb), 0.45); border-radius: 3px;
+  font: inherit; letter-spacing: 0.08em; padding: 3px 8px; max-width: 40vw;
+}
+.demo-pack select:hover { border-color: var(--amber); }
+
 .theme-toggle {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 3px 9px; margin-left: 4px;

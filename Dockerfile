@@ -68,6 +68,9 @@ RUN useradd --create-home --uid 10001 watchman \
 COPY --from=builder --chown=watchman:watchman /app/.venv /app/.venv
 # the web console's static UI (served via `bus serve --console --ui /app/ui`)
 COPY --from=ui --chown=watchman:watchman /ui/dist /app/ui
+# the sample personas — `hn console demo` and `--pack` read them here (the wheel carries no repo)
+COPY --chown=watchman:watchman samples/packs /app/samples/packs
+ENV HARNESS_PACKS_DIR=/app/samples/packs
 
 USER watchman
 VOLUME ["/corpus"]

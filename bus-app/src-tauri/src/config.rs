@@ -110,29 +110,6 @@ pub fn expand_home(path: &str) -> PathBuf {
     }
 }
 
-/// Resolve a command working-directory against [`harness_home`] (NOT the real `$HOME`).
-///
-/// A widget/surface/producer `cwd` like `~/watchman` (a `~/`-relative repo checkout — the uv
-/// project `uv run hn` needs) must follow `HARNESS_HOME` so a sandboxed prod-app instance spawns
-/// `hn` in the *sandboxed* tree (reading fictional pack data) instead of the dev daily-driver's real
-/// repo + corpus. Behavior-preserving in dev (there `harness_home() == $HOME`, so this equals the old
-/// `expand_home`); sandbox-correct in prod. The leak this closes: a published app on a machine that
-/// HAS a real checkout would otherwise spawn `uv run hn …` inside it and read the real corpus live.
-/// Absolute / non-`~/` cwds pass through unchanged.
-///
-/// A resolved dir that doesn't exist falls back to [`harness_home`]: an installed console has no
-/// repo checkout, and spawning with a nonexistent working directory fails before the child ever
-/// runs. The engine project is pinned per-spawn via `--project` (see [`engine`]), so the cwd
-/// carries no resolution semantics of its own.
-pub fn resolve_cwd(cwd: &str) -> PathBuf {
-    let dir = if let Some(rest) = cwd.strip_prefix("~/") {
-        harness_home().join(rest)
-    } else {
-        PathBuf::from(cwd)
-    };
-    if dir.is_dir() { dir } else { harness_home() }
-}
-
 /// The PATH *list* separator (`:` on unix, `;` on Windows — NOT the dir separator).
 /// A Windows path itself contains a drive colon (`C:\…`), so splitting a Windows PATH on `:`
 /// would shred every entry — the platform const is load-bearing, not cosmetic.
@@ -395,12 +372,6 @@ fn config_path() -> PathBuf {
     harness_home().join(".config/harness/bus-app.json")
 }
 
-/// Where the install config lives — surfaced read-only in the Settings panel footer so "go edit
-/// the file" support conversations can name the exact path.
-pub fn config_file() -> PathBuf {
-    config_path()
-}
-
 /// Persist the config (used by the scenario-switcher to remember the active pack across launches).
 /// Atomic: written to a sibling temp file, then renamed over — an in-place truncate-and-write
 /// leaves a zeroed registry if the process dies mid-save, and a zeroed registry reads as corrupt
@@ -432,7 +403,7 @@ fn save_to(path: &Path, cfg: &AppConfig) -> Result<(), String> {
 /// per-user AppData location already scopes the file to the account). Failure is deliberately
 /// ignored: a config that saved but kept a looser mode beats a save that errors — the
 /// permission is defense-in-depth on top of the token model, not the auth itself.
-fn restrict_to_owner(path: &Path) {
+pub(crate) fn restrict_to_owner(path: &Path) {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -550,13 +521,6 @@ pub fn active_bundled_pack(cfg: &AppConfig) -> Option<PathBuf> {
         .filter(|s| !s.is_empty())
         .map(expand_home)?;
     is_bundled_pack(&dir).then_some(dir)
-}
-
-/// The root every vault read (VAULT browser, viz discovery, File widget fallback) resolves
-/// against: the demo pack itself while one is active (the pack IS the whole corpus — a missing
-/// file reads empty, never the real vault), else the real tracker path.
-pub fn vault_root(cfg: &AppConfig) -> PathBuf {
-    active_bundled_pack(cfg).unwrap_or_else(|| tracker_path(cfg))
 }
 
 /// Writable state root for demo mode — the bus db and any spawned-tool state (pulse log, seen

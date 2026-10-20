@@ -45,6 +45,11 @@ app.add_typer(bus_app, name="bus")
 app.add_typer(backup_app, name="backup")
 app.add_typer(packs_app, name="packs")
 
+# `hn console` — the served web console's own verbs (the sealed demo).
+from harness.console.demo import app as console_app  # noqa: E402
+
+app.add_typer(console_app, name="console")
+
 # the beads lane: a read-only board over the tracker's .beads/issues.jsonl export —
 # imported lazily-in-place like the others; zero bd/Dolt dependency.
 from harness.beads.cli import app as beads_app  # noqa: E402

@@ -9,8 +9,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { load as yamlLoad } from "js-yaml";
 
-import { getConfig, getUserOverlay, setBusConfig, testBusConnection } from "./api";
-import { isTauri } from "./transport";
+import { getConfig, getUserOverlay, setBusConfig, shellInfo, type ShellInfo, testBusConnection } from "./api";
+import { shellIpc } from "./transport";
 import { clearTheme, setTheme, storedTheme, THEMES, useTheme, type Theme } from "./theme";
 import type { PackInfo } from "./api";
 import type { AppConfig } from "./types";
@@ -68,9 +68,12 @@ export default function Settings({
 }) {
   const [tab, setTab] = useState<Tab>("general");
   const [cfg, setCfg] = useState<AppConfig | null>(null);
-  const native = isTauri();
+  // The desktop app's own page (its local server) may edit the shell's connection; anywhere else the
+  // connection belongs to whoever runs the server.
+  const native = shellIpc();
+  const [shell, setShell] = useState<ShellInfo | null>(null);
 
-  // Connection editor state (native only)
+  // Connection editor state (desktop app only)
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
   const [probe, setProbe] = useState("");
@@ -80,10 +83,10 @@ export default function Settings({
   const [overlaySource, setOverlaySource] = useState("");
 
   const refresh = useCallback(() => {
-    void getConfig().then((c) => {
-      setCfg(c);
-      setUrl(c.bus_url ?? "");
-    }).catch(() => setCfg(null));
+    void getConfig().then(setCfg).catch(() => setCfg(null));
+    if (shellIpc()) {
+      void shellInfo().then((i) => { setShell(i); setUrl(i.bus_url ?? ""); }).catch(() => setShell(null));
+    }
     // The Personal tabs: the RESOLVED user overlay as raw text — parsed HERE
     // (one js-yaml parser client-side; native Rust + the served door both ship text only).
     void getUserOverlay().then((o) => {
@@ -111,16 +114,17 @@ export default function Settings({
   const apply = async (nextUrl: string | null) => {
     setBusy(true); setProbe("");
     try {
-      const c = await setBusConfig(nextUrl, token || null);
-      setCfg(c); setUrl(c.bus_url ?? ""); setToken("");
-      setProbe(nextUrl ? "saved — remote bus configured (demo pack cleared)" : "saved — back to local mode");
+      // the shell reloads the window onto the chosen server; this line shows until it does
+      await setBusConfig(nextUrl, token || null);
+      setToken("");
+      setProbe(nextUrl ? "connecting to the remote console…" : "switching to this machine's console…");
       onConfigChanged();
     } catch (e) {
       setProbe(`failed: ${String(e)}`);
     } finally { setBusy(false); }
   };
 
-  const mode = cfg?.mode ?? (native ? "local" : "served");
+  const mode = shell?.mode ?? cfg?.mode ?? "served";
 
   return (
     <div className="doc-popup-backdrop settings-backdrop" onClick={onClose}>
@@ -158,7 +162,7 @@ export default function Settings({
               <Row label="Theme" desc="AUTO follows the OS; picking one pins it (per device).">
                 <ThemeControl />
               </Row>
-              <Row label="Updates" desc="Published native builds self-update — the pill appears in the footer when one is available. The served console updates when the host redeploys.">
+              <Row label="Updates" desc="The published desktop app self-updates (the footer pill appears when one is available). A served console updates when its host redeploys.">
                 <span className="settings-value dim">automatic</span>
               </Row>
             </>
@@ -176,17 +180,17 @@ export default function Settings({
               {native ? (
                 <>
                   <h3>Online bus</h3>
-                  <Row label="Bus URL" desc="An `hn bus serve` endpoint — prefer the MagicDNS name over a raw IP. Leave empty and Apply to return to local mode.">
+                  <Row label="Server URL" desc="A served console (`hn bus serve --console --ui …`) — prefer the MagicDNS name over a raw IP. The window opens that console; Disconnect returns to this machine's.">
                     <input type="text" value={url} placeholder="http://bus-host.tailnet.example:8787"
                            onChange={(e) => setUrl(e.target.value)} />
                   </Row>
-                  <Row label="Bearer token" desc={cfg?.bus_token_set
+                  <Row label="Bearer token" desc={shell?.bus_token_set
                     ? "A token is stored. Leave blank to keep it (Test requires re-entering it)."
                     : "The server's bus-token value. Required for a remote bus."}>
-                    <input type="password" value={token} placeholder={cfg?.bus_token_set ? "•••••• (stored)" : "token"}
+                    <input type="password" value={token} placeholder={shell?.bus_token_set ? "•••••• (stored)" : "token"}
                            onChange={(e) => setToken(e.target.value)} />
                   </Row>
-                  <Row label="" desc="Connecting clears any active demo pack — a seeded pack silently overrides the remote bus otherwise.">
+                  <Row label="" desc="Test probes the server before you switch to it.">
                     <span className="settings-actions">
                       <button disabled={busy || !url || !token} onClick={() => void test()}>Test</button>
                       <button disabled={busy || !url} onClick={() => void apply(url)}>Connect</button>
@@ -196,7 +200,7 @@ export default function Settings({
                   {probe && <div className={"settings-probe" + (probe.startsWith("failed") ? " bad" : " ok")}>{probe}</div>}
                 </>
               ) : (
-                <Row label="Online bus" desc="Connection settings are managed on the console that owns them — a served browser can't rewrite the host's bus wiring.">
+                <Row label="Online bus" desc="Connection settings belong to whoever runs this server. In the desktop app, the tray's “Use this Mac's console” returns to the local server.">
                   <span className="settings-value dim">read-only here</span>
                 </Row>
               )}
@@ -217,11 +221,11 @@ export default function Settings({
               <Row label="Active pack" desc="A pack is a scenario bundle — a demo persona or your own folder. None = your real corpus.">
                 <span className="settings-value">{pack ? pack.split("/").filter(Boolean).pop() : "none (real corpus)"}</span>
               </Row>
-              {native ? (
+              {native || (cfg?.writes ?? []).includes("set_active_pack") ? (
                 <>
                   <Row label="Switch pack">
                     <select value={pack} onChange={(e) => void onSelectPack(e.target.value)}>
-                      <option value="">Real data</option>
+                      {!cfg?.demo && <option value="">Real data</option>}
                       {packs.map((p) => (
                         <option key={p.path} value={p.path}>{p.name}</option>
                       ))}
@@ -230,12 +234,14 @@ export default function Settings({
                       )}
                     </select>
                   </Row>
-                  <Row label="Load from folder" desc="Browse to any folder containing a pack — personal packs live outside the app.">
-                    <button onClick={() => void onLoadPackDir()}>Load…</button>
-                  </Row>
+                  {native && (
+                    <Row label="Load from folder" desc="Browse to any folder containing a pack — personal packs live outside the app.">
+                      <button onClick={() => void onLoadPackDir()}>Load…</button>
+                    </Row>
+                  )}
                 </>
               ) : (
-                <Row label="Packs" desc="The served console renders the host's real corpus — packs are the native console's affordance.">
+                <Row label="Packs" desc="This server renders the host's real corpus; pack switching is off. `hn console demo` serves the sample packs.">
                   <span className="settings-value dim">not available here</span>
                 </Row>
               )}

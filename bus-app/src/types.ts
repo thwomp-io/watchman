@@ -85,6 +85,10 @@ export interface AppConfig {
   live_viz?: { id: string; label: string; lane: string }[];
   /** Where the install config lives (native only; null when served). */
   config_path?: string | null;
+  /** Served only: the gated write commands this serve allows (the native console allows all). */
+  writes?: string[];
+  /** Served only: true under `hn console demo` (sample packs, nothing real reachable). */
+  demo?: boolean;
 }
 
 export type SurfaceState =

@@ -1,5 +1,7 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+import { setTransport } from "../transport";
 
 // --- jsdom gaps the webview components touch -------------------------------------------------------
 // D3/viz components construct a ResizeObserver; jsdom has none. A no-op stub is enough for the layout
@@ -37,12 +39,6 @@ if (globalThis.localStorage == null) {
 // The hoisted store is the one bridge that survives vitest's vi.mock hoisting; the setters are attached
 // to globalThis for `src/test/mockTauri.ts` to wrap with types.
 //
-// jsdom has no __TAURI_INTERNALS__, so transport selection (transport.ts isTauri()) would otherwise
-// pick the HTTP client and sail past this mock — stub the marker so component tests keep exercising
-// the (mocked) Tauri path, exactly like the native webview they simulate. HTTP-path tests bypass this
-// by constructing httpTransport() directly (see transport.test.ts).
-(window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ ??= {};
-
 const store = vi.hoisted(() => ({
   handlers: new Map<string, (args: Record<string, unknown>) => unknown>(),
   calls: [] as Array<[string, Record<string, unknown>]>,
@@ -71,3 +67,18 @@ vi.mock("@tauri-apps/api/event", () => ({
     store.calls.length = 0;
   },
 };
+
+// Component tests drive api.ts through a fake transport backed by the same staged handlers, so a
+// test stages command→response fixtures once whichever door a call takes (data → the transport,
+// desktop-only → the shell's invoke, mocked above). Reinstalled per test: a suite may setTransport(null).
+beforeEach(() => {
+  setTransport({
+    invoke: async <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
+      store.calls.push([cmd, args ?? {}]);
+      const handler = store.handlers.get(cmd);
+      if (!handler) throw new Error(`mockTauri: no handler staged for command "${cmd}"`);
+      return handler(args ?? {}) as T;
+    },
+    listen: async () => () => {},
+  });
+});

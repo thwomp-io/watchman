@@ -56,7 +56,7 @@ from starlette.routing import Route
 
 from harness import __version__
 from harness.bus.service import BusService
-from harness.bus.store import default_db_path
+from harness.console import dashboards, scenario
 from harness.paths import augmented_path
 from harness.settings import BaseToolkitSettings
 
@@ -79,18 +79,13 @@ from harness.console.errors import CommandError  # noqa: E402 — re-exported: h
 
 
 def _vault_root() -> Path:
-    # The one corpus-root primitive (env TRACKER_PATH → ~/projects/corpus) — instantiated per
-    # request so env changes (tests, future sealing) are honored without process restarts.
-    return BaseToolkitSettings().tracker_path.expanduser()
+    # The corpus root (env TRACKER_PATH → the default), resolved per request; while a bundled sample
+    # pack is active the pack itself is the root (the demo seal: nothing real can be browsed).
+    return scenario.vault_root(BaseToolkitSettings().tracker_path.expanduser())
 
 
 def _config_dir() -> Path:
-    # Honors HARNESS_CONFIG_DIR ahead of the default — the Python half of the config-dir seal
-    # (the Rust host handles the same dir); free to support now, load-bearing when sealing lands.
-    import os
-
-    override = os.environ.get("HARNESS_CONFIG_DIR", "").strip()
-    return Path(override).expanduser() if override else Path("~/.config/harness").expanduser()
+    return scenario.config_dir()
 
 
 def _app_config() -> dict[str, Any]:
@@ -98,12 +93,7 @@ def _app_config() -> dict[str, Any]:
     read-only. THE FILENAME IS bus-app.json, not config.json — config.rs `config_path()` is the
     source of truth (a guessed name once rendered every surface empty until caught). Absent file →
     empty config: the API still works on a machine that never ran the Tauri app."""
-    path = _config_dir() / "bus-app.json"
-    try:
-        loaded = json.loads(path.read_text())
-        return loaded if isinstance(loaded, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return scenario.registry()
 
 
 # ————— containment guard (the commands.rs resolve_vault_path port — tests ride along) ——————————
@@ -114,10 +104,11 @@ def resolve_vault_path(path: str) -> Path:
     commands.rs's guard: canonicalize (resolving symlinks + `..`), then require the result to stay
     under the canonicalized vault root. Every read path flows through here — a new read is a
     one-liner over this guard, never a fresh hand-rolled check."""
-    vault = _vault_root()
+    # A personal pack that provides this path's lane serves it from the pack (lane blending).
+    base, rel = scenario.pack_base(path) or (_vault_root(), path)
     try:
-        canon = (vault / path).resolve(strict=True)
-        vault_canon = vault.resolve(strict=True)
+        canon = (base / rel).resolve(strict=True)
+        vault_canon = base.resolve(strict=True)
     except OSError as exc:
         raise CommandError(f"{path}: {exc}") from exc
     if not canon.is_relative_to(vault_canon):
@@ -240,10 +231,10 @@ def _cached_spawn(key: tuple[str, ...], execute: Callable[[], str]) -> str:
 
 
 def _active_pack() -> str:
-    """The native registry's active pack, resolved once per call — feeds BOTH the spawn env and
-    the cache key, so a pack switch can never serve the prior scenario's cached panels."""
-    pack = str(_app_config().get("active_pack") or "").strip()
-    return str(Path(pack).expanduser()) if pack else ""
+    """The registry's active pack, resolved once per call — feeds BOTH the spawn env and the cache
+    key, so a pack switch can never serve the prior scenario's cached panels."""
+    pack = scenario.active_pack()
+    return str(pack) if pack else ""
 
 
 def _spawn_key(cmd: str, args: list[str], cwd: str) -> tuple[str, ...]:
@@ -284,14 +275,18 @@ def _execute_json_command(cmd: str, args: list[str], cwd: str, label: str) -> st
     hn = shutil.which("hn", path=env["PATH"])
     if cmd == "uv" and args[:1] == ["run"] and "hn" in args and hn:
         cmd, args = hn, args[args.index("hn") + 1 :]
-    # Scenario parity with the native console: an active pack shapes on-demand panel reads.
-    pack = _active_pack()
-    if pack:
-        env["WEIGHTS_PACK"] = pack
+    # The active scenario: a pack shapes every read, and a bundled sample pack seals corpus,
+    # state, bus and cache so nothing real on this machine can render.
+    env = scenario.spawn_env(env)
+    # A configured cwd that doesn't exist here (a dashboard authored on another machine) runs from
+    # the server's own cwd: the `hn` rewrite above makes the cwd irrelevant to what runs.
+    run_dir = Path(cwd).expanduser() if cwd else None
+    if run_dir is not None and not run_dir.is_dir():
+        run_dir = None
     try:
         out = subprocess.run(  # noqa: S603 — allowlisted above; config is operator-owned
             [cmd, *args],
-            cwd=Path(cwd).expanduser() if cwd else None,
+            cwd=run_dir,
             env=env,
             capture_output=True,
             text=True,
@@ -323,7 +318,7 @@ def _event_wire(e: Any) -> dict[str, Any]:
 
 
 def _h_list_events(args: dict[str, Any]) -> list[dict[str, Any]]:
-    svc = BusService()
+    svc = BusService(scenario.bus_db())
     try:
         events = svc.list_events(
             unread_only=bool(args.get("unreadOnly", False)),
@@ -342,7 +337,7 @@ def _h_ack_events(args: dict[str, Any]) -> int:
     ids = args.get("ids")
     if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
         raise CommandError('"ids" must be a list of integers')
-    svc = BusService()
+    svc = BusService(scenario.bus_db())
     try:
         return svc.ack(ids)
     finally:
@@ -350,7 +345,7 @@ def _h_ack_events(args: dict[str, Any]) -> int:
 
 
 def _h_unread_count(_: dict[str, Any]) -> int:
-    svc = BusService()
+    svc = BusService(scenario.bus_db())
     try:
         return svc.unread_count()
     finally:
@@ -359,7 +354,7 @@ def _h_unread_count(_: dict[str, Any]) -> int:
 
 def _h_distinct_meta(_: dict[str, Any]) -> dict[str, list[str]]:
     # Mirror of bus::distinct_meta (Rust queries SQL directly; BusService has no twin yet).
-    with sqlite3.connect(default_db_path()) as conn:
+    with sqlite3.connect(scenario.bus_db()) as conn:
         lanes = [r[0] for r in conn.execute("SELECT DISTINCT lane FROM events ORDER BY lane")]
         kinds = [r[0] for r in conn.execute("SELECT DISTINCT kind FROM events ORDER BY kind")]
     return {"lanes": lanes, "kinds": kinds}
@@ -376,7 +371,7 @@ def _h_get_config(_: dict[str, Any]) -> dict[str, Any]:
     # mode "served" (this console IS the remote end — there is no bus_url to configure here),
     # writes gated (WRITE_GATED below), token never in any payload.
     cfg = _app_config()
-    db = str(default_db_path())
+    db = str(scenario.bus_db())
     return {
         "db_path": db,
         "bus_source": f"served: {db}",
@@ -389,7 +384,15 @@ def _h_get_config(_: dict[str, Any]) -> dict[str, Any]:
         "surfaces": cfg.get("surfaces", []),
         "live_viz": cfg.get("live_viz", []),
         "config_path": None,  # the host's file path is not the served client's business
+        "writes": sorted(_serve_writes),
+        "demo": _demo_mode(),
     }
+
+
+def _demo_mode() -> bool:
+    import os
+
+    return os.environ.get("HARNESS_CONSOLE_DEMO", "").strip() == "1"
 
 
 def _h_get_user_overlay(_: dict[str, Any]) -> dict[str, Any]:
@@ -430,18 +433,9 @@ def _h_run_surface(args: dict[str, Any]) -> str:
 
 
 def _dashboards() -> list[dict[str, Any]]:
-    # Reads what's ON DISK (the native console owns seeding compiled defaults — a machine that
-    # never ran the Tauri app lists empty). Lane-alphabetical mirrors dash.rs load_all ordering.
-    out: list[dict[str, Any]] = []
-    dash_dir = _config_dir() / "dashboards"
-    for p in sorted(dash_dir.glob("*.json")):
-        try:
-            loaded = json.loads(p.read_text())
-            if isinstance(loaded, dict):
-                out.append(loaded)
-        except (OSError, json.JSONDecodeError):
-            continue  # one corrupt file is a skipped tab, never a dead dashboard list
-    return out
+    # The active scenario's tab set: a pack's own dashboards, else the operator's dir with the
+    # packaged defaults seeded for any missing lane (a fresh machine gets the full console).
+    return dashboards.load_all_for(scenario.active_pack(), _config_dir() / "dashboards")
 
 
 def _h_list_dashboards(_: dict[str, Any]) -> list[dict[str, Any]]:
@@ -777,11 +771,85 @@ def _h_read_viz(args: dict[str, Any]) -> str:
 
 
 def _h_list_packs(_: dict[str, Any]) -> list[dict[str, Any]]:
-    return []  # the web console serves the real corpus; scenario packs are the native app's
+    # The bundled sample packs, shaped like the native PackInfo: lanes are the lane dirs present.
+    from harness.packs import discover_bundled_packs
+
+    return [
+        {
+            "name": p.name,
+            "path": p.path,
+            "lanes": [lane for lane in ("finance", "travel", "career") if (Path(p.path) / lane).is_dir()],
+        }
+        for p in discover_bundled_packs()
+    ]
 
 
-def _h_get_active_pack(_: dict[str, Any]) -> None:
-    return None
+def _h_get_active_pack(_: dict[str, Any]) -> str | None:
+    return _active_pack() or None
+
+
+def _h_set_active_pack(args: dict[str, Any]) -> None:
+    pack = args.get("pack")
+    # The demo serves sample personas only: a personal pack blends real corpus lanes, and clearing
+    # the pack would leave the empty floor. Either would break what the demo promises.
+    if _demo_mode() and not (pack and scenario.is_bundled(Path(str(pack)).expanduser())):
+        raise CommandError("the demo switches between the bundled sample packs only")
+    try:
+        scenario.set_active_pack(str(pack) if pack is not None else None)
+    except ValueError as exc:
+        raise CommandError(str(exc)) from exc
+
+
+def _h_run_producer(args: dict[str, Any]) -> str:
+    """Re-run a registered producer (a standing agent's `hn` verb) under the active scenario. The
+    client names a producer id; the command comes from the operator's registry and passes the same
+    `hn`-on-a-known-lane allowlist as every spawn. Returns "<label> → exit <code>" (the native
+    contract); producers publish to the bus, they don't answer with JSON."""
+    import os
+    import shutil
+
+    pid = str(args.get("id") or "")
+    producers = [p for p in _app_config().get("producers", []) if isinstance(p, dict)]
+    producer = next((p for p in producers if p.get("id") == pid), None)
+    if producer is None:
+        raise CommandError(f"unknown producer: {pid}")
+    cmd, argv = str(producer.get("cmd", "")), [str(a) for a in producer.get("args", [])]
+    _validate_tool(cmd, argv)
+    argv = _substitute_dates(argv)
+    env = scenario.spawn_env({**os.environ, "PATH": augmented_path(os.environ.get("PATH", ""))})
+    hn = shutil.which("hn", path=env["PATH"])
+    if cmd == "uv" and argv[:1] == ["run"] and "hn" in argv and hn:
+        cmd, argv = hn, argv[argv.index("hn") + 1 :]
+    cwd = Path(str(producer.get("cwd") or "")).expanduser()
+    try:
+        out = subprocess.run(  # noqa: S603 — allowlisted above; config is operator-owned
+            [cmd, *argv], cwd=cwd if cwd.is_dir() else None, env=env,
+            capture_output=True, text=True, timeout=600,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise CommandError(f"{producer.get('label', pid)}: {exc}") from exc
+    return f"{producer.get('label', pid)} → exit {out.returncode}"
+
+
+def _h_save_dashboard(args: dict[str, Any]) -> None:
+    if scenario.active_bundled_pack() is not None:
+        raise CommandError("a demo pack is active — its dashboards are transient and cannot be saved")
+    dash = args.get("dashboard")
+    if not isinstance(dash, dict):
+        raise CommandError('"dashboard" must be an object')
+    try:
+        dashboards.save_to(_config_dir() / "dashboards", dash)
+    except (ValueError, OSError) as exc:
+        raise CommandError(str(exc)) from exc
+
+
+def _h_reset_dashboard(args: dict[str, Any]) -> dict[str, Any]:
+    if scenario.active_bundled_pack() is not None:
+        raise CommandError("a demo pack is active — its dashboards are transient and cannot be reset")
+    try:
+        return dashboards.reset_to(_config_dir() / "dashboards", str(args.get("lane") or ""))
+    except (ValueError, OSError) as exc:
+        raise CommandError(str(exc)) from exc
 
 
 def _h_article_card(args: dict[str, Any]) -> dict[str, str]:
@@ -795,7 +863,7 @@ def _h_article_card(args: dict[str, Any]) -> dict[str, str]:
         event_id = int(args.get("id"))  # type: ignore[arg-type]
     except (TypeError, ValueError) as e:
         raise CommandError("article_card needs an event id") from e
-    svc = BusService()
+    svc = BusService(scenario.bus_db())
     try:
         ev = svc.get_event(event_id)
     finally:
@@ -828,6 +896,10 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "read_image": _h_read_image,
     "list_packs": _h_list_packs,
     "get_active_pack": _h_get_active_pack,
+    "set_active_pack": _h_set_active_pack,
+    "run_producer": _h_run_producer,
+    "save_dashboard": _h_save_dashboard,
+    "reset_dashboard": _h_reset_dashboard,
     "list_viz": _h_list_viz,
     "read_viz": _h_read_viz,
     "article_card": _h_article_card,
@@ -837,14 +909,14 @@ HANDLERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 from harness.pocket.door import HANDLERS as _POCKET_HANDLERS  # noqa: E402
 
 HANDLERS.update(_POCKET_HANDLERS)
-# 403 — desktop-console features + the dashboard-editor save/reset: native-only; served-console
-# dashboard edits are not yet supported.
 MAX_BODY_BYTES = 64 * 1024  # invoke args are tiny; see the check in invoke()
 MAX_EVENTS_LIMIT = 500  # the bus route's ceiling, mirrored on the door
 
+# Writes answer 403 unless the serve enables them (`console_routes(writes=…)`): the door is
+# read-only by default. set_bus_config/test_bus_connection stay gated everywhere — connection
+# config is the host's, and a browser must never rewrite the server's bus wiring.
+_serve_writes: frozenset[str] = frozenset()  # what console_routes() enabled; get_config reports it
 WRITE_GATED = {"set_active_pack", "run_producer", "save_dashboard", "reset_dashboard",
-               # Settings-panel writes: connection config is the NATIVE console's to edit —
-               # a served browser must never rewrite the host's bus wiring.
                "set_bus_config", "test_bus_connection"}
 NOT_YET: set[str] = set()  # empty today; kept for the next unmirrored command
 
@@ -879,16 +951,19 @@ def ui_mounts(specs: list[str]) -> list[Any]:
     return named + root  # root last — it swallows everything after the API routes
 
 
-def console_routes(token: str) -> list[Route]:
+def console_routes(token: str, writes: frozenset[str] = frozenset()) -> list[Route]:
     """The RPC door, ready to mount into the bus server's `create_app(extra_routes=…)` — one
-    server, one token, one bind."""
+    server, one token, one bind. `writes` names the gated commands this serve allows."""
+    global _serve_writes
+    writes = frozenset(writes) & WRITE_GATED - {"set_bus_config", "test_bus_connection"}
+    _serve_writes = writes
     from harness.bus.server import _authorized, _unauthorized
 
     async def invoke(request: Request) -> JSONResponse:
         if not _authorized(request, token):
             return _unauthorized()
         cmd = request.path_params["cmd"]
-        if cmd in WRITE_GATED:
+        if cmd in WRITE_GATED and cmd not in writes:
             return JSONResponse(
                 {"error": f"{cmd} is write-gated on the web console (read-only by design)"},
                 status_code=403,

@@ -1,8 +1,9 @@
 # The web console
 
-The Watchman console in a browser. The bus server serves the **same React frontend the desktop app
-embeds** — same dashboards, same inbox, same viz — over HTTP, behind the same bearer token the bus API
-already uses. One server, one token, one bind: nothing new to deploy, no second service to secure.
+The Watchman console is a web page the engine serves: dashboards, inbox, viz, vault and CHAT, behind the
+same bearer token the bus API already uses. One server, one token, one bind. Browsers, phones and the
+optional desktop app all open this same page; the desktop app is a window over a server it starts for
+itself, or over yours.
 
 Run it on an always-on machine over a private network or mesh (Tailscale, Headscale, a home VPN) and
 every device you own has the console at one URL — including your phone.
@@ -18,8 +19,8 @@ cd bus-app && npm install && npm run build     # → bus-app/dist
 uv run hn bus serve --console --ui bus-app/dist
 ```
 
-- `--console` mounts the RPC door the frontend talks to (`POST /api/invoke/{cmd}` — a read-only mirror
-  of the desktop shell's command layer). `--ui` implies it.
+- `--console` mounts the RPC door the frontend talks to (`POST /api/invoke/{cmd}`, read-only unless
+  `--writes` enables named writes). `--ui` implies it.
 - The server binds `127.0.0.1:8787` by default. To reach it from other devices, bind a private-network
   address deliberately (`--host 100.x.y.z`) — every `/api` route requires the token regardless of bind.
   Prefer the overlay/mesh address over `0.0.0.0`: the plain-HTTP unit carries the bearer token in
@@ -80,6 +81,19 @@ Platform notes:
   (Apple/Google/Mozilla), which only ever carry ciphertext — payloads are end-to-end encrypted by the
   Web Push protocol, and the harness keeps them minimal regardless.
 
+## HTTPS with Tailscale
+
+A phone needs HTTPS to install the console as an app and to receive push notifications. On a Tailscale
+tailnet, keep the server on loopback and let Tailscale terminate TLS:
+
+```bash
+uv run hn bus serve --console --ui bus-app/dist     # 127.0.0.1:8787
+tailscale serve --bg 8787                           # → https://<machine>.<tailnet>.ts.net/
+```
+
+This needs MagicDNS and HTTPS certificates enabled for the tailnet. The address is reachable only inside
+the tailnet. Headscale and other VPNs use the next section instead.
+
 ## TLS — serving HTTPS directly
 
 `hn bus serve --tls-cert cert.pem --tls-key key.pem` (env: `HARNESS_TLS_CERT`/`HARNESS_TLS_KEY`) has
@@ -109,15 +123,26 @@ token model is unchanged: TLS is transport privacy; the bearer token stays the a
 
 ## What it can and can't do
 
-The web console is **read-only by construction**. The RPC door mirrors the desktop console's *read*
-commands — dashboards, widgets, the inbox, the vault browser, viz — and allows exactly one write:
-marking inbox events read (the same capability the bus API already carries). Switching weight packs and
-running producers are desktop-console features; the door answers 403.
+The web console is **read-only by default**. The RPC door serves the console's read commands
+(dashboards, widgets, the inbox, the vault browser, viz) and allows exactly one write: marking inbox
+events read. Switching packs, saving dashboards and running producers answer 403 unless the serve
+enables them.
 
-It also serves the corpus of the operator who launched it — the machine's real config and vault, not a
-demo persona. The bundled sample personas are a desktop-console feature; to demo the *web* console
-without a corpus, run it [from the container](DOCKER.md) against a scratch mount, or export
-`WEIGHTS_PACK=samples/packs/demo-investor` before `hn bus serve`.
+A fresh machine gets the full console: the engine ships the built-in dashboards and seeds any missing
+tab into `~/.config/harness/dashboards/` on first load. A file there overrides its default.
+
+It serves the corpus of the operator who launched it. To try the console without a corpus, run the
+sealed demo:
+
+```bash
+uv run hn console demo          # from a checkout with a built UI (npm run build in bus-app/)
+docker run --rm -p 8787:8787 ghcr.io/thwomp-io/watchman console demo --host 0.0.0.0
+```
+
+It stages a scratch root (config, state, cache, bus, an empty corpus), opens on a sample persona,
+plays that persona's scripted CHAT, and lets you switch personas from the header. Only the bundled
+sample packs are selectable, and a sample pack is sealed: its vault, spawns, bus and caches never
+reach a real corpus on the machine. Ctrl-C deletes the scratch root.
 
 ## Many consoles, one server
 
@@ -135,9 +160,10 @@ serve a phone-tuned build alongside the daily driver without touching it.
 
 ## Native satellites
 
-A second desktop can skip the browser entirely: the **native app in remote mode** points at the same
-served bus (`bus_url` + `bus_token` in its config) and delivers that machine's own notifications off it —
-per-device delivery, shared read-state. See [`BUS.md`](BUS.md) → *The watchman in remote mode*.
+The desktop app can open a served console instead of starting its own: **⚙ Settings → Connection**,
+then the server's URL and token. Its window shows that console, and the app delivers that machine's own
+notifications off the same bus: per-device delivery, shared read-state. The tray's **Use this
+computer's console** switches back. See [`BUS.md`](BUS.md) → *The watchman in remote mode*.
 
 ## The pieces
 

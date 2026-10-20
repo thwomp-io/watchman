@@ -1,16 +1,15 @@
-//! Watchman — menu-bar-resident inbox + native notifications for the harness message bus.
-//! The delivery surface for the harness message bus (contract: ../docs/BUS.md). Deterministic; zero model anywhere.
+//! Watchman — the desktop shell over the engine's served console, plus the menu-bar inbox and native
+//! notifications for the harness message bus (contract: ../docs/BUS.md). The window shows the same
+//! served page a browser or phone gets (shell.rs); this crate keeps only the native pieces.
+//! Deterministic; zero model anywhere.
 
 mod backend;
 mod bus;
-mod commands;
 mod config;
 mod poller;
 mod remote;
-mod dash;
+mod shell;
 mod tray;
-mod viz;
-mod watcher;
 
 use tauri::Manager;
 
@@ -25,8 +24,7 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_notification::init())
-        // dialog: the native folder picker behind "Load Weight Pack…" (browse to ANY pack dir). A
-        // modal dialog, NOT a menu — safe for an Accessory app (a Builder menu is not).
+        // dialog: the native folder picker behind "Load Weight Pack…" and the engine-start error.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -48,38 +46,18 @@ pub fn run() {
     // directory junction as an "untrusted mount point" and the sync fails) — so the UPDATE path must be regression-tested against that class on a
     // real Windows machine before the updater ships (docs/UPDATER.md, first-release checklist).
     #[cfg(not(debug_assertions))]
-    let builder = builder
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init());
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
+        .manage(shell::Shell::default())
+        // The page's only native calls (allowed for the shell's own local origin: capabilities/).
         .invoke_handler(tauri::generate_handler![
-            commands::list_events,
-            commands::ack_events,
-            commands::unread_count,
-            commands::urgent_unread_count,
-            commands::distinct_meta,
-            commands::app_version,
-            commands::get_config,
-            commands::run_producer,
-            commands::list_surfaces,
-            commands::run_surface,
-            commands::list_viz,
-            commands::list_dashboards,
-            commands::list_portfolio_symbols,
-            commands::save_dashboard,
-            commands::reset_dashboard,
-            commands::run_widget,
-            commands::list_packs,
-            commands::get_active_pack,
-            commands::set_active_pack,
-            commands::set_bus_config,
-            commands::get_user_overlay,
-            commands::test_bus_connection,
-            commands::read_viz,
-            commands::list_vault_docs,
-            commands::read_doc,
-            commands::list_vault_dir,
-            commands::read_image,
+            shell::shell_info,
+            shell::set_bus_config,
+            shell::test_bus_connection,
+            shell::pick_pack_folder,
+            shell::update_check,
+            shell::update_install,
+            shell::update_restart,
         ])
         .setup(|app| {
             // Dock app + tray hybrid (the Slack/Discord model): Regular gives a Dock icon +
@@ -106,37 +84,20 @@ pub fn run() {
                 use tauri_plugin_notification::NotificationExt;
                 let _ = app.notification().request_permission();
             }
-            // Bundled-packs fallback (the fresh-install demo fix): resolve the app resource dir
-            // ONCE here — before any command can run — so samples_packs_dir() falls back to the
-            // packs shipped inside the bundle when no cloned repo exists on the machine.
+            // Bundled-packs fallback: resolve the app resource dir ONCE here, before the engine starts,
+            // so samples_packs_dir() falls back to the packs shipped inside the bundle when no cloned
+            // repo exists on the machine.
             config::set_resource_packs_dir(app.path().resource_dir().ok().map(|d| d.join("packs")));
             // Bundled-engine fallback (same shape): an installed console with no repo checkout
             // runs `hn` from the engine staged into the bundle resources.
             config::set_resource_engine_dir(app.path().resource_dir().ok().map(|d| d.join("engine")));
-            // Warm the bundled engine's venv in the background: the first `uv run` on a fresh
-            // machine downloads a Python + resolves the lockfile (a minute-scale one-time cost).
-            // Doing it once at startup keeps the first widget paint from eating that latency;
-            // uv's own project lock serializes any widget spawns that race it.
-            if let Some(engine) = config::engine() {
-                if engine.bundled {
-                    std::thread::spawn(move || {
-                        let mut warm = std::process::Command::new("uv");
-                        warm.args(["sync", "--frozen", "--no-dev", "--project"])
-                            .arg(&engine.project_dir)
-                            .env("UV_PROJECT_ENVIRONMENT", config::engine_venv_dir())
-                            .env("PATH", config::augmented_path());
-                        #[cfg(windows)]
-                        {
-                            use std::os::windows::process::CommandExt;
-                            warm.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-                        }
-                        let _ = warm.output();
-                    });
-                }
-            }
+            // A fresh install writes its first registry here (the default pack, surfaces, producers)
+            // before the engine reads it.
+            let _ = config::load();
             tray::init(&app.handle().clone())?;
             poller::spawn(app.handle().clone());
-            watcher::spawn(app.handle().clone()); // VAULT live-refresh: fs-watch → vault-changed
+            // the window opens on the splash page; this swaps it onto the console once it answers
+            shell::start(app.handle());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -149,11 +110,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building Watchman")
         .run(|app, event| {
+            // the local server is the app's child: it goes when the app does
+            if let tauri::RunEvent::Exit = event {
+                shell::stop_local(app);
+            }
             // Dock-icon click (or app-switcher activate) must re-show a hidden window. With the
             // close-to-hide handler above, after a close the window is hidden, not gone — so without
             // this the Dock icon would be a dead click. macOS-only Reopen event.
-            #[cfg(not(target_os = "macos"))]
-            let _ = (app, event);
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 if let Some(w) = app.get_webview_window("main") {

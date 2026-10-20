@@ -1,17 +1,13 @@
-// Self-update seam — the ONE module that touches the updater/process plugins, mirroring how
-// transport.ts is the one door to the backend. UpdatePill (the footer affordance) consumes this
-// narrow surface, so tests fake it with a vi.mock of THIS module instead of reverse-engineering the
-// plugins' IPC shapes, and the web build never grows a second @tauri-apps/* import site per feature.
-// (Precedent for a native-only plugin import outside transport.ts: plugin-dialog in App.tsx — both
-// are gated behind isTauri() at the call site, so the served browser console never invokes them.)
+// Self-update seam: the one module UpdatePill (the footer affordance) consumes, so tests fake it with
+// a vi.mock of THIS module. The updater runs in the desktop shell (Rust); the page asks it through
+// the shell's IPC, which only the shell's own local origin has.
 //
-// Native-only, release-only: the Rust side registers the updater/process plugins exclusively in
-// release builds (lib.rs), and the base tauri.conf.json ships an EMPTY endpoint list — a dev
-// daily-driver points nowhere. Callers treat every rejection as a quiet inline state, never a modal:
-// an offline check or an unregistered plugin both surface as "couldn't check", by design.
+// Release-only: the shell registers the updater in release builds, and the base tauri.conf.json
+// ships an EMPTY endpoint list, so a dev daily-driver points nowhere. Callers treat every rejection
+// as a quiet inline state, never a modal: offline, no endpoint and "not the desktop app" all read as
+// "couldn't check".
 
-import { check } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { shellInvoke, shellListen } from "./transport";
 
 /** What the footer needs to render an available update — plus the handle to fetch+install it. */
 export interface AvailableUpdate {
@@ -23,30 +19,26 @@ export interface AvailableUpdate {
 
 /** null → already current. Rejects on any check failure (offline, no endpoint, bad manifest). */
 export async function checkForUpdate(): Promise<AvailableUpdate | null> {
-  const update = await check();
-  if (!update) return null;
+  const found = await shellInvoke<{ version: string; notes: string | null } | null>("update_check");
+  if (!found) return null;
   return {
-    version: update.version,
-    notes: update.body ?? null,
+    version: found.version,
+    notes: found.notes,
     downloadAndInstall: async (onProgress) => {
-      let total: number | null = null;
-      let received = 0;
-      await update.downloadAndInstall((event) => {
-        // The plugin streams Started(contentLength?) / Progress(chunkLength) / Finished; fold that
-        // into one cumulative fraction so the pill renders a single terse percentage.
-        if (event.event === "Started") total = event.data.contentLength ?? null;
-        else if (event.event === "Progress") {
-          received += event.data.chunkLength;
-          onProgress(total ? Math.min(received / total, 1) : null);
-        } else if (event.event === "Finished") onProgress(1);
-      });
+      const stop = await shellListen("update-progress", (p) => onProgress(p as number | null));
+      try {
+        await shellInvoke("update_install");
+        onProgress(1);
+      } finally {
+        stop();
+      }
     },
   };
 }
 
 /** Post-install restart. On Windows the NSIS installer already exits the app during install, so
  * this is effectively the macOS/Linux path; harmless if unreachable. */
-export const restartApp = (): Promise<void> => relaunch();
+export const restartApp = (): Promise<void> => shellInvoke("update_restart");
 
 /** Signature-verification failures must read differently from "couldn't check" — a bad signature
  * on a downloaded artifact is a refused install, not a connectivity hiccup. The plugin's minisign

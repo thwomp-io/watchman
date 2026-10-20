@@ -18,6 +18,8 @@ export const mockTauri = (globalThis as unknown as { __mockTauri: MockTauri })._
 // Stage the read-only widget-source commands a Dash render fans out to, so widgets resolve to empty
 // instead of throwing — keeps a layout/nav test focused on the tabs, not the widget bodies.
 export function stageEmptyWidgetSources(): void {
+  // a server that accepts the Studio's writes (the desktop app's local server)
+  mockTauri.setValue("get_config", { writes: ["save_dashboard", "reset_dashboard", "set_active_pack"] });
   mockTauri.setValue("run_widget", "{}");
   mockTauri.setValue("list_events", []);
   mockTauri.setValue("list_vault_dir", []);

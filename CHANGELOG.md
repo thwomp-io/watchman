@@ -3,6 +3,40 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - 2026-10-20
+
+Watchman is now web-first: the engine's served console is the one backend, and the desktop app is an
+optional window over it. Try the whole console in one command with `docker run … console demo`.
+
+### Added
+- **`hn console demo`**: the console on the bundled fictional personas, sealed. It stages a scratch
+  root (config, state, cache, bus, an empty corpus), opens on the default persona, plays each
+  persona's scripted CHAT, and lets you switch personas from the header's DEMO picker (sample packs
+  only). Ctrl-C or `docker stop` deletes the scratch root:
+  `docker run --rm -p 8787:8787 ghcr.io/thwomp-io/watchman console demo --host 0.0.0.0`.
+- **Built-in dashboards and registry defaults ship with the engine.** A machine that never ran the
+  desktop app gets the full console: missing dashboards seed into `~/.config/harness/dashboards/`,
+  and the default surfaces, live viz and producers apply until you write your own registry.
+- **Packs on the served console**: `list_packs`, `get_active_pack`, `set_active_pack`. A sample pack
+  seals the vault, every spawn (corpus, state, bus, cache) and the inbox's bus; a personal pack serves
+  the lanes it provides and falls back for the rest; a pack's dashboards replace the tab set.
+- **`hn bus serve --writes a,b`**: enable named console writes (`set_active_pack`, `save_dashboard`,
+  `reset_dashboard`, `run_producer`). The default stays read-only, and connection settings are never
+  writable from a browser. `get_config` reports the enabled writes; the Dashboard Studio, the pack
+  picker and RUN PRODUCERS appear only where they work.
+- The container image ships the sample personas (`HARNESS_PACKS_DIR=/app/samples/packs`).
+
+### Changed
+- **The desktop app is a thin shell.** It starts `hn bus serve --console` from its engine on a private
+  loopback port (its own token, writes enabled) and shows that page, or opens a remote served console
+  (**⚙ Settings → Connection**). It keeps the menu-bar inbox, native notifications, launch at login, the
+  folder picker for personal packs and the updater; the server exits with the app, even after a
+  force-quit. The Rust copy of the console's commands is gone, so there is one backend.
+- The README leads with the demo and the served console; `tailscale serve` is the recommended HTTPS
+  path for phones on a tailnet (Headscale and other VPNs bind the private address and pass a
+  certificate). The installers are listed as the optional desktop app.
+- A widget whose configured working directory doesn't exist on the serving machine runs anyway.
+
 ## [0.13.1] - 2026-10-19
 
 v0.13.0's release build failed before the installers were built. 0.13.1 carries the same features

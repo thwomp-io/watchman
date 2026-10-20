@@ -1,9 +1,9 @@
-// Backend-call wrappers — the webview's only surface onto the backend. Every call routes through the
-// transport seam (src/transport.ts): the Tauri IPC bridge in the native console, an HTTP client in the
-// browser-served web console. Consumers import these typed wrappers and never touch the
-// transport directly — keep it that way; the single door is what keeps the two form-factors in parity.
+// Backend-call wrappers — the webview's only surface onto the backend. Data calls route through the
+// transport seam (src/transport.ts) to the engine's served console; the handful of desktop-only
+// calls (connection settings, the folder picker) go to the shell. Consumers import these typed
+// wrappers and never touch the transport directly.
 
-import { transport, type Unlisten } from "./transport";
+import { shellInvoke, shellListen, transport, type Unlisten } from "./transport";
 import type {
   AppConfig, BusEvent, Dashboard, DirDoc, DistinctMeta, Surface, VaultDoc, VizEntry, WatchmenStatus,
 } from "./types";
@@ -35,16 +35,21 @@ export const appVersion = (): Promise<string> => invoke("app_version");
 export const listPortfolioSymbols = (lane: string, id: string): Promise<string[]> =>
   invoke("list_portfolio_symbols", { lane, id });
 export const getConfig = (): Promise<AppConfig> => invoke("get_config");
-/** Set (url + optional token) or clear (null) the remote bus — native-only (door 403s it served).
-    Returns the fresh config so the panel refreshes in one hop. */
-export const setBusConfig = (url: string | null, token: string | null): Promise<AppConfig> =>
-  invoke("set_bus_config", { url, token });
+/** Desktop app only: point the shell at a remote served console (url + token), or clear it (null)
+    to go back to its own local server. The shell reloads the window onto the new server. */
+export const setBusConfig = (url: string | null, token: string | null): Promise<void> =>
+  shellInvoke("set_bus_config", { url, token });
 /** The resolved user overlay (harness.yaml) as raw text — the Personal tabs parse client-side. */
 export const getUserOverlay = (): Promise<{ text: string; source: string; path: string | null }> =>
   invoke("get_user_overlay");
-/** Probe a remote bus before saving it. Returns a human line ("ok — bus reachable, N unread"). */
+/** Desktop app only: probe a remote server before switching to it ("ok — bus reachable, N unread"). */
 export const testBusConnection = (url: string, token: string): Promise<string> =>
-  invoke("test_bus_connection", { url, token });
+  shellInvoke("test_bus_connection", { url, token });
+/** Desktop app only: the shell's own connection state (local server or a remote URL). */
+export interface ShellInfo { mode: "local" | "remote"; bus_url: string | null; bus_token_set: boolean; version: string }
+export const shellInfo = (): Promise<ShellInfo> => shellInvoke("shell_info");
+/** Desktop app only: a native folder picker; resolves the chosen dir (or null if cancelled). */
+export const pickPackFolder = (): Promise<string | null> => shellInvoke("pick_pack_folder");
 export const runProducer = (id: string): Promise<string> => invoke("run_producer", { id });
 export const listSurfaces = (): Promise<Surface[]> => invoke("list_surfaces");
 export const runSurface = (id: string): Promise<string> => invoke("run_surface", { id });
@@ -69,8 +74,7 @@ export interface ArticleCard { url: string; final_url?: string; image?: string; 
 export const articleCard = (id: number): Promise<ArticleCard> => invoke("article_card", { id });
 
 export const listDashboards = (): Promise<Dashboard[]> => invoke("list_dashboards");
-// Dashboard Studio save. Native-only until a follow-up opens the door's write
-// carve-out — on the served console this invoke lands in WRITE_GATED and 403s (by design).
+// Dashboard Studio save. A write: 403 unless the serve enables it (get_config reports `writes`).
 export const saveDashboard = (dashboard: Dashboard): Promise<void> =>
   invoke("save_dashboard", { dashboard });
 // Snap a lane back to its compiled built-in (banks the replaced state to .backups/ first).
@@ -79,8 +83,8 @@ export const resetDashboard = (lane: string): Promise<Dashboard> =>
 export const runWidget = (lane: string, id: string, symbol?: string | null): Promise<string> =>
   invoke("run_widget", { lane, id, symbol: symbol ?? null });
 
-// Weight-pack scenario-switcher: list the bundled sample packs, read/set the active one. Setting it
-// persists Rust-side; the webview re-renders the data zones so panels pick up the swap.
+// Weight-pack scenario-switcher: list the bundled sample packs, read/set the active one (a write the
+// serve must enable). The webview re-renders the data zones so panels pick up the swap.
 export interface PackInfo { name: string; path: string; lanes: string[]; }
 export const listPacks = (): Promise<PackInfo[]> => invoke("list_packs");
 export const getActivePack = (): Promise<string | null> => invoke("get_active_pack");
@@ -91,8 +95,9 @@ export const setActivePack = (pack: string | null): Promise<void> =>
 // emulation is the polling seam). UnlistenFn-compatible: callers keep treating the result as `() => void`.
 export const onBusUpdated = (cb: (unread: number) => void): Promise<Unlisten> =>
   transport().listen("bus-updated", (payload) => cb(payload as number));
+// The tray's jump-to-event: a shell event (there is no tray in a browser).
 export const onBusSelect = (cb: (id: number) => void): Promise<Unlisten> =>
-  transport().listen("bus-select", (payload) => cb(payload as number));
+  shellListen("bus-select", (payload) => cb(payload as number));
 export const onVaultChanged = (cb: () => void): Promise<Unlisten> =>
   transport().listen("vault-changed", () => cb());
 

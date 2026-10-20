@@ -1,0 +1,38 @@
+{
+  "lane": "news",
+  "title": "News",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "reader",
+      "title": "Broad-market wire",
+      "kind": "news",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "wire",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    }
+  ]
+}

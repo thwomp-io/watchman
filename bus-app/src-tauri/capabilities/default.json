@@ -1,15 +1,23 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window: core defaults only \u2014 custom commands carry the app logic; notification/autostart run Rust-side (least privilege). Self-update grants are exactly the three verbs the footer flow uses (check \u2192 download+install \u2192 relaunch), never the plugins' broader default sets \u2014 and the updater/process plugins only register in release builds (lib.rs), so in debug these grants point at nothing.",
+  "description": "The main window. The splash page is the app's own; the console it opens is the engine's local server (http://127.0.0.1:<port>), which is the only remote origin granted IPC: core events (the tray's jump-to-event, update progress) and the shell's seven commands. A remote server opened in the window gets no IPC at all.",
   "windows": [
     "main"
   ],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*"
+    ]
+  },
   "permissions": [
     "core:default",
-    "dialog:allow-open",
-    "updater:allow-check",
-    "updater:allow-download-and-install",
-    "process:allow-restart"
+    "allow-shell-info",
+    "allow-set-bus-config",
+    "allow-test-bus-connection",
+    "allow-pick-pack-folder",
+    "allow-update-check",
+    "allow-update-install",
+    "allow-update-restart"
   ]
 }

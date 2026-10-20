@@ -1,0 +1,108 @@
+{
+  "lane": "travel-visits",
+  "title": "Visits",
+  "group": "Travel",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "picker",
+      "title": "Visits — pick one",
+      "kind": "picker",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "banks",
+          "--scope",
+          "visit",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "schedule",
+      "title": "Visit schedule — day by day",
+      "kind": "schedule",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "schedule",
+          "--scope",
+          "visit",
+          "--visit",
+          "{symbol}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local30m",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "visit",
+      "columns": [],
+      "tickers": [],
+      "rows": 6,
+      "layout": null
+    },
+    {
+      "id": "bank",
+      "title": "Visit bank — outings + restaurants",
+      "kind": "bank",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "travel",
+          "bank",
+          "--scope",
+          "visit",
+          "--visit",
+          "{symbol}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "visit",
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    }
+  ]
+}

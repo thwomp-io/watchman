@@ -1,0 +1,387 @@
+{
+  "lane": "finance",
+  "title": "Core",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "networth",
+      "title": "Net worth",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "networth",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "total",
+      "prefix": "$",
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "proxy",
+      "title": "Fund proxy (est)",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "fund-proxy",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 1,
+      "value_path": "estimate_pct",
+      "prefix": null,
+      "suffix": "%",
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "indexes",
+      "title": "Indexes",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "indexes",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "price",
+        "prev_close",
+        "day_change_pct",
+        "day_change"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "trend",
+      "title": "Net worth trend",
+      "kind": "viz",
+      "source": {
+        "type": "file",
+        "path": "finance/networth-history.json"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "daymoves",
+      "title": "Day moves",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "watch",
+          "--no-mark",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "day_moves",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "day_change_pct",
+        "day_gl",
+        "price",
+        "market_value"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "traps",
+      "title": "Open traps",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "orders",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "side",
+        "qty",
+        "limit",
+        "price",
+        "distance_pct",
+        "day_pct"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "concentration",
+      "title": "Concentration (LIVE)",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "concentration",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "allocation",
+      "title": "Allocation (current → target)",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "allocation",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "signals",
+      "title": "Signals",
+      "kind": "feed",
+      "source": {
+        "type": "bus",
+        "lane": "finance",
+        "limit": 12
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "prints",
+      "title": "Upcoming prints",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "watch",
+          "--no-mark",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "prints",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "chart",
+      "title": "Position chart — candles + levels",
+      "kind": "chart",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "bars",
+          "{symbol}",
+          "--days",
+          "180",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [
+        "SPY",
+        "QQQ",
+        "AAPL",
+        "MSFT",
+        "NVDA"
+      ],
+      "symbols_from": "portfolio",
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "correlation",
+      "title": "Book correlation — daily returns",
+      "kind": "correlation",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "correlate",
+          "--held",
+          "--days",
+          "120",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

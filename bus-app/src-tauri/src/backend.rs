@@ -4,7 +4,7 @@
 //! THIS enum so neither ever branches on transport — resolution lives in config::bus_endpoint
 //! (which also enforces the demo-seal-trumps-remote rule).
 
-use crate::bus::{self, DistinctMeta, Event};
+use crate::bus::{self, Event};
 use crate::config::{self, AppConfig, BusEndpoint};
 use crate::remote::RemoteBus;
 
@@ -54,32 +54,11 @@ impl BusHandle {
         }
     }
 
-    pub fn unread_count(&self) -> Result<i64, String> {
-        match self {
-            BusHandle::Local(conn) => bus::unread_count(conn),
-            BusHandle::Remote(r) => r.unread_count(),
-        }
-    }
-
     /// The badge count: unread alert+warn only (severity doctrine — wire/filings never scream).
     pub fn urgent_unread_count(&self) -> Result<i64, String> {
         match self {
             BusHandle::Local(conn) => bus::urgent_unread_count(conn),
             BusHandle::Remote(r) => r.urgent_unread_count(),
-        }
-    }
-
-    pub fn ack(&self, ids: &[i64]) -> Result<usize, String> {
-        match self {
-            BusHandle::Local(conn) => bus::ack(conn, ids),
-            BusHandle::Remote(r) => r.ack(ids),
-        }
-    }
-
-    pub fn distinct_meta(&self) -> Result<DistinctMeta, String> {
-        match self {
-            BusHandle::Local(conn) => bus::distinct_meta(conn),
-            BusHandle::Remote(r) => r.distinct_meta(),
         }
     }
 

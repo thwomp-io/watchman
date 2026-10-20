@@ -10,7 +10,8 @@ import remarkGfm from "remark-gfm";
 import { GridLayout, noCompactor, useContainerWidth } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import {
-  listPortfolioSymbols, listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard, runWidget, saveDashboard } from "./api";
+  getConfig, listPortfolioSymbols, listDashboards, listEvents, listVaultDir, onVaultChanged, readDoc, resetDashboard,
+  runWidget, saveDashboard } from "./api";
 import ErrorBoundary from "./ErrorBoundary";
 import JsonView from "./JsonView";
 import ScorecardBook, { type ScorecardData } from "./ScorecardBook";
@@ -48,7 +49,6 @@ import GatesBoard from "./viz/GatesBoard";
 import BeadTree from "./viz/BeadTree";
 import Calendar from "./viz/Calendar";
 import { useNav } from "./nav";
-import { isTauri } from "./transport";
 import { preprocessLinks, VaultImage } from "./VaultZone";
 
 const MARKET_MS = 10 * 60_000;
@@ -686,10 +686,16 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
   const [group, setGroup] = useState<string>("");
   const [lane, setLane] = useState<string>("");
   const [allTick, setAllTick] = useState(0);
+  // The Studio renders only where the server accepts saves (the desktop app's local server does; a
+  // read-only served console doesn't).
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    void getConfig().then((c) => setCanEdit((c.writes ?? []).includes("save_dashboard"))).catch(() => {});
+  }, []);
   // Dashboard Studio: edit mode. LOCKED IS ALWAYS THE DEFAULT (browsing must
   // never accidentally drag); any tab or pack change re-locks. The toggle renders
   // only on the real corpus (reloadKey "") — pack dashboards are transients the save command
-  // rejects anyway (the demo-seal belt in commands.rs).
+  // rejects anyway (the server's demo-pack guard).
   const [unlocked, setUnlocked] = useState(false);
   useEffect(() => setUnlocked(false), [lane, reloadKey]);
 
@@ -878,16 +884,15 @@ export default function Dash({ reloadKey }: { reloadKey?: string } = {}) {
         <span className="surface-when">
           {inMarketWindow(new Date()) ? "MARKET OPEN — AUTO 10M" : "MARKET CLOSED — MANUAL"}
         </span>
-        {/* Studio unlock: native-only until the served door grows a write carve-out
-            (save_dashboard sits in WRITE_GATED → a PWA unlock would 403 on save). */}
-        {current && !reloadKey && isTauri() && !compact && unlocked && (
+        {/* Studio unlock: only where the server accepts dashboard saves (get_config `writes`) */}
+        {current && !reloadKey && canEdit && !compact && unlocked && (
           <button className={`reset-default${armReset ? " armed" : ""}`} onClick={onReset}
                   title={armReset ? "Click again to confirm — current layout is banked to .backups/ first"
                                   : "Snap this dashboard back to its built-in default"}>
             {armReset ? "↺ CONFIRM RESET?" : "↺ DEFAULT"}
           </button>
         )}
-        {current && !reloadKey && isTauri() && !compact && (
+        {current && !reloadKey && canEdit && !compact && (
           <button className={`unlock-toggle${unlocked ? " editing" : ""}`} onClick={toggleUnlock}
                   title={unlocked ? "Lock the layout (edits are already saved)"
                                   : "Unlock: drag + resize widgets; edits save as you go"}>

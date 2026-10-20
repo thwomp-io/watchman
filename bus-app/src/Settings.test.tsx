@@ -18,7 +18,15 @@ const CFG = {
   surfaces: [{ id: "finance.watch", label: "Watch digest", lane: "finance", cmd: "uv", args: [], cwd: "~" }],
   live_viz: [{ id: "beads.tree.live", label: "Beads board (LIVE)", lane: "beads" }],
   config_path: "/home/u/.config/harness/bus-app.json",
+  writes: ["set_active_pack"],
 };
+
+// The desktop shell's own page: ?shell=desktop + the IPC bridge (connection + folder picker live there).
+function asShell(): void {
+  window.history.replaceState(null, "", "/?shell=desktop");
+  (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+  mockTauri.setValue("shell_info", { mode: "local", bus_url: null, bus_token_set: false, version: "0.54.0" });
+}
 
 function props(overrides: Partial<Parameters<typeof Settings>[0]> = {}) {
   return {
@@ -32,6 +40,9 @@ function props(overrides: Partial<Parameters<typeof Settings>[0]> = {}) {
 describe("Settings modal", () => {
   beforeEach(() => {
     mockTauri.reset();
+    window.sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
     mockTauri.setValue("get_config", CFG);
     mockTauri.setValue("get_user_overlay", { text: "", source: "packaged template", path: null });
   });
@@ -47,7 +58,8 @@ describe("Settings modal", () => {
   });
 
   it("Connection: gates Connect/Test until url (+token for Test); connect calls set_bus_config", async () => {
-    mockTauri.setValue("set_bus_config", { ...CFG, mode: "remote", bus_url: "http://host:8787", bus_token_set: true });
+    asShell();
+    mockTauri.setValue("set_bus_config", null);
     const p = props();
     render(<Settings {...p} />);
     fireEvent.click(screen.getByRole("button", { name: "Connection" }));
@@ -67,7 +79,7 @@ describe("Settings modal", () => {
     await waitFor(() => expect(p.onConfigChanged).toHaveBeenCalled());
     const write = mockTauri.calls().find(([cmd]) => cmd === "set_bus_config");
     expect(write?.[1]).toMatchObject({ url: "http://host:8787", token: "sekrit" });
-    expect(await screen.findByText(/demo pack cleared/)).toBeInTheDocument();
+    expect(await screen.findByText(/connecting to the remote console/)).toBeInTheDocument();
   });
 
   it("Weight packs: switching calls onSelectPack with the pack path", async () => {

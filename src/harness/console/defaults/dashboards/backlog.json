@@ -1,0 +1,305 @@
+{
+  "lane": "backlog",
+  "title": "Backlog",
+  "group": "Ops",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "open",
+      "title": "Open · export",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 1,
+      "value_path": "open",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": "exported_ago",
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "inprog",
+      "title": "In progress",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 1,
+      "value_path": "in_progress",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "p1",
+      "title": "P1 open",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 1,
+      "value_path": "p1_count",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "shipped",
+      "title": "Closed · 7d",
+      "kind": "stat",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 1,
+      "value_path": "closed_7d",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "tree",
+      "title": "Beads board — active + recently shipped",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "tree",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "presence",
+      "title": "In progress — the presence board",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": "presence",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "id",
+        "assignee",
+        "priority",
+        "title",
+        "ticket"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "p1s",
+      "title": "P1 — open",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": "p1_open",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "id",
+        "priority",
+        "type",
+        "title",
+        "labels",
+        "ticket"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "ready",
+      "title": "Ready — unblocked, undeferred",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "ready",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "id",
+        "priority",
+        "type",
+        "title",
+        "labels",
+        "updated",
+        "ticket"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "shipped7",
+      "title": "Shipped this week",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "beads",
+          "board",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": "shipped_7d",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "id",
+        "title",
+        "labels",
+        "updated",
+        "ticket"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

@@ -6,10 +6,14 @@ Watchman renders live views over your finances, career search and travel from pl
 also lets you talk to an agent running on your own machine from any device you own, phone included,
 over your private network, with the agent sealed to read-only.
 
-> **Try it:** the console runs on bundled fictional personas, with no setup beyond [uv](https://docs.astral.sh/uv/).
-> **[⬇ Windows](../../releases/latest/download/Watchman-Setup-x64.exe)** ·
-> **[⬇ macOS](../../releases/latest/download/Watchman-aarch64.dmg)** ·
-> **[⬇ Linux .deb](../../releases/latest/download/watchman-amd64.deb)** · [all releases](../../releases)
+**Try it** in one command, on bundled fictional personas:
+
+```bash
+docker run --rm -p 8787:8787 ghcr.io/thwomp-io/watchman console demo --host 0.0.0.0
+```
+
+Open the URL it prints. Switch personas from the **DEMO** picker in the header. Nothing on your machine
+is read, and stopping the container deletes the demo's files.
 
 ![How Watchman works](docs/assets/architecture.svg)
 
@@ -65,15 +69,52 @@ alert path; the agent is a separate, opt-in tab.
 
 ## Run it
 
+Watchman is a web console the engine serves. Run it on an always-on machine, and every device you own
+opens the same page: a browser, the phone (installable as an app), or the optional desktop app.
+
+**1. The demo** (fictional personas, sealed):
+
+```bash
+docker run --rm -p 8787:8787 ghcr.io/thwomp-io/watchman console demo --host 0.0.0.0
+uv run hn console demo                       # from a checkout, after `npm run build` in bus-app/
+```
+
+**2. Your own console**, over your own files:
+
+```bash
+uv run hn bus serve --console --ui bus-app/dist     # → http://127.0.0.1:8787/ (asks for the token once)
+
+docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman \
+  ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
+```
+
+A fresh machine gets the full set of built-in dashboards. The console is read-only by default; `--writes`
+turns on dashboard editing, pack switching and producer runs for whoever holds the token. Pin a
+version tag for anything durable: [`docs/DOCKER.md`](docs/DOCKER.md).
+
+**3. From your phone.** Put the server on a private network. With [Tailscale](https://tailscale.com),
+`tailscale serve` gives it an HTTPS address on your tailnet, which the phone needs to install the app and
+receive push notifications:
+
+```bash
+tailscale serve --bg 8787                           # → https://<machine>.<tailnet>.ts.net/
+```
+
+Headscale or any VPN works the same way: bind the server to the private address (`--host`) and pass a
+certificate (`--tls-cert` / `--tls-key`). Tokens, phones and push: [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
+
+**4. Optional: the desktop app.** The same console in a window, plus a menu-bar inbox, native
+notifications and launch at login. It starts its own local server, or opens a remote one
+(**⚙ Settings → Connection**).
+
 | Platform | Install | Note |
 |---|---|---|
 | **Windows 10/11** | [.exe](../../releases/latest/download/Watchman-Setup-x64.exe) · [.msi](../../releases/latest/download/Watchman-x64.msi) | unsigned: SmartScreen asks once |
 | **macOS** (Apple Silicon) | [.dmg](../../releases/latest/download/Watchman-aarch64.dmg) | unsigned: right-click → Open the first time |
 | **Linux** | [.deb](../../releases/latest/download/watchman-amd64.deb) | `sudo apt install ./watchman-amd64.deb` |
 
-Install [uv](https://docs.astral.sh/uv/) first. The console bundles its engine, and on first launch it
-spends about a minute preparing its Python environment. It opens on a sample persona; switch personas in
-**⚙ Settings → Weight packs**.
+The app needs [uv](https://docs.astral.sh/uv/). On first launch it spends a minute or two preparing its
+engine, then opens on a sample persona.
 
 <details>
 <summary><b>Unsigned installers, step by step</b></summary>
@@ -85,26 +126,6 @@ spends about a minute preparing its Python environment. It opens on a sample per
 - Building from source and running the engine from a shell: [`docs/CLI.md`](docs/CLI.md).
 
 </details>
-
-**In a browser, on any device.** The bus server serves the same console:
-
-```bash
-cd bus-app && npm install && npm run build
-uv run hn bus serve --console --ui bus-app/dist     # → http://127.0.0.1:8787/ (asks for the token once)
-```
-
-Bind it to a private-network address (Tailscale, Headscale, a VPN) and every device you own gets one URL,
-with the phone installable as an app. Tokens, phones and push notifications:
-[`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md).
-
-**In a container:**
-
-```bash
-docker run -p 8787:8787 -v "$PWD/corpus:/corpus" -v watchman-home:/home/watchman \
-  ghcr.io/thwomp-io/watchman bus serve --host 0.0.0.0 --console --ui /app/ui
-```
-
-Pin a version tag for anything durable. More: [`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## Your data, as plain files
 

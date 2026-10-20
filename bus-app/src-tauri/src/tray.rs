@@ -28,6 +28,12 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, recent: &[Event]) -> tauri::Result
     menu.append(&MenuItem::with_id(app, "open", "Open Inbox", true, None::<&str>)?)?;
     menu.append(&MenuItem::with_id(app, "refresh", "Refresh now", true, None::<&str>)?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
+    if crate::config::load().bus_url.is_some_and(|u| !u.trim().is_empty()) {
+        menu.append(&MenuItem::with_id(app, "use-local", "Use this computer's console", true, None::<&str>)?)?;
+    } else {
+        menu.append(&MenuItem::with_id(app, "load-pack", "Load Weight Pack…", true, None::<&str>)?)?;
+    }
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
     menu.append(&MenuItem::with_id(app, "quit", "Quit Watchman", true, None::<&str>)?)?;
     Ok(menu)
 }
@@ -58,10 +64,9 @@ pub fn init<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             let id = event.id().as_ref();
             match id {
                 "open" => show_main(app),
-                "refresh" => {
-                    let _ = app.emit("bus-refresh-requested", ());
-                    crate::commands::refresh_all_producers(app.clone());
-                }
+                "refresh" => crate::shell::refresh_producers(app),
+                "load-pack" => crate::shell::load_pack_dialog(app),
+                "use-local" => crate::shell::use_local(app),
                 "quit" => app.exit(0),
                 other => {
                     if let Some(num) = other.strip_prefix("evt-") {

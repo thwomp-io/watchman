@@ -1,0 +1,164 @@
+{
+  "db_path": null,
+  "tracker_path": null,
+  "active_pack": null,
+  "producers": [
+    {
+      "id": "finance.pulse",
+      "label": "Finance pulse",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "pulse",
+        "--notify",
+        "--json"
+      ],
+      "cwd": "."
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "finance.watch",
+      "label": "Watch digest",
+      "lane": "finance",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "watch",
+        "--no-mark",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "finance.networth",
+      "label": "Net worth",
+      "lane": "finance",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "networth",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "career.openings",
+      "label": "Openings scan",
+      "lane": "career",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "career",
+        "openings",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "travel.weather",
+      "label": "Home-base weather",
+      "lane": "travel",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "travel",
+        "weather",
+        "--from",
+        "{today}",
+        "--to",
+        "{today+4}",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "system.watchmen",
+      "label": "Watchmen",
+      "lane": "system",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "bus",
+        "watchmen",
+        "--json"
+      ],
+      "cwd": "."
+    }
+  ],
+  "live_viz": [
+    {
+      "id": "finance.concentration.live",
+      "label": "Concentration (LIVE)",
+      "lane": "finance",
+      "viz_type": "treemap",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "concentration",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "finance.trapmap.live",
+      "label": "Trap map — GTC ladders (LIVE)",
+      "lane": "finance",
+      "viz_type": "ladder",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "trap-map",
+        "--json"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "finance.vests.live",
+      "label": "Vest timeline (LIVE)",
+      "lane": "finance",
+      "viz_type": "vest-timeline",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "finance",
+        "unwind",
+        "--json",
+        "--section",
+        "vest_timeline"
+      ],
+      "cwd": "."
+    },
+    {
+      "id": "beads.tree.live",
+      "label": "Beads board (LIVE)",
+      "lane": "beads",
+      "viz_type": "bead-tree",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "hn",
+        "beads",
+        "board",
+        "--json",
+        "--section",
+        "tree"
+      ],
+      "cwd": "."
+    }
+  ]
+}

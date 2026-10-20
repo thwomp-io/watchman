@@ -1,0 +1,132 @@
+{
+  "lane": "tickets",
+  "title": "Tickets",
+  "group": "Finance",
+  "owner": "default",
+  "widgets": [
+    {
+      "id": "ticket",
+      "title": "Execution ticket",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "finance/execution"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "orders",
+      "title": "Resting GTC orders",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "pulse",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "orders",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "side",
+        "qty",
+        "limit",
+        "price",
+        "distance_pct"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "trapmap",
+      "title": "Trap map — GTC ladders",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "trap-map",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    },
+    {
+      "id": "positions",
+      "title": "Positions",
+      "kind": "table",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "finance",
+          "positions",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "market10m",
+      "span": 2,
+      "value_path": "positions",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [
+        "symbol",
+        "market_value",
+        "day_change_pct",
+        "unrealized_gl_pct"
+      ],
+      "tickers": [],
+      "rows": 1,
+      "layout": null
+    }
+  ]
+}

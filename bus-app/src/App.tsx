@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
-import { isTauri } from "./transport";
+import { inShell, shellIpc } from "./transport";
 import "./App.css";
 import Inbox from "./Inbox";
 import Chat from "./Chat";
 import {
-  appVersion, getActivePack, getConfig, listPacks, listSurfaces, type PackInfo, runProducer, runSurface,
-  setActivePack,
+  appVersion, getActivePack, getConfig, listPacks, listSurfaces, type PackInfo, pickPackFolder, runProducer,
+  runSurface, setActivePack,
 } from "./api";
 import JsonView from "./JsonView";
 import VizZone from "./viz/VizZone";
@@ -205,13 +204,12 @@ export default function App() {
     setPack(path);
   }, []);
 
-  // "Load Weight Pack…": a native folder picker (the dialog plugin — a modal, NOT a menu, so it's safe
-  // for this Accessory app; a Builder menu is not). Browse to ANY pack dir — a user's own
-  // pack lives OUTSIDE the app (set_active_pack accepts any path), so the published app never has to
-  // bundle or be aware of personal data. On pick, reuse selectPack to persist + reload in place.
+  // "Load Weight Pack…" (desktop app only): the shell's native folder picker. A personal pack lives
+  // outside the app, so the published app never bundles or knows about personal data. On pick, reuse
+  // selectPack to persist + reload in place.
   const loadPackFromDir = useCallback(async () => {
-    const dir = await openDialog({ directory: true, multiple: false, title: "Load Weight Pack" });
-    if (typeof dir === "string") await selectPack(dir);
+    const dir = await pickPackFolder();
+    if (dir) await selectPack(dir);
   }, [selectPack]);
 
   // Stabilize the context value + callbacks so the once-a-second clock re-render does NOT churn the
@@ -267,15 +265,25 @@ export default function App() {
           <button className={zone === "vault" ? "active" : ""} onClick={() => navigate({ zone: "vault" })}>
             VAULT
           </button>
-          {/* served console only: the pocket runner lives beside the server; the native app has no door to it */}
-          {!isTauri() && (
-            <button className={zone === "chat" ? "active" : ""} onClick={() => navigate({ zone: "chat" })}>
-              CHAT
-            </button>
-          )}
+          <button className={zone === "chat" ? "active" : ""} onClick={() => navigate({ zone: "chat" })}>
+            CHAT
+          </button>
         </nav>
+        {/* `hn console demo`: the sample personas, switchable from the header (there is no real corpus) */}
+        {config?.demo && packs.length > 0 && (
+          <label className="demo-pack" title="Sample persona — fictional data">
+            <span>DEMO</span>
+            <select value={pack} onChange={(e) => void selectPack(e.target.value)}>
+              {packs.map((p) => (
+                <option key={p.path} value={p.path}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="spacer" />
-        <button className="primary" onClick={() => void refreshProducers()}>⟳ RUN PRODUCERS</button>
+        {(config?.writes ?? []).includes("run_producer") && (
+          <button className="primary" onClick={() => void refreshProducers()}>⟳ RUN PRODUCERS</button>
+        )}
         <span className="clock">{clock(now)}</span>
       </header>
 
@@ -307,12 +315,13 @@ export default function App() {
         <ThemeMenu />
         {/* web-only: the native console notifies through the OS; the bell is the BROWSER's way
             to arm this device (docs/WEB-CONSOLE.md → Push notifications) */}
-        {!isTauri() && <PushBell />}
+        {/* the desktop app delivers native notifications; web push is for browsers and phones */}
+        {!inShell() && <PushBell />}
         <span className="build">BUS-APP v{version || "—"}</span>
         {/* self-update: published native builds only — the dev daily-driver's updater config points
             nowhere (and debug builds don't register the plugin), and the served browser console
             updates by redeploying the server, so neither ever shows the affordance */}
-        {PUBLISHED && isTauri() && <UpdatePill />}
+        {PUBLISHED && shellIpc() && <UpdatePill />}
       </footer>
     </div>
     </NavContext.Provider>

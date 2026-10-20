@@ -22,7 +22,7 @@ Issues, ideas, and focused PRs are welcome.
 ```bash
 uv sync                          # Python env + deps
 cd viz && npm install && cd ..   # the D3 SVG renderer (needs Node)
-cd bus-app && npm install        # the desktop console (needs Rust + platform build tools)
+cd bus-app && npm install        # the console UI (the desktop app also needs Rust + platform build tools)
 ```
 
 Run a lane against a bundled persona to sanity-check:
@@ -41,7 +41,7 @@ uv run mypy
 uv run pytest
 ```
 
-The desktop console (`bus-app/`):
+The console UI (`bus-app/`):
 
 ```bash
 npm run build      # tsc typecheck + vite production build

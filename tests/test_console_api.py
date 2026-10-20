@@ -253,11 +253,18 @@ def _write_dashboard(config_dir: Path) -> None:
     (config_dir / "dashboards" / "finance.json").write_text(json.dumps(dash))
 
 
-def test_dashboards_listed_from_config_dir(client: TestClient, tmp_path: Path) -> None:
-    assert invoke(client, "list_dashboards", headers=AUTH).json() == []  # fresh machine → empty
+def test_dashboards_fresh_machine_seeds_the_packaged_defaults(client: TestClient, tmp_path: Path) -> None:
+    # a machine that never ran the desktop app gets the full built-in console, seeded to disk
+    listed = invoke(client, "list_dashboards", headers=AUTH).json()
+    assert {"finance", "travel", "career", "market"} <= {d["lane"] for d in listed}
+    assert (tmp_path / "config" / "dashboards" / "finance.json").is_file()
+
+
+def test_dashboards_disk_file_overrides_its_default(client: TestClient, tmp_path: Path) -> None:
     _write_dashboard(tmp_path / "config")
-    (dash,) = invoke(client, "list_dashboards", headers=AUTH).json()
-    assert dash["lane"] == "finance" and len(dash["widgets"]) == 6
+    listed = invoke(client, "list_dashboards", headers=AUTH).json()
+    (finance,) = [d for d in listed if d["lane"] == "finance"]
+    assert len(finance["widgets"]) == 6  # the operator's file, not the packaged default
 
 
 def test_dashboards_passthrough_preserves_unknown_and_studio_keys(
@@ -290,7 +297,7 @@ def test_dashboards_passthrough_preserves_unknown_and_studio_keys(
         ],
     }
     (dash_dir / "contract.json").write_text(json.dumps(kitchen_sink))
-    (dash,) = invoke(client, "list_dashboards", headers=AUTH).json()
+    (dash,) = [d for d in invoke(client, "list_dashboards", headers=AUTH).json() if d["lane"] == "contract"]
     assert dash["owner"] == "user" and dash["order"] == 7
     widget = dash["widgets"][0]
     assert widget["layout"] == {"x": 1, "y": 2, "w": 3, "h": 4}
@@ -397,11 +404,14 @@ def test_get_config_and_version_answer_server_side(client: TestClient) -> None:
 
     assert invoke(client, "app_version", headers=AUTH).json() == __version__
     cfg = invoke(client, "get_config", headers=AUTH).json()
-    assert cfg["bus_source"].startswith("served: ") and cfg["producers"] == []
+    assert cfg["bus_source"].startswith("served: ")
+    # no registry on disk → the packaged defaults (a fresh machine gets the default surfaces/producers)
+    assert [p["id"] for p in cfg["producers"]] == ["finance.pulse"] and len(cfg["surfaces"]) >= 5
 
 
-def test_packs_answer_honestly_empty(client: TestClient) -> None:
-    assert invoke(client, "list_packs", headers=AUTH).json() == []
+def test_packs_list_the_bundled_samples(client: TestClient) -> None:
+    names = {p["name"] for p in invoke(client, "list_packs", headers=AUTH).json()}
+    assert "demo-investor" in names
     assert invoke(client, "get_active_pack", headers=AUTH).json() is None
 
 

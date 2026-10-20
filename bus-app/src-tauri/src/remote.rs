@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use crate::bus::{DistinctMeta, Event};
+use crate::bus::Event;
 
 pub struct RemoteBus {
     base: String,
@@ -147,30 +147,6 @@ impl RemoteBus {
             .unwrap_or_else(|| stats.get("unread").and_then(Value::as_i64).unwrap_or(0)))
     }
 
-    /// Lanes/kinds for the Inbox filter chips, derived from `/stats` maps — the served API has
-    /// no dedicated meta route because stats already carries the distinct sets as map keys.
-    pub fn distinct_meta(&self) -> Result<DistinctMeta, String> {
-        let stats = self.stats()?;
-        let keys = |field: &str| -> Vec<String> {
-            let mut v: Vec<String> = stats
-                .get(field)
-                .and_then(Value::as_object)
-                .map(|m| m.keys().cloned().collect())
-                .unwrap_or_default();
-            v.sort();
-            v
-        };
-        Ok(DistinctMeta { lanes: keys("by_lane"), kinds: keys("by_kind") })
-    }
-
-    pub fn ack(&self, ids: &[i64]) -> Result<usize, String> {
-        if ids.is_empty() {
-            return Ok(0);
-        }
-        let body = self.post("/api/bus/ack", serde_json::json!({ "ids": ids }))?;
-        Ok(body.get("acked").and_then(Value::as_u64).unwrap_or(0) as usize)
-    }
-
     /// Client-side twin of bus.rs::undelivered_unread — same 200-event window, same filter.
     pub fn undelivered_unread(&self, marker: &str) -> Result<Vec<Event>, String> {
         let all = self.list_events(true, None, None, 200)?;
@@ -223,7 +199,7 @@ mod tests {
     /// Live end-to-end against a REAL `hn bus serve` (ignored by default; run explicitly with
     /// BUS_E2E_URL + BUS_E2E_TOKEN pointing at a sandboxed serve instance):
     /// `cargo test live_e2e -- --ignored`. Drives the full remote surface the app uses —
-    /// list / unread / meta / undelivered / mark_delivered / ack — against the Python server.
+    /// list / unread / undelivered / mark_delivered — against the Python server.
     #[test]
     #[ignore]
     fn live_e2e_full_surface_against_real_serve() {
@@ -242,11 +218,7 @@ mod tests {
         let undelivered = remote.undelivered_unread(marker).unwrap();
         assert!(!undelivered.iter().any(|e| e.id == target), "marker must stick");
 
-        let meta = remote.distinct_meta().unwrap();
-        assert!(!meta.lanes.is_empty());
-        let before = remote.unread_count().unwrap();
-        assert_eq!(remote.ack(&[target]).unwrap(), 1);
-        assert_eq!(remote.unread_count().unwrap(), before - 1);
+        assert!(remote.unread_count().unwrap() >= 1);
     }
 
     /// Wire-contract round-trip against a one-shot stub server: auth header sent, query encoded,

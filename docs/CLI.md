@@ -126,7 +126,11 @@ knowing from the shell:
   pack's copy > your corpus-resident file > the packaged neutral template. The overlay renders
   read-only in **⚙ Settings → Personal**; the file is the interface.
 
-## The desktop console from source
+## The desktop app from source
+
+The app is a shell over the served console: it starts `hn bus serve --console` from the engine and shows
+that page. Working on the console itself needs only the web build (`npm run build`, then
+`hn console demo` or `hn bus serve --console --ui bus-app/dist`).
 
 ```bash
 cd bus-app && npm install

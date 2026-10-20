@@ -6,36 +6,49 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { unreadCount } from "./api";
 import {
-  bootstrapToken, httpTransport, isTauri, resetTokenMemo, resetTokenPrompt, resolveTransport,
-  setTransport, tauriTransport, type Transport,
+  bootstrapToken, httpTransport, inShell, resetTokenMemo, resetTokenPrompt, resolveTransport,
+  setTransport, shellInvoke, shellIpc, type Transport,
 } from "./transport";
 
 const win = window as unknown as Record<string, unknown>;
 
 afterEach(() => {
   setTransport(null); // drop any test-installed transport so other suites resolve fresh
-  win.__TAURI_INTERNALS__ ??= {}; // restore the setup.ts stub if a test deleted it
+  delete win.__TAURI_INTERNALS__;
+  window.sessionStorage.clear();
+  window.history.replaceState(null, "", "/");
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
 
 describe("selection", () => {
-  it("detects the Tauri webview via __TAURI_INTERNALS__ and resolves the Tauri transport", () => {
-    expect(isTauri()).toBe(true); // setup.ts stubs the marker for the whole suite
-    expect(resolveTransport()).toBe(tauriTransport);
-  });
-
-  it("resolves the HTTP transport in a plain browser (no marker)", () => {
-    delete win.__TAURI_INTERNALS__;
-    expect(isTauri()).toBe(false);
+  it("always resolves the HTTP transport (the served console is the one backend)", () => {
+    win.__TAURI_INTERNALS__ = {};
     const t = resolveTransport();
-    expect(t).not.toBe(tauriTransport);
     expect(typeof t.invoke).toBe("function");
   });
+});
 
-  it("honors the VITE_TRANSPORT=http override even inside the Tauri shell", () => {
-    vi.stubEnv("VITE_TRANSPORT", "http");
-    expect(resolveTransport()).not.toBe(tauriTransport); // marker present, override wins
+describe("the desktop shell", () => {
+  it("is detected from ?shell=desktop and remembered after the URL is rewritten", () => {
+    expect(inShell()).toBe(false);
+    window.history.replaceState(null, "", "/?shell=desktop&token=t");
+    expect(inShell()).toBe(true);
+    window.history.replaceState(null, "", "/");
+    expect(inShell()).toBe(true); // the session remembers it
+  });
+
+  it("grants shell IPC only inside the shell AND with the IPC bridge present", () => {
+    win.__TAURI_INTERNALS__ = {};
+    expect(shellIpc()).toBe(false); // a remote page in the shell window, or a browser with a stray global
+    window.history.replaceState(null, "", "/?shell=desktop");
+    expect(shellIpc()).toBe(true);
+    delete win.__TAURI_INTERNALS__;
+    expect(shellIpc()).toBe(false);
+  });
+
+  it("rejects shell commands outside the shell", async () => {
+    await expect(shellInvoke("shell_info")).rejects.toThrow(/desktop app/);
   });
 });
 

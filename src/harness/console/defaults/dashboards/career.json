@@ -1,0 +1,93 @@
+{
+  "lane": "career",
+  "title": "Openings",
+  "group": "Career",
+  "owner": "default",
+  "order": 1,
+  "widgets": [
+    {
+      "id": "roles",
+      "title": "Openings — role items, by fit",
+      "kind": "roles",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "roles",
+          "--company",
+          "{symbol}",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "local60s",
+      "span": 4,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": "company",
+      "columns": [],
+      "tickers": [],
+      "rows": 4,
+      "layout": null
+    },
+    {
+      "id": "matrix",
+      "title": "Hiring map — company × role shape",
+      "kind": "viz",
+      "source": {
+        "type": "command",
+        "cmd": "uv",
+        "args": [
+          "run",
+          "hn",
+          "career",
+          "shortlist",
+          "--json"
+        ],
+        "cwd": "."
+      },
+      "refresh": "manual",
+      "span": 2,
+      "value_path": "matrix",
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    },
+    {
+      "id": "scans",
+      "title": "Openings scans",
+      "kind": "doc_series",
+      "source": {
+        "type": "file",
+        "path": "role-hunt/discoveries"
+      },
+      "refresh": "local60s",
+      "span": 2,
+      "value_path": null,
+      "prefix": null,
+      "suffix": null,
+      "signed": null,
+      "title_path": null,
+      "symbols": [],
+      "symbols_from": null,
+      "columns": [],
+      "tickers": [],
+      "rows": 3,
+      "layout": null
+    }
+  ]
+}

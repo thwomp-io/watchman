@@ -109,8 +109,12 @@ class BundledPack:
 
 
 def bundled_packs_dir() -> Path:
-    """Where the repo's bundled sample packs live (`<repo>/samples/packs`). Resolved from this file so
-    an editable install finds them regardless of CWD (the launch-context-resolution doctrine)."""
+    """Where the bundled sample packs live: HARNESS_PACKS_DIR (set by the container image, whose wheel
+    install carries no repo), else `<repo>/samples/packs` resolved from this file, so an editable
+    install finds them regardless of CWD."""
+    env = os.environ.get("HARNESS_PACKS_DIR", "").strip()
+    if env:
+        return Path(env).expanduser()
     return Path(__file__).resolve().parents[2] / "samples" / "packs"
 
 

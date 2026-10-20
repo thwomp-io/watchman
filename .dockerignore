@@ -27,9 +27,11 @@ build/
 .pytest_cache/
 .DS_Store
 
-# tests + samples + docs aren't needed at runtime (the engine reads a MOUNTED corpus)
+# tests + docs aren't needed at runtime (the engine reads a MOUNTED corpus); the sample packs are
+# (the image's `hn console demo`), so only samples/packs/ rides the context
 tests/
-samples/
+samples/*
+!samples/packs/
 docs/
 skills/
 templates/

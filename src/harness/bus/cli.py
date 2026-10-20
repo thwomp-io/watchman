@@ -217,6 +217,51 @@ def push_keys() -> None:
         console.print(f"  · {s.label or '(unlabeled)'} — {host} — since {s.created_at}")
 
 
+def _process_alive(pid: int) -> bool:
+    """Whether a process exists. Windows needs a real query: there `os.kill(pid, 0)` sends CTRL_C_EVENT."""
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        code = ctypes.c_ulong()
+        kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        kernel32.CloseHandle(handle)
+        return code.value == 259  # STILL_ACTIVE
+    try:
+        os.kill(pid, 0)  # signal 0: existence check only
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists, owned by someone else
+    return True
+
+
+def _exit_with_parent() -> None:
+    """A serve started by the desktop app (HARNESS_PARENT_PID) exits when the app is gone, however
+    the app ended (a crash or a force-quit skips its own cleanup), so no orphan holds the port."""
+    import os
+    import threading
+    import time
+
+    raw = os.environ.get("HARNESS_PARENT_PID", "").strip()
+    if not raw.isdigit():
+        return
+    parent = int(raw)
+
+    def watch() -> None:
+        while _process_alive(parent):
+            time.sleep(2)
+        os._exit(0)
+
+    threading.Thread(target=watch, daemon=True, name="parent-watch").start()
+
+
 @app.command()
 def serve(
     host: str = typer.Option(
@@ -245,6 +290,13 @@ def serve(
         help="Serve a built console UI (implies --console). Bare DIR mounts the default console "
         "at /; repeatable name=DIR mounts variants at /ui/<name>/ (A/B candidates, a phone-tuned "
         "build — variants must be Vite-built with --base=/ui/<name>/). One server, many consoles.",
+    ),
+    writes: str = typer.Option(
+        "",
+        "--writes",
+        help="Comma-separated console writes this serve allows (default none: read-only): "
+        "set_active_pack, save_dashboard, reset_dashboard, run_producer. Anyone holding the token "
+        "gets them; corpus files are never writable through the console.",
     ),
     tls_cert: Path | None = typer.Option(
         None,
@@ -280,21 +332,30 @@ def serve(
     token = resolve_token(resolved_file)
     extra = None
     if web_console or ui:
-        from harness.console.api import console_routes, ui_mounts
+        from harness.console.api import WRITE_GATED, console_routes, ui_mounts
 
+        allowed = frozenset(w.strip() for w in writes.split(",") if w.strip())
+        allowed_ok = WRITE_GATED - {"set_bus_config", "test_bus_connection"}
+        if allowed - allowed_ok:
+            raise typer.BadParameter(
+                f"--writes: unknown {sorted(allowed - allowed_ok)}; choose from {sorted(allowed_ok)}"
+            )
         # UI mounts ride AFTER the door: Starlette is first-match-wins, and the root mount
         # swallows everything — /api/* must already be claimed by then.
-        extra = [*console_routes(token), *ui_mounts(ui)]
+        extra = [*console_routes(token, writes=allowed), *ui_mounts(ui)]
     scheme = "https" if tls_cert else "http"
     console.print(f"bus db: {default_db_path()}")
     console.print(f"token:  {resolved_file} (send as 'Authorization: Bearer …')")
     surface = "/api/bus/* + /api/invoke/*" if extra else "/api/bus/*"
+    if extra and writes:
+        console.print(f"writes: {writes}")
     console.print(f"listen: {scheme}://{host}:{port}  (health: /health · api: {surface})")
     if tls_cert:
         console.print(f"tls:    cert {tls_cert} · key {tls_key}")
     for spec in ui:
         name, _, raw = spec.partition("=")
         console.print(f"ui:     {'/ui/' + name + '/' if raw else '/'} ← {raw or name}")
+    _exit_with_parent()
     uvicorn.run(
         create_app(token=token, extra_routes=extra),
         host=host,

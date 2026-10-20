@@ -1,8 +1,7 @@
 # The container image
 
-One image carries the headless half of Watchman: the `hn` CLI, the standing agents, the notification
-bus, and the served web console. The desktop app is the deliberate exception: a GUI ships as native
-platform bundles, never a container.
+One image carries Watchman's engine: the `hn` CLI, the standing agents, the notification bus, the served
+web console and the sample personas. The optional desktop app ships as native platform bundles.
 
 Images are built, vulnerability-scanned, and smoke-tested in CI, then published to GHCR:
 
@@ -10,6 +9,16 @@ Images are built, vulnerability-scanned, and smoke-tested in CI, then published 
 ghcr.io/thwomp-io/watchman:<version>    # one per release — pin this for anything durable
 ghcr.io/thwomp-io/watchman:latest       # moving pointer to the newest release
 ```
+
+## Try the demo
+
+```bash
+docker run --rm -p 8787:8787 ghcr.io/thwomp-io/watchman console demo --host 0.0.0.0
+```
+
+The whole console on the bundled fictional personas: open the URL it prints, switch personas from the
+header. Everything lives in a scratch dir inside the container (no mounts, no keys), and stopping the
+container deletes it. `--pack <name>` opens on a different persona (`packs list` names them).
 
 ## Run engine commands
 

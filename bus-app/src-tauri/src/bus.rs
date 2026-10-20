@@ -125,11 +125,6 @@ pub fn list_events(
     rows.collect::<rusqlite::Result<Vec<_>>>().map_err(|e| e.to_string())
 }
 
-pub fn unread_count(conn: &Connection) -> Result<i64, String> {
-    conn.query_row("SELECT COUNT(*) FROM events WHERE read_at IS NULL", [], |r| r.get(0))
-        .map_err(|e| e.to_string())
-}
-
 /// Unread ALERT/WARN only — the to-do count the tray/badge shows. The severity doctrine: info
 /// (the catalyst wire) + filings are skim-streams that must never scream from the tray —
 /// an unread-wire backlog in the badge trains the operator to ignore it.
@@ -140,19 +135,6 @@ pub fn urgent_unread_count(conn: &Connection) -> Result<i64, String> {
         |r| r.get(0),
     )
     .map_err(|e| e.to_string())
-}
-
-pub fn ack(conn: &Connection, ids: &[i64]) -> Result<usize, String> {
-    if ids.is_empty() {
-        return Ok(0);
-    }
-    let marks = vec!["?"; ids.len()].join(",");
-    let now = now_utc();
-    let sql = format!("UPDATE events SET read_at = ? WHERE id IN ({marks}) AND read_at IS NULL");
-    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(now)];
-    params.extend(ids.iter().map(|i| Box::new(*i) as Box<dyn rusqlite::ToSql>));
-    conn.execute(&sql, rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())))
-        .map_err(|e| e.to_string())
 }
 
 /// Unread events this transport hasn't delivered yet (delivered_via lacks `marker`).
@@ -178,56 +160,3 @@ pub fn mark_delivered(conn: &Connection, id: i64, marker: &str) -> Result<(), St
     Ok(())
 }
 
-#[derive(Serialize)]
-pub struct DistinctMeta {
-    pub lanes: Vec<String>,
-    pub kinds: Vec<String>,
-}
-
-pub fn distinct_meta(conn: &Connection) -> Result<DistinctMeta, String> {
-    let collect = |sql: &str| -> Result<Vec<String>, String> {
-        let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| e.to_string())?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(|e| e.to_string())
-    };
-    Ok(DistinctMeta {
-        lanes: collect("SELECT DISTINCT lane FROM events ORDER BY lane")?,
-        kinds: collect("SELECT DISTINCT kind FROM events ORDER BY kind")?,
-    })
-}
-
-fn civil_from_days(days: i64) -> (i64, i64, i64) {
-    // civil date from days since epoch (Howard Hinnant's algorithm)
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if mo <= 2 { y + 1 } else { y };
-    (y, mo, d)
-}
-
-/// YYYY-MM-DD for today+offset (UTC) — surfaces' {today+N} token substitution rides this.
-pub fn civil_date_offset(offset_days: i64) -> String {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let (y, mo, d) = civil_from_days(now as i64 / 86_400 + offset_days);
-    format!("{y:04}-{mo:02}-{d:02}")
-}
-
-fn now_utc() -> String {
-    // ISO-8601 UTC seconds without a chrono dependency (keep the crate tree lean).
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let (h, m, s) = ((now % 86_400) / 3600, (now % 3600) / 60, now % 60);
-    let (y, mo, d) = civil_from_days(now as i64 / 86_400);
-    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}+00:00")
-}
