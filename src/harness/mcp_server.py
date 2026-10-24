@@ -18,6 +18,7 @@ from mcp.server.fastmcp import FastMCP
 from harness.bus.mcp_server import mcp as bus_mcp
 from harness.career.mcp_server import mcp as career_mcp
 from harness.finance.mcp_server import mcp as finance_mcp
+from harness.places.mcp_server import mcp as places_mcp
 from harness.travel.mcp_server import mcp as travel_mcp
 
 mcp = FastMCP("harness")
@@ -34,6 +35,7 @@ _mount(travel_mcp, "travel_")
 _mount(finance_mcp, "finance_")
 _mount(career_mcp, "career_")
 _mount(bus_mcp, "bus_")
+_mount(places_mcp, "places_")
 
 
 def main() -> None:

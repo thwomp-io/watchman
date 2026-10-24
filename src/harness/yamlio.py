@@ -25,7 +25,7 @@ _StrictBoolLoader.yaml_implicit_resolvers = {
     ch: [(tag, rx) for tag, rx in resolvers if tag != "tag:yaml.org,2002:bool"]
     for ch, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
 }
-_StrictBoolLoader.add_implicit_resolver(  # type: ignore[no-untyped-call]  # untyped PyYAML API
+_StrictBoolLoader.add_implicit_resolver(
     "tag:yaml.org,2002:bool", re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"), list("tTfF")
 )
 

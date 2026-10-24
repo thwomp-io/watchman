@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -144,6 +145,22 @@ class DestinationNudge(BaseModel):
     nudge_hooks: list[NudgeHook] = Field(default_factory=list)
 
 
+class GameCorridor(BaseModel):
+    """Destinations close enough to combine into one game trip (by rail, a short hop or a drive):
+    when two or more of their games share a weekend, the lane offers them as one card."""
+
+    name: str  # the card's title ("Northeast by rail")
+    slugs: list[str]  # registry destinations in the corridor; one not yet in the registry just never matches
+
+
+class DeadWindow(BaseModel):
+    """A span the GAME WEEKENDS lane never surfaces (a league break, a season the user skips)."""
+
+    start: date
+    end: date
+    why: str = ""
+
+
 class NudgeWeights(BaseModel):
     """Component weights for the nudge composite. Every component is a WEIGHT —
     the engine never hard-filters a destination; friction shows up as score, not absence. Tunable
@@ -188,6 +205,21 @@ class NudgeWeights(BaseModel):
     games_soft_factor: float = 0.6  # a `weight: soft` market's game counts this share of a centerpiece
     games_per_window: int = 2  # at most this many game cards share one weekend (opening night
     #                            otherwise fills the lane — every market plays it)
+    games_per_city: int = 1  # cards one destination may hold (each on a different weekend)
+    # A PAIR card: games from two leagues (an NBA game + a followed NFL team's) at one destination in
+    # one Thu-Mon window — one card naming both, scored as the stronger game's card plus this bonus.
+    games_pair_bonus: float = 15.0
+    # CORRIDOR cards: two or more games across a corridor's destinations in one window — the
+    # strongest member's card plus `games_corridor_bonus` per game beyond the first.
+    games_corridors: list[GameCorridor] = Field(default_factory=list)
+    games_corridor_bonus: float = 8.0
+    games_dead_windows: list[DeadWindow] = Field(default_factory=list)
+    # CONVENIENCE by lead time: (days out, multiplier) points, linear between, held flat past the
+    # ends — scales the feasibility component (home-airport nonstop, short drive, short flight, and
+    # the long-flight penalty) of a game card. Inside a few weeks an impromptu trip lives or dies on
+    # getting there easily; further out the multiplier relaxes and a far city can win. Flat 1.0 by
+    # default (no lead-time effect).
+    convenience_lead_curve: list[tuple[float, float]] = Field(default_factory=lambda: [(0.0, 1.0)])
     long_lead_reach: float = 10.0  # flight beyond short_flight_hours: "far enough to need a week"
     long_lead_far_reach: float = 5.0  # extra beyond far_reach_hours (the 10h-class build-towards)
     far_reach_hours: float = 6.0

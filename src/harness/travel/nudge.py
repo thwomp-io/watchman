@@ -292,6 +292,20 @@ def season_window(best_windows: list[int], today: date) -> NudgeWindow | None:
     return NudgeWindow(start=start, end=end, kind="season", title=title)
 
 
+def lead_factor(curve: list[tuple[float, float]], days: float) -> float:
+    """The convenience multiplier `days` out: linear between the curve's (days, factor) points, held
+    flat before the first and after the last. An empty curve is 1.0."""
+    pts = sorted(curve)
+    if not pts:
+        return 1.0
+    if days <= pts[0][0]:
+        return pts[0][1]
+    for (d0, f0), (d1, f1) in zip(pts, pts[1:], strict=False):
+        if days <= d1:
+            return f0 + (f1 - f0) * (days - d0) / (d1 - d0) if d1 > d0 else f1
+    return pts[-1][1]
+
+
 def score_static(
     slug: str,
     window: NudgeWindow,
@@ -299,6 +313,7 @@ def score_static(
     reference_events: list[EventResult],
     *,
     lane: str = "weekend",
+    convenience: float = 1.0,
 ) -> NudgeCandidate:
     """Phase-1 static score for one (destination, window) pair — corpus + almanac only, no I/O.
 
@@ -308,7 +323,8 @@ def score_static(
     · screen (in-screen axes, mild calibrated penalty) · almanac events in-window at the city.
     `lane="long-lead"` (a week block) adds the REACH bonus — flights beyond the short-hop bar
     score UP, because a week is the window those destinations need — and phrases the calendar
-    component as the PTO math ("8 nights for 4 PTO days").
+    component as the PTO math ("8 nights for 4 PTO days"). `convenience` multiplies the
+    feasibility component (its bonus or its penalty) — the lead-time curve's value for the window.
     """
     nw = weights.nudge
     cfg: DestinationNudge = weights.destination_nudge.get(slug, DestinationNudge())
@@ -409,6 +425,10 @@ def score_static(
                 )
             )
 
+    if convenience != 1.0:
+        for c in comps:
+            if c.name == "feasibility":
+                c.points = round(c.points * convenience, 1)
     screen = weights.destination_screens.get(slug)
     if screen is not None:
         flagged = [

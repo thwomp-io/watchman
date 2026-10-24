@@ -165,6 +165,12 @@ out-of-box demo is mesh-free by design — multi-device is an opt-in layer with 
   uvicorn terminate TLS directly — no reverse-proxy daemon. Both flags or neither (half a pair is a
   config error, never a silent plain-HTTP fallback). Needed off-localhost for web push (browsers
   require a secure context); deploy recipe: [`WEB-CONSOLE.md`](WEB-CONSOLE.md) → TLS.
+- **Logs**: one line per server event, each timestamped; the harness's own warnings (a failed web
+  push, a missing VAPID key) ride the same stream. **No per-request access lines** unless
+  `--access-log` asks for them — a polling console otherwise makes them >99% of the log and buries
+  the warnings. A service manager's log file is bounded by `hn bus logs` (size-capped
+  copy-truncate rotation, run weekly by `hn bus purge --policy default`; overlay
+  `bus.log_rotation: {paths, cap_mb, keep}`).
 - **Seal-honoring**: the served db resolves via `HARNESS_BUS_DB`/`HARNESS_STATE_DIR` like every
   other consumer — a sealed (demo/CI) instance serves its sealed bus, never the real one.
 - **Consumers**: the watchman app's **`bus_url` remote mode** (below) and the

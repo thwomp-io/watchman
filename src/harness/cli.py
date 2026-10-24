@@ -72,6 +72,12 @@ from harness.pocket.cli import app as pocket_app  # noqa: E402
 app.add_typer(pocket_app, name="pocket")
 
 
+# `hn places` — ad-hoc local place search near a ZIP / place (cross-lane; the travel lane's SerpAPI client).
+from harness.places.cli import app as places_app  # noqa: E402
+
+app.add_typer(places_app, name="places")
+
+
 # ————— the private extension seam —————
 # An install may run a permanent `personal` branch (a worktree) that carries ONLY new
 # files on top of main — bespoke, never-published lanes under `harness.private`. This hook is the

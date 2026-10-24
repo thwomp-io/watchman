@@ -64,6 +64,16 @@ career:
       contact: null            # e.g. a repo URL — sent as X-Harness-Contact with the opt-in
       feed_limit: 40           # `comp --refresh-stale`: ladders fetched per run (the standing feed's cap)
 
+bus:
+  global_settings:
+    # Size-capped rotation for logs nothing else bounds (launchd StandardOutPath files, shell-redirect
+    # run logs): past cap_mb a log is gzipped to <log>.1.gz (older copies shift, beyond keep deleted)
+    # and truncated in place. The weekly `hn bus purge --policy default` runs it; `hn bus logs` shows it.
+    log_rotation:
+      paths: null            # globs; null = the harness state dir's *.log. e.g. [~/.local/state/harness/*.log, /opt/homebrew/var/log/*.log]
+      cap_mb: 5
+      keep: 5
+
 backup:
   global_settings:
     # Offsite snapshots (`hn backup snapshot|status`): git bundles + consistent sqlite copies +

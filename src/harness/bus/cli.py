@@ -10,6 +10,7 @@ import json
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -151,7 +152,7 @@ def purge(
     policy: str = typer.Option(
         "", "--policy",
         help="Apply the standing retention policy instead of a bound: `default` = catalyst >30d · "
-        "read+delivered non-alert >90d · read alerts >1y; also rotates the pulse JSON logs past 1MB",
+        "read+delivered non-alert >90d · read alerts >1y; also rotates the logs `hn bus logs` lists",
     ),
     dry_run: bool = typer.Option(False, "--dry-run", help="Count what the policy would delete"),
 ) -> None:
@@ -167,7 +168,9 @@ def purge(
             f"{verb} catalyst>30d={counts['catalyst']} · settled>90d={counts['settled']} · "
             f"alerts>1y={counts['alerts']}"
         )
-        for rotated in rotate_pulse_logs(dry_run=dry_run):
+        from harness import logrotate
+
+        for rotated in logrotate.rotate(dry_run=dry_run):
             console.print(f"{'would rotate' if dry_run else 'rotated'} {rotated}")
         return
     if not before:
@@ -181,21 +184,49 @@ def purge(
     console.print(f"purged {n} (before {bound})")
 
 
-def rotate_pulse_logs(*, dry_run: bool = False, cap_bytes: int = 1_000_000) -> list[str]:
-    """Bound the standing agents' JSON run logs (`pulse-json.log`, `travel-pulse-json.log` —
-    written by the launchd plists' shell redirect, so nothing in code ever truncates them). Past
-    `cap_bytes` the file rotates to `.1` (replacing the previous `.1`), so the pair never exceeds
-    ~2× the cap. Returns the names rotated."""
-    from harness.bus.store import harness_state_dir
+def serve_log_config() -> dict[str, Any]:
+    """uvicorn's logging config with a timestamp on every line, and the harness's own loggers (web
+    push, the door) routed through the same handler at INFO — without this they fall to logging's
+    last-resort handler: WARNING-only and undated."""
+    import copy
 
-    out: list[str] = []
-    for name in ("pulse-json.log", "travel-pulse-json.log"):
-        p = harness_state_dir() / name
-        if p.exists() and p.stat().st_size > cap_bytes:
-            if not dry_run:
-                p.replace(p.with_suffix(p.suffix + ".1"))
-            out.append(name)
-    return out
+    from uvicorn.config import LOGGING_CONFIG
+
+    cfg: dict[str, Any] = copy.deepcopy(LOGGING_CONFIG)
+    stamp = "%(asctime)s "
+    cfg["formatters"]["default"]["fmt"] = stamp + "%(levelprefix)s %(message)s"
+    cfg["formatters"]["access"]["fmt"] = stamp + cfg["formatters"]["access"]["fmt"]
+    for f in cfg["formatters"].values():
+        f["datefmt"] = "%Y-%m-%dT%H:%M:%S%z"
+    cfg["loggers"]["harness"] = {"handlers": ["default"], "level": "INFO", "propagate": False}
+    return cfg
+
+
+@app.command("logs")
+def logs(
+    rotate: bool = typer.Option(False, "--rotate", help="Rotate every log past the cap now."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="With --rotate: list, don't touch."),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """The logs under size-capped rotation (overlay `bus.log_rotation`: paths, cap_mb, keep): size,
+    rotated copies, over-cap. The weekly `purge --policy default` rotates them; --rotate does it now."""
+    from dataclasses import asdict
+
+    from harness import logrotate
+
+    pol = logrotate.policy()
+    if rotate:
+        for p in logrotate.rotate(dry_run=dry_run, pol=pol):
+            console.print(f"{'would rotate' if dry_run else 'rotated'} {p}")
+    rows = logrotate.status(pol)
+    if as_json:
+        console.print_json(data={"cap_bytes": pol.cap_bytes, "keep": pol.keep, "globs": pol.globs,
+                                 "logs": [asdict(r) for r in rows]})
+        return
+    console.print(f"cap {pol.cap_bytes / 1_048_576:g} MB · keep {pol.keep} · {len(rows)} logs")
+    for r in rows:
+        mark = "[yellow]over[/yellow]" if r.over_cap else "[green]ok  [/green]"
+        console.print(f"  {mark} {r.bytes / 1_048_576:7.2f} MB  {r.copies} gz  {r.path}")
 
 
 @app.command("push-keys")
@@ -312,6 +343,12 @@ def serve(
         envvar="HARNESS_TLS_KEY",
         help="TLS private key (PEM) matching --tls-cert.",
     ),
+    access_log: bool = typer.Option(
+        False,
+        "--access-log",
+        help="Log every HTTP request. Off by default: a polling console makes it >99% of the log and "
+        "buries the warnings (push failures, bind errors) the log is for.",
+    ),
 ) -> None:
     """Serve the bus over HTTP (the multi-device 'centralize, don't sync' layer).
 
@@ -361,6 +398,8 @@ def serve(
         host=host,
         port=port,
         log_level="info",
+        access_log=access_log,
+        log_config=serve_log_config(),
         ssl_certfile=str(tls_cert.expanduser()) if tls_cert else None,
         ssl_keyfile=str(tls_key.expanduser()) if tls_key else None,
     )

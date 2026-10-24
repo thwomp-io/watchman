@@ -23,11 +23,11 @@ jobs:
     name: python (ruff · mypy · pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
+        # enable-cache left at the default (auto): setup-uv skips the cache on events a fork can
+        # poison; `true` would override that on a public repo
+        uses: astral-sh/setup-uv@v10
       - run: uv sync --frozen
       - name: ruff
         run: uv run ruff check .
@@ -41,11 +41,11 @@ jobs:
     name: python (windows smoke)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
+        # enable-cache left at the default (auto): setup-uv skips the cache on events a fork can
+        # poison; `true` would override that on a public repo
+        uses: astral-sh/setup-uv@v10
       - run: uv sync --frozen
       - name: import every module
         # Import-time failures (missing platform deps, platform-only modules) surface as a batch.
@@ -63,8 +63,8 @@ jobs:
       run:
         working-directory: bus-app
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -83,7 +83,7 @@ jobs:
       run:
         working-directory: bus-app/src-tauri
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tauri v2 system deps
         run: |
           sudo apt-get update
@@ -115,7 +115,7 @@ jobs:
     name: security (trivy fs)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Trivy filesystem scan
         # Run Trivy from its official image (no binary-install step). Auth the DB pull with the repo token to dodge ghcr rate-limits.
         # Fails the stage on a fixable HIGH/CRITICAL — the gate-before-publish.
@@ -124,7 +124,7 @@ jobs:
             -v "${{ github.workspace }}:/scan" \
             -e TRIVY_USERNAME="${{ github.actor }}" \
             -e TRIVY_PASSWORD="${{ secrets.GITHUB_TOKEN }}" \
-            aquasec/trivy:0.65.0 fs \
+            aquasec/trivy:0.76.1 fs \
               --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress /scan
 
   # ---- Desktop bundles: Windows + Linux installers (cross-platform support) ----------------------
@@ -168,7 +168,7 @@ jobs:
         working-directory: bus-app
         shell: bash   # one script dialect across both runners (bash ships on windows-latest)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tauri v2 system deps (linux)
         if: matrix.platform == 'linux'
         run: |
@@ -176,7 +176,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
             libayatana-appindicator3-dev libsoup-3.0-dev patchelf
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -280,10 +280,10 @@ jobs:
     env:
       IMAGE: ghcr.io/${{ github.repository }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build (load locally for scan + smoke before any push)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true
@@ -299,7 +299,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -e TRIVY_USERNAME="${{ github.actor }}" \
             -e TRIVY_PASSWORD="${{ secrets.GITHUB_TOKEN }}" \
-            aquasec/trivy:0.65.0 image \
+            aquasec/trivy:0.76.1 image \
               --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress \
               --skip-files '/app/.venv/lib/python3.12/site-packages/yt_dlp/extractor/shahid.py' \
               "${IMAGE}:ci"
@@ -311,7 +311,7 @@ jobs:
       # Publish only on a release tag or a push to main — never on PRs.
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

@@ -56,10 +56,14 @@ impl RemoteBus {
                  ~/.config/harness/bus-token value into bus-app.json"
             ));
         }
-        let agent = ureq::AgentBuilder::new()
-            .timeout_connect(Duration::from_secs(4))
-            .timeout(Duration::from_secs(10))
-            .build();
+        // http_status_as_error(false): a 4xx/5xx comes back as a response, so its JSON `error`
+        // detail can reach the Inbox error zone (ureq 3 otherwise drops the body)
+        let agent: ureq::Agent = ureq::Agent::config_builder()
+            .timeout_connect(Some(Duration::from_secs(4)))
+            .timeout_global(Some(Duration::from_secs(10)))
+            .http_status_as_error(false)
+            .build()
+            .into();
         Ok(Self { base: url, token, agent })
     }
 
@@ -69,14 +73,17 @@ impl RemoteBus {
 
     /// Map a ureq result to the response JSON, folding transport + HTTP-status failures into
     /// one actionable string (these render verbatim in the Inbox error zone).
-    fn read_json(&self, result: Result<ureq::Response, ureq::Error>) -> Result<Value, String> {
+    fn read_json(&self, result: Result<ureq::http::Response<ureq::Body>, ureq::Error>) -> Result<Value, String> {
         match result {
-            Ok(res) => res
-                .into_json::<Value>()
+            Ok(mut res) if res.status().is_success() => res
+                .body_mut()
+                .read_json::<Value>()
                 .map_err(|e| format!("remote bus ({}): bad JSON in response: {e}", self.base)),
-            Err(ureq::Error::Status(code, res)) => {
+            Ok(mut res) => {
+                let code = res.status().as_u16();
                 let detail = res
-                    .into_json::<Value>()
+                    .body_mut()
+                    .read_json::<Value>()
                     .ok()
                     .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
                     .unwrap_or_default();
@@ -91,7 +98,7 @@ impl RemoteBus {
         let req = self
             .agent
             .post(&format!("{}{path}", self.base))
-            .set("Authorization", &self.auth());
+            .header("Authorization", &self.auth());
         self.read_json(req.send_json(body))
     }
 
@@ -105,8 +112,8 @@ impl RemoteBus {
         let mut req = self
             .agent
             .get(&format!("{}/api/bus/events", self.base))
-            .set("Authorization", &self.auth())
-            .query("limit", &limit.to_string());
+            .header("Authorization", &self.auth())
+            .query("limit", limit.to_string());
         if unread_only {
             req = req.query("unread", "1");
         }
@@ -129,7 +136,7 @@ impl RemoteBus {
         let req = self
             .agent
             .get(&format!("{}/api/bus/stats", self.base))
-            .set("Authorization", &self.auth());
+            .header("Authorization", &self.auth());
         self.read_json(req.call())
     }
 
@@ -251,6 +258,29 @@ mod tests {
         assert!(request.contains("limit=5"));
         assert!(request.contains("unread=1"));
         assert!(request.contains("lane=finance"));
-        assert!(request.contains("Authorization: Bearer tok123"));
+        // header names are case-insensitive (ureq 3 sends them lowercase)
+        assert!(request.to_ascii_lowercase().contains("authorization: bearer tok123"));
+    }
+
+    #[test]
+    fn an_http_error_keeps_the_servers_detail() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let handle = std::thread::spawn(move || {
+            let (mut sock, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let _ = sock.read(&mut buf).unwrap();
+            let body = r#"{"error":"bad token"}"#;
+            let response = format!(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            sock.write_all(response.as_bytes()).unwrap();
+        });
+        let remote = RemoteBus::new(format!("http://{addr}"), "wrong".into()).unwrap();
+        let err = remote.unread_count().unwrap_err();
+        handle.join().unwrap();
+        assert!(err.contains("HTTP 401 (check bus_token) bad token"), "{err}");
     }
 }

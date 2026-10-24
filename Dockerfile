@@ -19,7 +19,7 @@
 # separate services off this same image (the deployment story is a deferred backlog item).
 
 # ---- builder: resolve the locked deps + build/install the project into a venv -------------------
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.12-trixie-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
@@ -48,7 +48,7 @@ COPY bus-app/src ./src
 RUN npm run build
 
 # ---- runtime: slim, non-root, just the venv + the CLI on PATH ------------------------------------
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.12-slim-trixie AS runtime
 LABEL org.opencontainers.image.title="Watchman" \
       org.opencontainers.image.description="The headless engine — the hn CLI + standing agents + bus." \
       org.opencontainers.image.source="https://github.com/thwomp-io/watchman" \

@@ -704,34 +704,12 @@ class TravelService:
             out.extend(_pick(pairs, top))
 
         if "games" in want and games:
-            # one card per city: its best game weekend that no weekend card already shows
+            # a destination+weekend a weekend-lane card already shows isn't offered again here
             def _overlaps(slug: str, w: _n.NudgeWindow) -> bool:
                 return any(c.slug == slug and c.window.start <= w.end and w.start <= c.window.end
                            for c in out)
 
-            pool: list[_n.NudgeCandidate] = []
-            for g in games:
-                try:
-                    gd = date.fromisoformat(g.event.local_date)
-                except ValueError:
-                    continue
-                gw = _g.game_window(gd, weekends)
-                if gw is None or _overlaps(g.slug, gw):
-                    continue
-                pool.append(_g.game_candidate(g, gw, self.weights, reference))
-            # greedy by score: a city once, a weekend at most `games_per_window` times — so each city
-            # still gets its best OPEN game weekend, and the lane spreads across the season
-            used: set[str] = set()
-            per_window: dict[date, int] = {}
-            for cand in sorted(pool, key=lambda c: c.score, reverse=True):
-                if len(used) >= nw.games_top:
-                    break
-                # a weekend is its Saturday — a Thursday-stretched window is still that weekend
-                sat = cand.window.start + timedelta(days=(5 - cand.window.start.weekday()) % 7)
-                if cand.slug in used or per_window.get(sat, 0) >= nw.games_per_window:
-                    continue
-                used.add(cand.slug)
-                per_window[sat] = per_window.get(sat, 0) + 1
+            for cand in _g.build_cards(games, weekends, self.weights, reference, today, blocked=_overlaps):
                 _link(cand)
                 out.append(cand)
 

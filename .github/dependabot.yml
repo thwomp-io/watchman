@@ -10,6 +10,10 @@ updates:
     directory: "/bus-app"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "npm"           # the D3 renderer (viz/, rendered SVGs)
+    directory: "/viz"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "cargo"         # the Tauri shell
     directory: "/bus-app/src-tauri"
     schedule:

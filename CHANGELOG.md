@@ -3,6 +3,44 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - 2026-10-24
+
+### Security
+- Dependencies patched for advisories published since 0.14.0: Pillow 13.0 (six GHSAs), certifi,
+  tokio 1.54.1 (RUSTSEC-2026-0386), rustls-webpki 0.103.16, webpki-roots / webpki-root-certs 1.0.10,
+  undici (dev-only). The desktop app's HTTP client moves from ureq 2 to ureq 3, which drops the
+  webpki-roots 0.26 compatibility shim.
+- The container image moves from Debian 12 (bookworm, now LTS-only) to Debian 13 (trixie), same
+  Python 3.12.
+- CI no longer forces the uv cache on, so setup-uv's default skips the cache on events a fork could
+  poison. The image scan runs Trivy 0.76.1.
+
+### Added
+- **`hn places search "<query>" --near <ZIP|place|lat,lon>`** and **`hn places show <place_id>`**
+  (MCP `places_search` / `places_show`): local place search for any lane, using Google Maps through
+  SerpAPI. A search returns name, distance, open-now or today's hours, rating, address, phone,
+  website and place_id. A run that needs a live search is a priced dry run unless `--yes`. `--near`
+  is resolved once and cached; `lat,lon` is free.
+- **`hn bus logs [--rotate]`**: size-capped rotation for logs nothing else bounds (service-manager
+  log files, run logs). Over `cap_mb` (5) a log is gzipped to `.1.gz`, `keep` (5) copies are kept,
+  and the file is truncated in place so a running service keeps writing to it. The weekly
+  `hn bus purge --policy default` runs it. Configure under `bus.log_rotation` in the overlay.
+- **Game weekends**: a *pair* card when two leagues play one destination in one Thu–Mon window,
+  naming both games. *Corridor* cards (`nudge.games_corridors`) give one game a night across nearby
+  cities. `nudge.convenience_lead_curve` weights how easy a trip is to reach by how soon it is.
+  `nudge.games_dead_windows` lists spans to skip, and `nudge.games_per_city` lets one destination
+  hold more than one weekend.
+
+### Changed
+- `hn bus serve` logs no per-request lines unless `--access-log`, and every line carries a
+  timestamp, including the engine's own warnings such as a failed web push.
+- Every dependency is current. Notable: TypeScript 7, React 19.3, Vite 8.3, jsdom 30, Starlette
+  1.9, uvicorn 0.54, Pydantic 2.14, and Tauri 2.12.5. CI actions are on their current majors.
+
+### Fixed
+- Ticket-package listings are no longer counted as games, and promotional text after a team name
+  no longer becomes the opponent's name.
+
 ## [0.14.0] - 2026-10-20
 
 Watchman is now web-first: the engine's served console is the one backend, and the desktop app is an

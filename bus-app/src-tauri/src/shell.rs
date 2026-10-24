@@ -97,7 +97,8 @@ fn wait_healthy(origin: &str, child: &mut Child) -> Result<(), String> {
         if let Ok(Some(status)) = child.try_wait() {
             return Err(format!("the engine exited ({status}) before serving"));
         }
-        if ureq::get(&format!("{origin}/health")).timeout(Duration::from_secs(2)).call().is_ok() {
+        let probe = ureq::get(&format!("{origin}/health")).config().timeout_global(Some(Duration::from_secs(2))).build();
+        if probe.call().is_ok() {
             return Ok(());
         }
         std::thread::sleep(Duration::from_millis(500));
@@ -190,13 +191,14 @@ pub fn stop_local<R: Runtime>(app: &AppHandle<R>) {
 /// POST a door command to the console the window shows (best-effort; the tray's actions).
 fn door<R: Runtime>(app: &AppHandle<R>, cmd: &str, body: serde_json::Value) -> Result<serde_json::Value, String> {
     let (origin, token) = app.state::<Shell>().target.lock().unwrap().clone().ok_or("console not started")?;
-    ureq::post(&format!("{origin}/api/invoke/{cmd}"))
-        .set("Authorization", &format!("Bearer {token}"))
-        .timeout(Duration::from_secs(600))
+    let mut res = ureq::post(&format!("{origin}/api/invoke/{cmd}"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .config()
+        .timeout_global(Some(Duration::from_secs(600)))
+        .build()
         .send_json(body)
-        .map_err(|e| e.to_string())?
-        .into_json()
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    res.body_mut().read_json().map_err(|e| e.to_string())
 }
 
 /// The tray's "Refresh now": re-run every registered producer through the console's door.

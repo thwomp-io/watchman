@@ -328,14 +328,27 @@ class SerpApiLocalFoodProvider:
                 out.append(url)
         return out
 
+    def _cache_path(self, params: dict[str, Any]) -> Path:
+        key = hashlib.sha1(json.dumps(params, sort_keys=True).encode()).hexdigest()
+        return self._cache_dir / f"{key}.json"
+
+    def is_cached(self, params: dict[str, Any]) -> bool:
+        """Would `params` be served from the cache (fresh, so zero quota)? Spends nothing — the
+        dry-run pricing check."""
+        path = self._cache_path(params)
+        return path.exists() and (time.time() - path.stat().st_mtime) < self._ttl_s
+
+    def search(self, params: dict[str, Any], *, refresh: bool = False) -> tuple[dict[str, Any], bool]:
+        """Any SerpAPI query through this provider's cache and counters: (raw, from_cache)."""
+        return self._cached_or_search(params, refresh=refresh)
+
     def _cached_or_search(
         self, params: dict[str, Any], *, refresh: bool
     ) -> tuple[dict[str, Any], bool]:
         """Return (raw_response, from_cache). A fresh on-disk cache entry costs zero quota."""
         self._cache_dir.mkdir(parents=True, exist_ok=True)
-        key = hashlib.sha1(json.dumps(params, sort_keys=True).encode()).hexdigest()
-        path = self._cache_dir / f"{key}.json"
-        if not refresh and path.exists() and (time.time() - path.stat().st_mtime) < self._ttl_s:
+        path = self._cache_path(params)
+        if not refresh and self.is_cached(params):
             self.cache_hits += 1
             return json.loads(path.read_text()), True
         raw = self._raw_search(params)
