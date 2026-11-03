@@ -28,7 +28,7 @@ jobs:
         # enable-cache left at the default (auto): setup-uv skips the cache on events a fork can
         # poison; `true` would override that on a public repo. Pinned to a full version: setup-uv publishes
         # no floating major tags (v8 dropped them), so `@v10` does not resolve.
-        uses: astral-sh/setup-uv@v10.3.2
+        uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync --frozen
       - name: ruff
         run: uv run ruff check .
@@ -47,7 +47,7 @@ jobs:
         # enable-cache left at the default (auto): setup-uv skips the cache on events a fork can
         # poison; `true` would override that on a public repo. Pinned to a full version: setup-uv publishes
         # no floating major tags (v8 dropped them), so `@v10` does not resolve.
-        uses: astral-sh/setup-uv@v10.3.2
+        uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync --frozen
       - name: import every module
         # Import-time failures (missing platform deps, platform-only modules) surface as a batch.
