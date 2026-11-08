@@ -60,7 +60,7 @@ More clips, one per lane: **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
 | Part | What it is |
 |---|---|
 | **Console** | Dashboards that refresh themselves. **Finance:** Core, Market, Tickets, News, Compare, Prints, Projections, Holdings, Plans. **Career:** Campaign, Openings, Pool, Ladders. **Travel:** Planning, Trips, Visits, Calendar, Conditions. **Ops:** Backlog. Plus an Inbox, a viz gallery, a document vault, and **CHAT** |
-| **`hn` CLI** | The engine, one lane per domain: `finance` (quotes, net worth, the wire, SEC filings, options gauges, scenario bands) · `career` (keyless job-board scans, pay ladders) · `travel` (flights, hotels, events, weather and conditions) · `beads` (a read-only board over a [beads](https://github.com/gastownhall/beads) tracker) · `pocket` (the CHAT runner) |
+| **`hn` CLI** | The engine, one lane per domain: `finance` (quotes, net worth, the wire with article and PDF reads, SEC filings, options gauges, scenario bands, event studies, session shapes) · `career` (keyless job-board scans, pay ladders) · `travel` (flights, hotels, events, weather and conditions) · `beads` (a read-only board over a [beads](https://github.com/gastownhall/beads) tracker) · `pocket` (the CHAT runner) |
 | **Bus** | Standing agents publish events; the console shows them, and urgent ones push to your devices |
 | **Packs** | Fictional personas that drive every lane, so a fresh install has something to show |
 
@@ -132,7 +132,7 @@ engine, then opens on a sample persona.
 A **pack** is a complete persona: one folder per lane, plain YAML and Markdown. Swapping packs re-renders
 the whole console.
 
-![The same console under three personas](docs/assets/pack-cycle.gif)
+![The same console under four personas](docs/assets/pack-cycle.gif)
 
 ```
 samples/packs/<persona>/
@@ -141,6 +141,7 @@ samples/packs/<persona>/
   career/          watchlist.yml, applications.yaml, company notes
   travel/          weights.yaml, trips/
   pocket/          replay.json — the scripted CHAT demo
+  bus/             inbox.json — the demo's Inbox events
   dashboards/      the console this persona describes (optional)
 ```
 
@@ -164,7 +165,7 @@ conversation, in your own words.
 
 - **Read-only by default.** The finance lane reads public prices and a local file. No brokerage
   credentials, and nothing places an order. The agent is sealed the same way.
-- **Private by construction.** Outbound calls carry a tool-only User-Agent. The server binds localhost
+- **Private by construction.** Outbound calls identify the tool, never you. The project page is added only for providers that require a contact. The server binds localhost
   unless you point it at your private network, and every API route requires the token.
 - **Demo mode is sealed.** With a sample persona active, the console renders only that pack and never
   falls back to a real corpus on the machine.

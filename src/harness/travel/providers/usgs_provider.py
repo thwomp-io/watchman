@@ -16,7 +16,6 @@ from harness.travel.models import Earthquake
 from harness.travel.providers.base import ProviderError
 
 _URL = "https://earthquake.usgs.gov/fdsnws/event/1/query"
-_UA = "harness/0.1 (personal travel-planning harness)"
 
 
 class UsgsEarthquakeProvider:
@@ -51,7 +50,7 @@ class UsgsEarthquakeProvider:
         }
         try:
             resp = get_with_retry(
-                _URL, params=params, headers={"User-Agent": _UA},
+                _URL, params=params,
                 client=self._client, timeout=self._timeout,
             )
             features = resp.json().get("features") or []

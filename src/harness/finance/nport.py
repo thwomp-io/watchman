@@ -196,7 +196,7 @@ def read_reference_rows(yaml_text: str) -> list[dict[str, str]]:
 def merge_reference_yaml(
     existing_text: str, filing: NportFiling, fetched: str
 ) -> tuple[str, dict[str, int]]:
-    """Regenerate the reference yaml from `filing`, PRESERVING enrichment (sector/us/note) for
+    """Regenerate the reference yaml from `filing`, PRESERVING enrichment (sector/us/note/exposure) for
     names that persist. Returns (new_text, stats). The header above `meta:` is kept verbatim;
     meta fields are restamped; new names get sector: unknown + a NEW-marker note."""
     enrich = {r.get("name", ""): r for r in read_reference_rows(existing_text)}
@@ -235,6 +235,8 @@ def merge_reference_yaml(
             us = e.get("us", "null")
             us_part = f'"{us}"' if us not in ("null", "", None) else "null"
             base += f', sector: {e["sector"]}, us: {us_part}, note: "{e.get("note", "")}"'
+            if e.get("exposure"):  # the fund proxy fills: a listing-based override
+                base += f', exposure: {e["exposure"]}'
         else:
             stats["new"] += 1
             base += ', sector: unknown, us: null, note: "NEW vs prior filing — enrich + research"'

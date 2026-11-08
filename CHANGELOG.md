@@ -3,6 +3,74 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - 2026-11-08
+
+### Security
+- Every Playwright launch runs with the Chromium sandbox on (Playwright defaults it off): the console
+  shot and tour scripts, the e2e suite, and the career apply fill. The apply fill opens third-party
+  pages only in a current browser: installed Google Chrome when present, else the bundled Chromium,
+  checked against Google's stable version list first. A stale build is refused unless
+  `--allow-stale-browser`.
+- block-buffer 0.10 (GHSA-qwgh-2vcv-g2f7) is accepted in `osv-scanner.toml`: it is reached only
+  through tauri-codegen's build-time hashing of the app's own assets, and the 0.10 line has no fix.
+
+### Added
+- **The demo's Inbox has events.** Each sample persona ships `bus/inbox.json`, fictional alerts,
+  watch items and wire stories that fit its book, trips and job search, and `hn console demo`
+  seeds them when the persona opens. Switching personas replaces them.
+- **`hn finance moves SYM… --from D [--to D] [--groups 'name=A,B;…']`** (MCP `finance_moves`): each
+  name's close-to-close move on every session after a base date, its cumulative, and optional group
+  means. Split-adjusted SIP daily bars; an OTC name the exchange feed lacks comes from its Yahoo
+  daily bars, where a session with no trade is blank.
+- **`hn finance crashdays SYM [--threshold -7] [--since D] [--cluster-days N]`** (MCP
+  `finance_crashdays`): every session at or below the threshold, its drawdown from the highest prior
+  close, forward returns at +5/+20/+60/+120/+250 sessions, and the lowest close in the next 60. A
+  horizon not yet reached is blank, never zero. `--cluster-days` folds nearby events into one
+  episode on its deepest day.
+- **`hn finance session SYM… [--date D] [--bar 5Min|15Min] [--window HH:MM-HH:MM]`** (MCP
+  `finance_session`): one regular session's intraday shape: high and low with their ET bar times,
+  close vs low/high, the last 15 and 30 minutes, last-15-minute volume against the session's
+  average, and the closing auction print.
+- **`hn finance daygl --after-hours`**: outside the regular session, the quoted holdings at their
+  latest extended-hours trades against the last close. Labeled a thin-print estimate, not a
+  forecast.
+- **`hn finance log-fill SYM --qty N --price P --screen ID`**: applies one broker fill (a buy) to your
+  corpus `portfolio.yaml` as a targeted line edit that keeps comments: shares, average cost and basis
+  (checked against `--broker-avg` / `--broker-basis`), the open order marked filled, the cash sweep
+  netted with `--pending`, and a dated sync line. It parses the result and restores the original on
+  any failure. `--dry-run` prints the diff. It refuses to write a sample pack.
+- **`hn finance wire read` reads PDFs**: a regulator's deck or a filing exhibit comes back as
+  page-numbered text through poppler's `pdftotext`. `--grep TEXT` prints every match with its page
+  number. A page with no article structure (an EDGAR filing) returns its full text.
+- On a 401/403 from Reuters or AP, `wire read --match` reads the publisher's licensed syndicated copy
+  (Yahoo, Investing.com, AOL) when its headline matches word for word, and names both copies. The
+  map is replaceable through `finance.wire.mirrors` in the overlay. Paywalled publishers have no
+  entry.
+- **`hn finance fund-proxy` exposure fills**: with `holdings_ref` (the fund's N-PORT roster) and
+  `fills:` configured, one exposure ETF per region stands in for the roster names the basket can't
+  quote. Before, that weight was spread over the quoted names.
+
+### Changed
+- `positions`, `networth`, `daygl` and `fund-proxy` value quoted holdings at the official
+  regular-session close once the session is over, never an after-hours print. The basis is stated
+  in the output (`price_basis` in `--json`).
+- `hn finance history` prints intraday bars in local time, and `--feed delayed_sip` works for bars.
+  Alpaca errors carry Alpaca's own reason.
+- The User-Agent carries the project URL only for providers whose policy requires a contact
+  (Wikimedia). SEC's data.sec.gov refuses that form and gets the bare UA. Image downloads no longer
+  send a browser UA. A SEC refusal names its cause.
+
+### Fixed
+- The Backlog tab's beads board sat at the generic tile height, which cut the tree to one clipped
+  row under its own caption. The board now has a height floor, and its caption sits below the tree.
+- Switching personas in the demo while on the Inbox left the previous persona's events and status
+  strip on screen until the next poll. The Inbox now reloads with the persona.
+- On a split's ex-date, quotes and official closes adjust the prior close by the split ratio. A 3:1
+  split no longer reads as a −70% day.
+- Date-only `--end` values of today no longer get refused for `delayed_sip` bars in the evening.
+- `hn travel images` names the HTTP status of a failed subject instead of reporting "No image
+  found", and exits non-zero when every subject failed.
+
 ## [0.15.0] - 2026-10-24
 
 ### Security

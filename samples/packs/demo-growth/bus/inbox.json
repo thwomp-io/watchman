@@ -1,0 +1,71 @@
+[
+  {
+    "lane": "career",
+    "kind": "application",
+    "subject": "platform-sre",
+    "severity": "alert",
+    "producer": "career.pipeline",
+    "ago_min": 20,
+    "title": "Recruiter screen tomorrow 10:00: Senior Platform Engineer",
+    "body": "Prep notes and the company profile are in the vault."
+  },
+  {
+    "lane": "finance",
+    "kind": "print",
+    "subject": "CRWD",
+    "severity": "warn",
+    "producer": "finance.calendar",
+    "ago_min": 45,
+    "title": "CRWD reports in 3 days: the book's largest single name",
+    "body": "210 shares of employer RSUs, about $80k. CRWD is -1.5% today at 381.60.",
+    "payload": {
+      "symbol": "CRWD"
+    }
+  },
+  {
+    "lane": "travel",
+    "kind": "wet_day",
+    "subject": "moab",
+    "severity": "warn",
+    "producer": "travel.conditions",
+    "ago_min": 120,
+    "title": "Moab Saturday: 70% rain, flash-flood watch on the trailheads",
+    "body": "Sunday is clear. The best outdoor window is Sun 08:00-14:00."
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "NVDA",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 25,
+    "title": "NVIDIA to report third-quarter results on the 19th",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "Results after the close, with the call at 2:00 p.m. PT. Last quarter's guide was $54B in revenue."
+    }
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "SMH",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 210,
+    "title": "Semiconductor index posts its best week since spring",
+    "payload": {
+      "publisher": "Market wrap",
+      "summary": "Chip stocks rose 6% on the week as memory and equipment names led."
+    }
+  },
+  {
+    "lane": "career",
+    "kind": "scan_delta",
+    "subject": "watchlist",
+    "severity": "info",
+    "producer": "career.scan",
+    "ago_min": 380,
+    "read": true,
+    "title": "5 new SRE openings across 3 watchlist companies"
+  }
+]

@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from harness._cli import fail as _fail
@@ -229,16 +230,19 @@ def images(
 ) -> None:
     """Fetch + locally store images for a destination report; print embed-ready markdown."""
     subj_list = [s.strip() for s in subjects.split(",") if s.strip()]
+    errors: dict[str, str] = {}
     try:
         results = TravelService().fetch_destination_images(
-            dest, subj_list, provider_name=provider, keep_original=keep_original
+            dest, subj_list, provider_name=provider, keep_original=keep_original, errors=errors
         )
     except (ProviderError, RuntimeError) as e:
         _fail(str(e))
         raise typer.Exit(code=1) from e
 
     if as_json:
-        console.print_json(json.dumps([r.model_dump() for r in results]))
+        console.print_json(json.dumps({"images": [r.model_dump() for r in results], "errors": errors}))
+        if errors and not results:
+            raise typer.Exit(code=1)
         return
 
     table = Table(title=f"Images → {dest}")
@@ -257,9 +261,13 @@ def images(
         console.print(f"[dim]*{r.subject}* — {r.attribution}[/dim]")
 
     found = {r.subject for r in results}
-    missing = [s for s in subj_list if s not in found]
+    missing = [s for s in subj_list if s not in found and s not in errors]
     if missing:
         console.print(f"\n[yellow]No image found for:[/yellow] {', '.join(missing)}")
+    for subject, reason in errors.items():
+        console.print(f"[red]Failed:[/red] {escape(subject)} — {escape(reason)}")
+    if errors and not results:
+        raise typer.Exit(code=1)
 
 
 @app.command("contact-sheet")

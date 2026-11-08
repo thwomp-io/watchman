@@ -1601,6 +1601,7 @@ class TravelService:
         vault_root: Path | None = None,
         delay_s: float = 1.0,
         keep_original: bool = False,
+        errors: dict[str, str] | None = None,
     ) -> list[ImageResult]:
         """For each subject (hotel / attraction / view), find an image and store it locally under
         the doc's assets/ dir. `dest` is a bare destination slug (→ travel/destinations/{slug}/assets,
@@ -1608,8 +1609,9 @@ class TravelService:
         visits/ + trips/ folder-notes be illustrated). Returns embeddable ImageResults.
 
         Resilient + polite: a brief `delay_s` between subjects smooths bursts (Wikimedia throttles
-        rapid runs), and a subject that finds nothing OR errors (throttle/transient) is skipped, not
-        fatal — the rest still come back. The CLI reports skipped subjects so they can be re-run."""
+        rapid runs), and a subject that finds nothing OR errors is skipped, not fatal — the rest still
+        come back. A subject that ERRORED is recorded in `errors` (subject → reason, the HTTP status
+        when there is one), so a blocked provider never reads as an empty search."""
         root = vault_root or get_settings().tracker_path
         provider = get_image_provider(provider_name)
         results: list[ImageResult] = []
@@ -1623,8 +1625,9 @@ class TravelService:
                 results.append(
                     store_image(candidates[0], root, dest, subject, keep_original=keep_original)
                 )
-            except (ProviderError, RuntimeError):
-                continue  # throttled/transient — skip this subject, keep the rest
+            except (ProviderError, RuntimeError) as e:
+                if errors is not None:
+                    errors[subject] = str(e)  # skip this subject, keep the rest, say why
         return results
 
     def shrink_images(

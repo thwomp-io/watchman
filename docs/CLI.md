@@ -87,6 +87,24 @@ knowing from the shell:
   where the analyst calendar has them, filing-cadence estimates labeled `est` otherwise) plus your
   `macro_events` inside the horizon, imminent-first. No quotes, no wire — the fast calendar read
   behind the Finance ▸ Plans tab's gates board.
+- **Event studies** (Alpaca keys): **`hn finance moves SYM… --from YYYY-MM-DD [--groups
+  'name=A,B;…']`** is the table after a shock (each name's move per session plus the cumulative and
+  group means), and **`hn finance crashdays SYM [--threshold -7] [--cluster-days 5]`** is the base
+  rate (every day at or below the threshold and the forward returns that followed). Both read
+  split-adjusted SIP daily bars; an OTC name falls back to Yahoo daily bars.
+- **`hn finance session SYM… [--date D] [--window 15:00-16:00]`**: one session's intraday shape:
+  the high and low with their ET times, the close against them, the last 15/30 minutes, volume into
+  the close, and the closing auction print.
+- **After the bell**: `positions`, `networth` and `daygl` value quoted holdings at the official
+  close, never an after-hours print. `hn finance daygl --after-hours` is the separate read of those
+  prints against the close.
+- **`hn finance log-fill SYM --qty N --price P --screen ID [--pending] [--dry-run]`**: one broker
+  fill applied to your corpus `portfolio.yaml` as a line edit that keeps your comments, cross-checked
+  against the broker's average and basis when you pass them, parsed after writing and restored on
+  failure. Sample packs are refused.
+- **`hn finance wire read URL|--match TEXT [--grep TEXT]`**: the body behind a wire headline. A PDF
+  comes back page-numbered (needs poppler), and `--grep` cites matches by page. On a Reuters/AP bot
+  wall, `--match` reads the licensed syndicated copy with the same headline.
 - **`hn travel calendar --from YYYY-MM-DD --to YYYY-MM-DD [--city C] [--variant grid|big]
   [--json]`** — the reference almanac + live ticketed events merged into per-day buckets; the data
   behind the console's Calendar tab and the static `calendar` SVG. Live events use

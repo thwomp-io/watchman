@@ -7,10 +7,11 @@ multi-protocol shape, so a fundamentals source never gets shoehorned into the ma
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Protocol, runtime_checkable
 
 from harness.errors import ProviderError  # re-exported for back-compat (was defined here)
-from harness.finance.models import Bar, Fundamentals, Quote
+from harness.finance.models import AuctionPrint, Bar, ExtendedTrade, Fundamentals, Quote, SessionClose
 
 __all__ = ["Bar", "Fundamentals", "FundamentalsProvider", "MarketDataProvider", "ProviderError", "Quote"]
 
@@ -28,6 +29,20 @@ class MarketDataProvider(Protocol):
         self, symbol: str, *, start: str, end: str | None = None, timeframe: str = "1Day"
     ) -> list[Bar]:
         """Return OHLCV bars for `symbol` over [start, end] at the given timeframe."""
+        ...
+
+    def get_session_closes(self, symbols: list[str], session: date) -> dict[str, SessionClose]:
+        """Each symbol's official close for the regular `session`. A symbol without one is absent
+        (the caller keeps its live price and says so); never a guessed number."""
+        ...
+
+    def get_extended_trades(self, symbols: list[str], session: date) -> dict[str, ExtendedTrade]:
+        """Each symbol's latest trade if it printed after `session`'s regular close (16:00 ET);
+        a symbol with no extended-hours trade since is absent."""
+        ...
+
+    def get_closing_auction(self, symbol: str, session: date) -> AuctionPrint | None:
+        """The closing cross for `session` (the listing exchange's closing print), or None."""
         ...
 
 

@@ -17,6 +17,8 @@
 //   wait:MS     — dwell (readability pause; becomes GIF hold time)
 //   settle      — bounded wait for ACQUIRING widgets to clear
 //   type:TEXT   — type TEXT into the CHAT composer at a human pace, then send
+//   pack:NAME   — switch the demo's sample persona (the DEMO picker in the header)
+//   theme:NAME  — pick a theme from the footer menu (NIGHT, PAPER, OUTRUN...)
 //
 // --steps may also be a JSON array of step strings (for TEXT that contains commas).
 // --standalone emulates the installed PWA (the phone layout's bottom tab bar), as console-shot does.
@@ -29,6 +31,7 @@ import { readFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { homedir } from "node:os";
 import { chromium } from "playwright";
+import { SANDBOXED } from "./browser.mjs";
 
 function arg(flag, dflt) {
   const i = process.argv.indexOf(flag);
@@ -52,7 +55,7 @@ const steps = rawSteps.trim().startsWith("[")
 const videoDir = dirname(out) + "/.tour-video";
 mkdirSync(videoDir, { recursive: true });
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(SANDBOXED); // trusted page (our console); sandbox on
 const context = await browser.newContext({
   viewport,
   recordVideo: { dir: videoDir, size: viewport },
@@ -98,6 +101,9 @@ for (const step of steps) {
   } else if (op === "hover") await page.locator(val).first().hover({ force: true }).catch(() => {});
   else if (op === "click") await page.locator(val).first().click({ force: true }).catch(() => {});
   else if (op === "esc") await page.keyboard.press("Escape").catch(() => {});
+  // the demo's persona picker (`hn console demo`): pick a sample pack by name
+  else if (op === "pack") await page.selectOption(".demo-pack select", { label: val }).catch(() => {});
+  else if (op === "theme") await page.selectOption(".theme-menu select", { label: val }).catch(() => {});
   else if (op === "type") {
     const box = page.locator(".chat-composer textarea").first();
     await box.click().catch(() => {});

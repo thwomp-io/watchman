@@ -32,6 +32,7 @@ import re
 
 from harness._http import get_with_retry
 from harness.errors import ProviderError
+from harness.finance.providers.sec_policy import refusal_cause
 
 _INDEX_URL = "https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession_nodash}/index.json"
 _DOC_URL = "https://www.sec.gov/Archives/edgar/data/{cik_int}/{accession_nodash}/{doc}"
@@ -85,6 +86,8 @@ def list_documents(cik: str, accession: str) -> list[str]:
     except httpx.HTTPStatusError as e:
         code = e.response.status_code
         hint = " — no such accession for this filer (check it against --list)" if code == 404 else ""
+        if code == 403:
+            hint = f" — {refusal_cause(e.response)}"
         raise ProviderError(f"filing index CIK{cik} {accession}: HTTP {code}{hint}") from e
     except httpx.HTTPError as e:
         raise ProviderError(f"filing index CIK{cik} {accession}: {e}") from e

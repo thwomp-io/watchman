@@ -178,15 +178,17 @@ def read_preferences() -> dict[str, Any]:
 @mcp.tool()
 def fetch_destination_images(
     dest: str, subjects: list[str], provider: str = "wikimedia"
-) -> list[dict[str, Any]]:
+) -> dict[str, Any]:
     """Fetch + locally store images (hotels / attractions / views) for a report, under the doc's
     assets/ dir. `dest` is a bare destination slug (→ travel/destinations/{slug}/assets) OR a vault
     path under travel/ (→ travel/{dest}/assets, e.g. 'visits/2026-05-example-visit' — like make_diagram's
     dest). Returns embeddable results incl. an Obsidian wikilink `markdown` field. provider
     'wikimedia' is keyless + quota-free (best for landmarks); google_hotels / pexels / unsplash slot
-    in later. Images are personal-use."""
-    results = _svc().fetch_destination_images(dest, subjects, provider_name=provider)
-    return [{**r.model_dump(), "markdown": r.markdown()} for r in results]
+    in later. Images are personal-use. Returns {"images": [...], "errors": {subject: reason}} —
+    a subject in `errors` failed (e.g. an HTTP status), one in neither found no image."""
+    errors: dict[str, str] = {}
+    results = _svc().fetch_destination_images(dest, subjects, provider_name=provider, errors=errors)
+    return {"images": [{**r.model_dump(), "markdown": r.markdown()} for r in results], "errors": errors}
 
 
 @mcp.tool()

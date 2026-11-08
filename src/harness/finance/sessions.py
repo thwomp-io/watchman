@@ -17,6 +17,20 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 ET = ZoneInfo("America/New_York")
+
+# US zone abbreviations → the corpus's two-letter labels ("20:50 PT"); anything else keeps %Z.
+TZ_LABEL = {"PDT": "PT", "PST": "PT", "MDT": "MT", "MST": "MT", "CDT": "CT", "CST": "CT",
+            "EDT": "ET", "EST": "ET"}
+
+
+def tz_label(stamp: datetime) -> str:
+    """The two-letter label for an aware datetime's zone ("PT"), else its %Z abbreviation."""
+    return TZ_LABEL.get(stamp.strftime("%Z"), stamp.strftime("%Z"))
+
+
+def local_stamp(iso: str) -> datetime:
+    """An ISO timestamp (a provider's UTC 'Z' form included) in this machine's local zone."""
+    return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone()
 OPEN, CLOSE = time(9, 30), time(16, 0)
 
 SessionState = Literal["live", "pre-open", "closed"]

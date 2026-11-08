@@ -61,7 +61,7 @@ def calendar_payload(days: int = 14, show_all: bool = False, refresh: bool = Fal
 def wire_read_match(match: str, max_chars: int = 6000) -> dict[str, Any]:
     """The body behind the NEWEST wire headline containing `match` — the article must already be on the
     configured feeds, so this reaches no URL the caller supplies (unlike reading an arbitrary link)."""
-    from harness.finance.providers.article_provider import read_article
+    from harness.finance.providers.article_provider import read_with_mirror
     from harness.finance.service import FinanceService
 
     needle = match.strip().lower()
@@ -70,7 +70,7 @@ def wire_read_match(match: str, max_chars: int = 6000) -> dict[str, Any]:
     hits = [it for it in FinanceService().wire(limit=8).items if needle in it.title.lower() and it.url]
     if not hits:
         raise ProviderError(f"no wire headline contains {match!r} (the wire keeps each feed's 8 newest)")
-    art = asdict(read_article(hits[0].url))
+    art = asdict(read_with_mirror(hits[0].url, hits[0].title))
     if max_chars and isinstance(art.get("body"), str) and len(art["body"]) > max_chars:
         art["body"] = art["body"][:max_chars]
         art["truncated"] = True

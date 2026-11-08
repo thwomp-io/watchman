@@ -57,6 +57,39 @@ def finance_market(feed: str = "iex") -> dict[str, Any]:
 
 
 @mcp.tool()
+def finance_moves(
+    symbols: list[str], start: str, end: str | None = None, groups: dict[str, list[str]] | None = None,
+    feed: str = "delayed_sip",
+) -> dict[str, Any]:
+    """Close-to-close moves for several names on each session after `start` (YYYY-MM-DD, the base close)
+    through `end`, plus each one's cumulative and optional group means ({'buyers': ['AAA', 'BBB']}).
+    Split-adjusted SIP bars; an OTC name the exchange feed lacks comes from Yahoo daily bars, a session
+    with no trade left None. Arithmetic only."""
+    from datetime import date as _date
+
+    return _svc(feed).moves(
+        [s.upper() for s in symbols], _date.fromisoformat(start),
+        _date.fromisoformat(end) if end else _date.today(),
+        groups={k: [m.upper() for m in v] for k, v in (groups or {}).items()} or None,
+    ).model_dump()
+
+
+@mcp.tool()
+def finance_crashdays(
+    symbol: str, threshold: float = -7.0, since: str = "2016-01-01", cluster_days: int = 0,
+    feed: str = "delayed_sip",
+) -> dict[str, Any]:
+    """A symbol's sessions at or below `threshold`% since `since`, each with the drawdown from the prior
+    high, forward returns at +5/+20/+60/+120/+250 sessions (None = not reached yet) and the lowest close in
+    the next 60. `cluster_days` folds nearby events into episodes. A base rate; the mechanism behind each
+    day is research, not this verb's job."""
+    from datetime import date as _date
+
+    return _svc(feed).crashdays(symbol.upper(), threshold, _date.fromisoformat(since),
+                                cluster_days=cluster_days).model_dump()
+
+
+@mcp.tool()
 def finance_correlate(
     symbols: list[str] | None = None, held: bool = False, limit: int = 20, days: int = 120,
     factor: list[str] | None = None, feed: str = "iex",
@@ -92,6 +125,24 @@ def finance_history(
 
 
 @mcp.tool()
+def finance_session(
+    symbols: list[str], date: str | None = None, bar: str = "15Min", feed: str = "delayed_sip"
+) -> list[dict[str, Any]]:
+    """One regular session's intraday shape per symbol (09:30-16:00 ET; times ET): open, high/low with
+    the ET start of the bar each printed in, close (the official close once the session is over, else
+    the latest, labeled in close_basis), close vs low/high %, the last-15/30-min move %, last-15-min
+    volume as a multiple of the session's average 15 minutes, and the closing auction (the listing
+    exchange's closing print: size + price). `state`: complete | partial | not open | no data. `bars`
+    holds the regular-session bars (t = ET start). date YYYY-MM-DD (default: the current session);
+    bar 5Min | 15Min; delayed_sip = SIP volume. Shape and volume only — prices can't say who bought."""
+    import datetime as _dt
+
+    day = _dt.date.fromisoformat(date) if date else None
+    minutes = 5 if bar == "5Min" else 15
+    return [s.model_dump() for s in _svc(feed).session_shapes(symbols, day=day, minutes=minutes)]
+
+
+@mcp.tool()
 def finance_positions(feed: str = "iex") -> dict[str, Any]:
     """The full asset table across brokerages — live quotes where possible, last-known NAV for mutual
     funds, static balances for retirement/cash. Each row carries a `valuation` basis
@@ -122,12 +173,17 @@ def finance_fund_proxy(feed: str = "iex") -> dict[str, Any]:
 
 
 @mcp.tool()
-def finance_daygl(feed: str = "iex") -> dict[str, Any]:
+def finance_daygl(feed: str = "iex", after_hours: bool = False) -> dict[str, Any]:
     """Full-book intraday day G/L in one number, decomposed by valuation basis: live-quoted
     positions EXACT (cross-brokerage) + non-intraday funds ESTIMATED via the fund-proxy day% ×
     last-known NAV value + static balances flat by definition. The est sleeve is directional
-    (partial proxy coverage — see est_coverage_pct); NAV truth arrives at the EOD sync. READ-ONLY
+    (partial proxy coverage — see est_coverage_pct); NAV truth arrives at the EOD sync.
+    `after_hours=True` (outside the regular session only): the quoted sleeve at its latest
+    extended-hours trades vs the last regular close, per row + total — a thin-print estimate of the
+    next open, not a forecast; rows with no extended-hours trade are excluded and listed. READ-ONLY
     observation, not a recommendation."""
+    if after_hours:
+        return _svc(feed).after_hours().model_dump()
     return _svc(feed).daygl().model_dump()
 
 
@@ -233,17 +289,23 @@ def finance_wire(source: str | None = None, limit: int = 40, per_feed: int = 8) 
 
 
 @mcp.tool()
-def finance_wire_read(url: str) -> dict[str, Any]:
-    """Read ONE article's body behind a wire headline (keyless). Extraction order: the publisher's
+def finance_wire_read(url: str, grep: str | None = None) -> dict[str, Any]:
+    """Read ONE article's body behind a wire headline (keyless), or a PDF's text (a regulator's deck, a
+    filing exhibit: method 'pdf', `pages` one string per page). Extraction order for HTML: the publisher's
     JSON-LD articleBody → <article> paragraphs → page paragraphs → the dek. Google News links (the
     AP/Reuters/Bloomberg lanes) resolve to the publisher first. Returns title/site/published/body/
     method/words/partial/notes; a paywall is labeled partial, and a bot wall (401/403) raises with
-    the reason — the wire's headline + dek is then the reachable read. READ-ONLY."""
+    the reason — the wire's headline + dek is then the reachable read. `grep` adds `grep`: every
+    match as {page, text}, found across line breaks. READ-ONLY."""
     from dataclasses import asdict
 
-    from harness.finance.providers.article_provider import read_article
+    from harness.finance.providers.article_provider import grep_article, read_article
 
-    return asdict(read_article(url))
+    art = read_article(url)
+    out = asdict(art)
+    if grep:
+        out["grep"] = [{"page": p, "text": t} for p, t in grep_article(art, grep)]
+    return out
 
 
 @mcp.tool()

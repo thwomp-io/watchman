@@ -31,7 +31,6 @@ from harness.travel.models import Eatery
 from harness.travel.providers.base import ProviderError
 
 _OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-_UA = "harness/0.1 (personal travel-planning harness)"
 _AMENITIES = "restaurant|cafe|bar|pub|fast_food|ice_cream"
 _SHOPS = "bakery|deli"
 
@@ -58,7 +57,7 @@ class OverpassFoodProvider:
         )
         try:
             resp = get_with_retry(
-                _OVERPASS_URL, params={"data": query}, headers={"User-Agent": _UA},
+                _OVERPASS_URL, params={"data": query},
                 client=self._client, timeout=self._timeout,
             )
             elements = resp.json().get("elements") or []

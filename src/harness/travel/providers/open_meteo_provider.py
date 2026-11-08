@@ -22,7 +22,6 @@ from harness.travel.providers.base import ProviderError
 from harness.travel.providers.geocoding import geocode as _geocode
 
 _FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
-_UA = "harness/0.1 (personal travel-planning harness)"
 
 # Daily fields requested (parallel columnar arrays in the response).
 # precipitation_hours + snowfall_sum ride the same call (free) — the conditions-watch wet_day
@@ -104,7 +103,7 @@ class OpenMeteoWeatherProvider:
         }
         try:
             resp = get_with_retry(
-                _FORECAST_URL, params=params, headers={"User-Agent": _UA},
+                _FORECAST_URL, params=params,
                 client=self._client, timeout=self._timeout,
             )
             payload = resp.json()
@@ -184,7 +183,7 @@ class OpenMeteoWeatherProvider:
         }
         try:
             resp = get_with_retry(
-                _FORECAST_URL, params=params, headers={"User-Agent": _UA},
+                _FORECAST_URL, params=params,
                 client=self._client, timeout=self._timeout,
             )
             payload = resp.json()

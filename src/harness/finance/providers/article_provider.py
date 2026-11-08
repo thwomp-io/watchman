@@ -21,6 +21,11 @@ Honest boundaries, printed as notes, never papered over:
   unlocks nothing there, so the verb keeps the descriptive `harness/<version>` UA and says the
   headline + dek on the wire is the reachable read.
 
+- A **PDF** (a regulator's deck, a filing exhibit) is detected by its content type or its `%PDF` magic,
+  written to a fresh private temp directory, and converted with poppler's `pdftotext` (found by path,
+  never run from the download's directory). The text keeps its pages, so a quote can be cited by page;
+  `grep_article` finds a phrase across line breaks. sec.gov hosts get the SEC fair-access contact UA.
+
 Pure extraction (`extract`) is separate from the fetch, so it is tested on fixtures.
 """
 
@@ -54,10 +59,21 @@ class Article:
     dek: str = ""
     image: str = ""  # og:image / twitter:image — the article's own lead picture
     body: str = ""
-    method: str = ""  # jsonld | article | paragraphs | dek | none
+    method: str = ""  # jsonld | article | paragraphs | dek | pdf | page-text | none
     words: int = 0
     partial: bool = False
     notes: list[str] = field(default_factory=list)
+    pages: list[str] = field(default_factory=list)  # a PDF's text, one entry per page (page 1 first)
+    mirror: str = ""  # the syndication host the body was read from, when the original was a bot wall
+    original: str = ""  # that original URL
+
+
+class BotWall(ProviderError):
+    """A 401/403 from the article's host: a bot wall, not a missing page."""
+
+    def __init__(self, message: str, *, url: str, host: str) -> None:
+        super().__init__(message)
+        self.url, self.host = url, host
 
 
 class _Scan(HTMLParser):
@@ -228,8 +244,124 @@ def resolve_gnews(url: str, client: httpx.Client) -> str:
     return m.group(1)
 
 
+_MAX_PDF_BYTES = 60 * 1024 * 1024  # a board deck is a few MB; past this, refuse rather than parse
+
+
+def _is_pdf(content_type: str, data: bytes) -> bool:
+    return "application/pdf" in content_type.lower() or data[:5] == b"%PDF-"
+
+
+def pdf_pages(data: bytes) -> list[str]:
+    """A PDF's text per page via poppler's `pdftotext` (reading order). The bytes are untrusted: they go to a
+    fresh 0700 temp directory that's removed after, and only the fixed tool reads them."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    from harness.paths import which_tool
+
+    tool = which_tool("pdftotext")
+    if tool is None:
+        raise ProviderError("reading a PDF needs poppler's pdftotext (brew install poppler)")
+    if len(data) > _MAX_PDF_BYTES:
+        mb = len(data) // (1024 * 1024)
+        raise ProviderError(f"PDF is {mb} MB; over the {_MAX_PDF_BYTES // (1024 * 1024)} MB cap")
+    with tempfile.TemporaryDirectory(prefix="harness-pdf-") as tmp:
+        src = Path(tmp) / "document.pdf"
+        src.write_bytes(data)
+        try:
+            run = subprocess.run(  # noqa: S603 — a fixed tool, given a file this function wrote
+                [tool, "-enc", "UTF-8", str(src), "-"], capture_output=True, timeout=120, check=False,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise ProviderError("pdftotext took over 2 minutes") from e
+    if run.returncode != 0:
+        err = run.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise ProviderError(f"pdftotext failed: {err[-1] if err else f'exit {run.returncode}'}")
+    pages = run.stdout.decode("utf-8", "replace").split("\f")
+    if pages and not pages[-1].strip():
+        pages.pop()  # pdftotext ends the last page with a form feed too
+    return pages
+
+
+def pdf_title(data: bytes) -> str:
+    """The document's own Title metadata via poppler's `pdfinfo`, or '' (a deck's first line is often a
+    classification stamp, not its title)."""
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    from harness.paths import which_tool
+
+    tool = which_tool("pdfinfo")
+    if tool is None:
+        return ""
+    with tempfile.TemporaryDirectory(prefix="harness-pdf-") as tmp:
+        src = Path(tmp) / "document.pdf"
+        src.write_bytes(data)
+        try:
+            run = subprocess.run(  # noqa: S603 — a fixed tool, given a file this function wrote
+                [tool, "-enc", "UTF-8", str(src)], capture_output=True, timeout=30, check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return ""
+    for line in run.stdout.decode("utf-8", "replace").splitlines():
+        if line.startswith("Title:"):
+            return line[len("Title:"):].strip()
+    return ""
+
+
+def pdf_article(data: bytes, url: str) -> Article:
+    """An Article from a PDF: the pages, a body with page markers, and the first line as a title."""
+    pages = pdf_pages(data)
+    body = "\n\n".join(f"[page {i}]\n{p.strip()}" for i, p in enumerate(pages, 1) if p.strip())
+    lines = [ln.strip() for p in pages[:2] for ln in p.splitlines() if ln.strip()]
+    # the first line of three words or more: a deck's first line is often a stamp ("PUBLIC")
+    first = next((ln for ln in lines if len(ln.split()) >= 3), lines[0] if lines else "")
+    words = sum(len(p.split()) for p in pages)
+    title = (pdf_title(data) or first)[:160]
+    art = Article(url=url, title=title, site=urlparse(url).netloc, body=body, method="pdf", words=words,
+                  pages=pages)
+    if not words:
+        art.notes.append("the PDF has no extractable text (a scanned image?); OCR isn't attempted")
+    return art
+
+
+def grep_article(art: Article, needle: str, *, width: int = 160) -> list[tuple[int | None, str]]:
+    """Every place `needle` occurs, case-insensitively, as (page or None, a snippet around it). Whitespace is
+    collapsed first, so a sentence that wraps across lines in the PDF still matches."""
+    want = re.sub(r"\s+", " ", needle).strip().lower()
+    if not want:
+        return []
+    chunks = list(enumerate(art.pages, 1)) if art.pages else [(None, art.body)]
+    hits: list[tuple[int | None, str]] = []
+    for page, text in chunks:
+        flat = re.sub(r"\s+", " ", text)
+        low = flat.lower()
+        at = low.find(want)
+        while at >= 0:
+            lo, hi = max(0, at - width // 2), min(len(flat), at + len(want) + width // 2)
+            hits.append((page, ("…" if lo else "") + flat[lo:hi].strip() + ("…" if hi < len(flat) else "")))
+            at = low.find(want, at + len(want))
+    return hits
+
+
+def _headers_for(host: str) -> dict[str, str]:
+    """Accept HTML or a PDF. sec.gov's archives refuse an anonymous UA, so they get the fair-access contact
+    when it's configured (the filing reader's own header); without it the refusal names the cause."""
+    headers = {"Accept": "text/html,application/pdf;q=0.9,*/*;q=0.5"}
+    if host == "sec.gov" or host.endswith(".sec.gov"):
+        try:
+            from harness.finance.filing import _sec_contact_headers
+
+            headers.update(_sec_contact_headers())
+        except ProviderError:
+            pass
+    return headers
+
+
 def read_article(url: str) -> Article:
-    """Fetch + extract one article. Raises ProviderError on a refusal / network failure (named)."""
+    """Fetch + extract one article, or a PDF's text. Raises ProviderError on a refusal / network failure."""
     if not urlparse(url).scheme.startswith("http"):
         raise ProviderError(f"not an http(s) URL: {url}")
     notes: list[str] = []
@@ -240,15 +372,34 @@ def read_article(url: str) -> Article:
                 target = resolve_gnews(url, client)
                 notes.append(f"resolved from a Google News link → {urlparse(target).netloc}")
             try:
-                resp = get_with_retry(target, client=client, headers={"Accept": "text/html"}, retries=2)
+                resp = get_with_retry(target, client=client, headers=_headers_for(urlparse(target).netloc),
+                                      retries=2)
             except httpx.HTTPStatusError as e:
                 code = e.response.status_code
                 wall = " — a bot wall; the wire's headline + dek is the reachable read" if code in (
                     401, 403) else ""
-                raise ProviderError(f"{urlparse(target).netloc} answered HTTP {code}{wall}") from e
+                msg = f"{urlparse(target).netloc} answered HTTP {code}{wall}"
+                if code in (401, 403):
+                    raise BotWall(msg, url=target, host=urlparse(target).netloc) from e
+                raise ProviderError(msg) from e
     except httpx.HTTPError as e:
         raise ProviderError(f"fetch failed: {e}") from e
+    if _is_pdf(resp.headers.get("content-type", ""), resp.content[:8]):
+        art = pdf_article(resp.content, target)
+        art.url, art.final_url = url, str(resp.url)
+        art.notes = notes + art.notes
+        return art
     art = extract(resp.text, target)
+    if art.method == "none":
+        # No article structure at all, as in an EDGAR filing (inline XBRL: divs, spans and tables, no <p>):
+        # the page's whole text, labeled. A page with a dek keeps the dek; this never replaces a paywall's.
+        from harness.textutil import html_to_text
+
+        text = html_to_text(resp.text).strip()
+        if text:
+            art.body, art.method, art.words = text, "page-text", len(text.split())
+            art.partial = False
+            art.notes.append("no article structure; this is the page's full text")
     art.url, art.final_url = url, str(resp.url)
     art.notes = notes + art.notes
     return art
@@ -278,3 +429,129 @@ def article_card(url: str, *, refresh: bool = False) -> dict[str, str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(dict(list(cache.items())[-1500:])))
     return card
+
+
+# Wire publishers whose stories are licensed to syndication partners, and where those copies live. A copy
+# is used only when its headline matches exactly; nothing here gets past a paywall (a paywalled publisher
+# such as the FT syndicates nothing, so it has no entry and stays dek-only). The user overlay's
+# finance.wire.mirrors replaces this map.
+DEFAULT_MIRRORS: dict[str, list[str]] = {
+    "reuters.com": ["yahoo.com", "investing.com", "aol.com"],
+    "apnews.com": ["yahoo.com", "aol.com"],
+}
+_GNEWS_SEARCH = "https://news.google.com/rss/search"
+
+
+def mirrors_for(host: str) -> list[str]:
+    from harness.settings import overlay_get
+
+    raw = overlay_get("finance", "wire", "mirrors", default=None)
+    table: dict[str, Any] = raw if isinstance(raw, dict) else DEFAULT_MIRRORS
+    host = host.lower().removeprefix("www.")
+    for origin, mirrors in table.items():
+        if host == origin or host.endswith("." + origin):
+            return [str(m) for m in mirrors]
+    return []
+
+
+def _on(host: str, domains: list[str]) -> bool:
+    host = host.lower().removeprefix("www.")
+    return any(host == d or host.endswith("." + d) for d in domains)
+
+
+def normalize_headline(text: str) -> str:
+    """Words only, lowercase: so 'City council approves…' matches across quote styles and dashes."""
+    return " ".join(re.findall(r"[a-z0-9]+", unescape(text).lower()))
+
+
+# The small words a publisher's URL slug leaves out ("…-council-votes-limit-new-towers" for
+# "…council votes to limit new towers"). A slug-derived headline matches when the sequences
+# agree without them.
+_SLUG_DROPS = {"a", "an", "the", "to", "from", "of", "in", "on", "for", "and", "with", "at", "by", "as", "is"}
+
+
+def headline_matches(candidate: str, want: str, *, from_slug: bool) -> bool:
+    """Exact headline match: word for word, or, for a headline read off a URL slug, word for word once the
+    slug's dropped small words are set aside on both sides."""
+    a, b = normalize_headline(candidate).split(), normalize_headline(want).split()
+    if not from_slug:
+        return bool(b) and a == b
+    a, b = [w for w in a if w not in _SLUG_DROPS], [w for w in b if w not in _SLUG_DROPS]
+    return len(b) >= 4 and a == b
+
+
+def headline_from_url(url: str) -> str:
+    """A publisher's slug as words ('…/city-council-approves-…-2026-01-15/' -> the headline), without
+    the trailing date or id. Empty when the path has no slug."""
+    parts = [p for p in urlparse(url).path.split("/") if p]
+    slug = max(parts, key=len) if parts else ""
+    words = slug.split("-")
+    while words and (words[-1].isdigit() or re.fullmatch(r"[0-9a-f]{6,}", words[-1])):
+        words.pop()
+    return " ".join(words) if len(words) >= 4 else ""
+
+
+def _strip_source(title: str, source: str) -> str:
+    """Google News appends ' - <Source>' to every title."""
+    suffix = f" - {source}"
+    return title[: -len(suffix)] if source and title.endswith(suffix) else title
+
+
+def find_mirror(headline: str, mirrors: list[str], client: httpx.Client, *,
+                from_slug: bool = False) -> tuple[str, str] | None:
+    """(Google News link, mirror host) for a copy of `headline` on one of `mirrors`, exact headline only.
+    The search engine treats quotes loosely, so the match is checked here, word for word."""
+    if not normalize_headline(headline):
+        return None
+    sites = " OR ".join(f"site:{m}" for m in mirrors)
+    # Quoted first; unquoted when that finds nothing (a slug's words aren't a phrase anywhere). The search is
+    # only a candidate list either way: the headline check below is what decides.
+    items: list[str] = []
+    for q in (f'"{headline}" ({sites})', f"{headline} ({sites})"):
+        try:
+            params: dict[str, str | int] = {"q": q, "hl": "en-US", "gl": "US", "ceid": "US:en"}
+            resp = get_with_retry(_GNEWS_SEARCH, client=client, retries=1, params=params)
+        except httpx.HTTPError:
+            continue
+        items = re.findall(r"<item>(.*?)</item>", resp.text, re.S)
+        if items:
+            break
+    for item in items:
+        t = re.search(r"<title>(.*?)</title>", item, re.S)
+        link = re.search(r"<link>(.*?)</link>", item, re.S)
+        src = re.search(r'<source url="([^"]*)">(.*?)</source>', item, re.S)
+        if not (t and link and src):
+            continue
+        host = urlparse(unescape(src.group(1))).netloc
+        title = _strip_source(unescape(t.group(1)).strip(), unescape(src.group(2)).strip())
+        if _on(host, mirrors) and headline_matches(title, headline, from_slug=from_slug):
+            return unescape(link.group(1)).strip(), host
+    return None
+
+
+def read_with_mirror(url: str, headline: str = "") -> Article:
+    """`read_article`, and on a bot wall from a publisher that syndicates, the same story from a licensed
+    copy found by its exact headline (the wire's title, else the URL's slug). The result names both."""
+    try:
+        return read_article(url)
+    except BotWall as wall:
+        mirrors = mirrors_for(wall.host)
+        if not mirrors:
+            raise
+        from_slug = not headline
+        head = _strip_source(headline, headline.rsplit(" - ", 1)[-1]) if " - " in headline else headline
+        head = head or headline_from_url(wall.url)
+        with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+            found = find_mirror(head, mirrors, client, from_slug=from_slug) if head else None
+        if found is None:
+            raise ProviderError(f"{wall}; no syndicated copy with that exact headline on "
+                                f"{', '.join(mirrors)}") from wall
+        art = read_article(found[0])
+        shown = art.title.split(" - ")[0].split(" | ")[0]  # a site's own suffix, as in "… | Reuters"
+        if art.title and not headline_matches(shown, head, from_slug=from_slug):
+            raise ProviderError(f"{wall}; the copy found on {found[1]} has a different headline "
+                                f"({art.title[:80]!r}), so it isn't used") from wall
+        art.mirror, art.original = urlparse(art.final_url or found[0]).netloc or found[1], wall.url
+        art.notes.insert(0, f"{wall.host} refused (a bot wall); read from the syndicated copy on "
+                            f"{art.mirror}")
+        return art

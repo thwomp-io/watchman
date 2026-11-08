@@ -72,3 +72,13 @@ reason = "zbus_names via zbus (Linux-only D-Bus under the notification/single-in
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0372"
 reason = "zvariant_derive via zbus (Linux-only D-Bus under the notification/single-instance plugins); no fix published"
+
+# block-buffer 0.10.4 (GHSA-qwgh-2vcv-g2f7, CVSS 6.3) — ACCEPTED 2026-10-27. A caught panic inside a hash
+# callback can corrupt the buffer cursor. Fixed only in block-buffer 0.12.1; the 0.10 line has no fix. One
+# path: tauri-codegen 2.7.4 (latest stable) → sha2 0.10 → digest 0.10, inside the tauri-macros proc-macro,
+# i.e. BUILD time only (hashing the app's own bundled assets) — no runtime code, no untrusted input, and it
+# never catches a panic. The only newer tauri-codegen is 3.0.0-alpha (a cross-major pre-release).
+# Re-check: a stable tauri-codegen on sha2 0.11 / digest 0.11 (then a lockfile bump).
+[[IgnoredVulns]]
+id = "GHSA-qwgh-2vcv-g2f7"
+reason = "block-buffer 0.10 via sha2 0.10 in tauri-codegen (build-time proc-macro only); fixed only in 0.12.1, no stable Tauri path"

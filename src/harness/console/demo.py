@@ -4,7 +4,8 @@ Stages a scratch root (config, state, cache, bus and an empty corpus floor), poi
 env knob at it, activates a sample pack, and serves the console with exactly one write enabled:
 switching packs. A bundled pack is fully sealed (see `scenario`), and the corpus floor is an empty
 dir, so even "no pack" can never fall back to a real corpus that happens to exist on the machine.
-Each pack's scripted CHAT conversation plays under the same seal; it never calls a model.
+Each pack seeds its own Inbox events and plays its scripted CHAT conversation under the same seal;
+nothing calls a model.
 Ctrl-C stops the server and removes the scratch root.
 """
 
@@ -76,20 +77,63 @@ def stage(pack: Path) -> tuple[Path, dict[str, str], str]:
     return root, env, token
 
 
-class _Replay:
-    """The active pack's scripted CHAT, restarted whenever the pack changes."""
+INBOX_FILE = Path("bus") / "inbox.json"
 
-    def __init__(self, env: dict[str, str]) -> None:
+
+def seed_inbox(pack: Path, db: Path) -> int:
+    """Replace the demo bus's events with the pack's own (`bus/inbox.json`): a list of events, each
+    with an optional `ago_min` (how long ago it arrived) and `read`. The demo bus is scratch, so a
+    persona switch clears the last persona's events instead of mixing them. Returns the count."""
+    from datetime import UTC, datetime, timedelta
+
+    from harness.bus.models import EventDraft
+    from harness.bus.service import BusService
+    from harness.bus.store import connect
+
+    path = pack / INBOX_FILE
+    rows = json.loads(path.read_text()) if path.is_file() else []
+    conn = connect(db)
+    conn.execute("DELETE FROM events")
+    conn.commit()
+    svc = BusService(db)
+    now = datetime.now(UTC)
+    for i, row in enumerate(rows):
+        draft = EventDraft(
+            producer=row.get("producer", "demo"), lane=row["lane"], kind=row["kind"],
+            subject=row.get("subject", ""), title=row["title"], body=row.get("body", ""),
+            payload=row.get("payload", {}), severity=row.get("severity", "info"),
+            idempotency_key=f"demo:{pack.name}:{i}",
+        )
+        res = svc.publish(draft)
+        stamp = (now - timedelta(minutes=float(row.get("ago_min", 0)))).isoformat(timespec="seconds")
+        read = stamp if row.get("read") else None
+        conn.execute("UPDATE events SET created_at = ?, read_at = ? WHERE id = ?",
+                     (stamp, read, res.event_id))
+        conn.commit()  # before the next publish: it writes through its own connection
+    conn.close()
+    return len(rows)
+
+
+class _Replay:
+    """Per-pack demo state, reset whenever the pack changes: the Inbox seed (`seed_inbox`) and, when
+    replay is on, the pack's scripted CHAT."""
+
+    def __init__(self, env: dict[str, str], *, replay: bool = True) -> None:
         self.env = env
+        self.replay = replay
         self.proc: subprocess.Popen[bytes] | None = None
         self.pack: Path | None = None
         self.stop = threading.Event()
 
     def _start(self, pack: Path) -> None:
+        from harness.console import scenario
+
         self._kill()
+        if self.pack is None:  # the first persona; a switch is seeded by the switch request itself
+            seed_inbox(pack, scenario.demo_seal_state_dir() / "bus.db")
         self.pack = pack
         script = pack / "pocket" / "replay.json"
-        if script.is_file():
+        if self.replay and script.is_file():
             cmd = [sys.executable, "-m", "harness.cli", "pocket", "replay", "--script", str(script)]
             self.proc = subprocess.Popen(  # noqa: S603 — our own engine, fixed args
                 cmd, env=self.env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -149,9 +193,8 @@ def demo(
     typer.echo(f"Watchman demo — sample pack: {first.name} (switch personas from the header)")
     typer.echo(f"open: {url}")
     typer.echo("fictional data only; Ctrl-C stops the demo and deletes its scratch files")
-    player = _Replay({**os.environ, **env}) if replay else None
-    if player:
-        player.run(first)
+    player = _Replay({**os.environ, **env}, replay=replay)
+    player.run(first)
     if open_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
     # uvicorn re-raises a captured SIGTERM after its graceful shutdown; a handler that exits
@@ -161,6 +204,5 @@ def demo(
         extra = [*console_routes(token, writes=DEMO_WRITES), *ui_mounts([str(ui_dir)])]
         uvicorn.run(create_app(token=token, extra_routes=extra), host=host, port=port, log_level="warning")
     finally:
-        if player:
-            player.close()
+        player.close()
         shutil.rmtree(root, ignore_errors=True)

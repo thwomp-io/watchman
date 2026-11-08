@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-from harness._http import get_with_retry
+from harness._http import CONTACT_USER_AGENT, describe_http_error, get_with_retry
 from harness.travel.imaging import shrink_bytes
 from harness.travel.models import ImageCandidate, ImageResult
 
@@ -51,13 +51,9 @@ def _assets_parts(dest: str, vault_root: Path) -> tuple[str, ...]:
     """The doc's `assets/` dir — the folder (see `dest_dir_parts`) plus `assets`."""
     return (*dest_dir_parts(dest, vault_root), "assets")
 
-# The media CDN (upload.wikimedia.org) aggressively throttles non-browser clients (429), so image
-# *byte* downloads use browser-like headers. (API *search* calls keep a descriptive tool UA — good
-# etiquette where it isn't being blocked.) All personal-use; relevance × reliability drives this.
-_BROWSER_UA = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
+# Image bytes (in practice upload.wikimedia.org) go out under the contact-carrying tool UA
+# (`_http.CONTACT_USER_AGENT`): Wikimedia's robot policy asks clients to identify themselves rather
+# than pose as a browser. Its CDN throttles bursts (429); the shared backoff + per-subject delay absorb them.
 
 
 def slugify(text: str) -> str:
@@ -68,10 +64,9 @@ def slugify(text: str) -> str:
 def _download_bytes(
     url: str, referer: str, client: httpx.Client | None, timeout: float
 ) -> bytes:
-    """GET image bytes with browser-like headers (upload.wikimedia.org 429s non-browser clients).
-    Retry/backoff is handled by the shared get_with_retry helper."""
+    """GET image bytes under the contact tool UA; retry/backoff is the shared get_with_retry helper's."""
     headers = {
-        "User-Agent": _BROWSER_UA,
+        "User-Agent": CONTACT_USER_AGENT,
         "Accept": "image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
     }
@@ -82,7 +77,7 @@ def _download_bytes(
             url, headers=headers, client=client, timeout=timeout, follow_redirects=True
         )
     except httpx.HTTPError as e:
-        raise RuntimeError(f"image download failed: {e}") from e
+        raise RuntimeError(f"image download failed: {describe_http_error(e)}") from e
     return resp.content
 
 

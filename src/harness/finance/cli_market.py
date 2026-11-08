@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import re
 from typing import TYPE_CHECKING, Any
 
 import typer
@@ -15,13 +16,20 @@ from rich.markup import escape
 from rich.table import Table
 
 from harness.finance.config.settings import get_settings
+from harness.finance.providers.alpaca_provider import bars_feed
 from harness.finance.providers.base import ProviderError
+from harness.finance.sessions import local_stamp, tz_label
 
 if TYPE_CHECKING:
     pass
 from harness._cli import fail as _fail
 from harness.finance._cli import _signed, _svc, console
 from harness.finance.levels import support_levels
+
+# Alpaca intraday timeframes (15Min / 15T / 1Hour / 1H): the table shows time of day for these.
+_INTRADAY = re.compile(r"^\d+(Min|T|Hour|H)$")
+_INTRADAY_BAR = re.compile(r"^(\d+)Min$")
+_WINDOW = re.compile(r"^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$")
 
 
 def quote(
@@ -50,7 +58,7 @@ def quote(
             _signed(q.day_change_pct),
             f"${q.prev_close:,.2f}" if q.prev_close is not None else "—",
             q.feed,
-            "" if q.available else (q.note or "unavailable"),
+            q.note if q.available else (q.note or "unavailable"),
         )
     console.print(table)
 
@@ -178,15 +186,86 @@ def history(
     if as_json:
         console.print_json(json.dumps([b.model_dump(by_alias=True) for b in bars]))
         return
+    intraday = _INTRADAY.match(timeframe) is not None
+    first = local_stamp(bars[0].t) if bars and intraday else None
+    when = f"Time ({tz_label(first)})" if first else "Date"
     table = Table(title=f"{symbol.upper()} — {timeframe} bars")
-    for col in ("Date", "Open", "High", "Low", "Close", "Volume"):
+    for col in (when, "Open", "High", "Low", "Close", "Volume"):
         table.add_column(col)
     for b in bars:
-        table.add_row(
-            b.t[:10], f"{b.o:,.2f}", f"{b.h:,.2f}", f"{b.low:,.2f}", f"{b.c:,.2f}", f"{b.v:,}"
-        )
+        stamp = f"{local_stamp(b.t):%Y-%m-%d %H:%M}" if intraday else b.t[:10]
+        table.add_row(stamp, f"{b.o:,.2f}", f"{b.h:,.2f}", f"{b.low:,.2f}", f"{b.c:,.2f}", f"{b.v:,}")
     console.print(table)
     console.print(f"[dim]{len(bars)} bars[/dim]")
+    if bars_feed(feed) != feed:
+        console.print(f"[dim]{feed} isn't a bars feed on Alpaca: served from {bars_feed(feed)} "
+                      "(the free plan's SIP bars are 15-minute delayed)[/dim]")
+
+
+def session(
+    symbols: list[str] = typer.Argument(..., help="One or more tickers, e.g. SPY QQQ AAPL"),
+    day: str | None = typer.Option(None, "--date", help="YYYY-MM-DD (default: the current session)"),
+    bar: str = typer.Option("15Min", "--bar", help="5Min | 15Min"),
+    window: str | None = typer.Option(None, "--window", help="HH:MM-HH:MM ET: the raw bars for a slice"),
+    feed: str = typer.Option("delayed_sip", "--feed", help="delayed_sip (SIP volume, default) | iex"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """One regular session's intraday shape: low/high with ET times, close vs low/high, the last-15/30-min
+    move, last-15-min volume vs the session's average, the closing-auction size."""
+    m = _INTRADAY_BAR.match(bar)
+    if not m or int(m.group(1)) not in (5, 15):
+        _fail("--bar must be 5Min or 15Min")
+        raise typer.Exit(code=2)
+    span: tuple[str, str] | None = None
+    if window:
+        w = _WINDOW.match(window)
+        if not w:
+            _fail("--window must look like 14:00-16:00 (ET)")
+            raise typer.Exit(code=2)
+        span = (w.group(1).zfill(5), w.group(2).zfill(5))
+    try:
+        target = _dt.date.fromisoformat(day) if day else None
+        shapes = _svc(feed).session_shapes([s.upper() for s in symbols], day=target, minutes=int(m.group(1)))
+    except (ProviderError, ValueError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(json.dumps([s.model_dump() for s in shapes]))
+        return
+    first = shapes[0]
+    src = "SIP" if feed in ("delayed_sip", "sip") else feed.upper()
+    table = Table(title=f"Session {first.session} ({first.state}) · {first.bar} {src} bars · times ET")
+    for col in ("Symbol", "Open", "High (ET)", "Low (ET)", "Close", "vs Low", "vs High", "Last 15m",
+                "Last 30m", "Last-15 vol", "Closing auction"):
+        table.add_column(col)
+    for s in shapes:
+        if s.open is None:
+            table.add_row(s.symbol, *([""] * 9), f"[dim]{s.state}[/dim]")
+            continue
+        auction = (f"{s.auction_volume:,} @ {s.auction_price:,.2f}" if s.auction_volume is not None
+                   else "[dim]—[/dim]" if s.state != "complete" else "[dim]n/a[/dim]")
+        table.add_row(
+            s.symbol, f"{s.open:,.2f}", f"{s.high:,.2f} ({s.high_bar})", f"{s.low:,.2f} ({s.low_bar})",
+            f"{s.close:,.2f}", _signed(s.close_vs_low_pct), _signed(s.close_vs_high_pct),
+            _signed(s.last15_pct), _signed(s.last30_pct),
+            f"{s.last15_rel_volume:.1f}× avg" if s.last15_rel_volume is not None else "—", auction,
+        )
+    console.print(table)
+    bases = sorted({s.close_basis for s in shapes if s.close_basis})
+    console.print(f"[dim]  close = {', '.join(bases)} · high/low = the ET start of the bar it printed in · "
+                  "the auction is the listing exchange's closing print[/dim]")
+    for s in shapes:
+        for n in s.notes:
+            console.print(f"[dim]  • {s.symbol}: {n}[/dim]")
+    if span:
+        for s in shapes:
+            rows = [b for b in s.bars if span[0] <= b.t < span[1]]
+            t2 = Table(title=f"{s.symbol} {span[0]}-{span[1]} ET · {s.bar} bars")
+            for col in ("Time (ET)", "Open", "High", "Low", "Close", "Volume"):
+                t2.add_column(col)
+            for b in rows:
+                t2.add_row(b.t, f"{b.o:,.2f}", f"{b.h:,.2f}", f"{b.low:,.2f}", f"{b.c:,.2f}", f"{b.v:,}")
+            console.print(t2)
 
 
 def bars(
@@ -656,3 +735,108 @@ def ratings(
         "[dim]  • Sell-side consensus (Yahoo) — INFORMATION, not a verdict. Targets skew bullish, "
         "herd, and lag price (~1/3 hit at 12mo). Read the spread + count, not a single number.[/dim]"
     )
+
+
+def _parse_groups(spec: str) -> dict[str, list[str]]:
+    """'buyers=AAA,BBB;power=CCC' -> {'buyers': ['AAA', 'BBB'], 'power': ['CCC']}."""
+    out: dict[str, list[str]] = {}
+    for part in (p.strip() for p in spec.split(";") if p.strip()):
+        name, _, members = part.partition("=")
+        syms = [m.strip().upper() for m in members.split(",") if m.strip()]
+        if not name.strip() or not syms:
+            raise ValueError(f"--groups: {part!r} isn't NAME=SYM,SYM")
+        out[name.strip()] = syms
+    return out
+
+
+def _cell(v: float | None) -> str:
+    return _signed(v) if v is not None else ""
+
+
+def moves(
+    symbols: list[str] = typer.Argument(..., help="Tickers, e.g. AAA BBB CCC"),
+    start: str = typer.Option(
+        ..., "--from", help="YYYY-MM-DD: the base close (the last one on or before it)"
+    ),
+    end: str = typer.Option(None, "--to", help="YYYY-MM-DD (default: today)"),
+    groups: str = typer.Option(
+        "", "--groups", help="Group means: 'buyers=AAA,BBB;power=CCC' (members not listed are fetched too)"
+    ),
+    feed: str = typer.Option("delayed_sip", "--feed", help="delayed_sip (SIP bars, default) | iex"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """Several names' close-to-close moves on each session of a window, plus the cumulative: the event-study
+    table after a shock. OTC names the exchange feed lacks come from their Yahoo daily bars."""
+    try:
+        grp = _parse_groups(groups) if groups else None
+        lo = _dt.date.fromisoformat(start)
+        hi = _dt.date.fromisoformat(end) if end else _dt.date.today()
+        table = _svc(feed).moves([s.upper() for s in symbols], lo, hi, groups=grp)
+    except (ProviderError, ValueError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(table.model_dump_json())
+        return
+    t = Table(title=f"Moves after the {table.start} close, through {table.end}")
+    t.add_column("Symbol")
+    for d in table.sessions:
+        t.add_column(_dt.date.fromisoformat(d).strftime("%a %m-%d"), justify="right")
+    t.add_column("Cumulative", justify="right")
+    for r in table.rows:
+        label = r.symbol + (" [dim](yahoo)[/dim]" if r.source == "yahoo" else "")
+        if r.reason and not any(m is not None for m in r.moves):
+            t.add_row(label, *([""] * len(table.sessions)), f"[dim]{escape(r.reason)}[/dim]")
+            continue
+        t.add_row(label, *(_cell(m) for m in r.moves), f"[bold]{_cell(r.cumulative)}[/bold]")
+    for g in table.groups:
+        name = f"[bold]{escape(g.name)}[/bold] [dim]({len(g.members)})[/dim]"
+        t.add_row(name, *(_cell(m) for m in g.moves), f"[bold]{_cell(g.cumulative)}[/bold]")
+    console.print(t)
+    for n in table.notes:
+        console.print(f"[dim]  • {escape(n)}[/dim]")
+
+
+def crashdays(
+    symbol: str = typer.Argument(..., help="Ticker, e.g. QQQ"),
+    threshold: float = typer.Option(-7.0, "--threshold", help="A day at or below this move (%), e.g. -7"),
+    since: str = typer.Option("2016-01-01", "--since", help="YYYY-MM-DD: the first day to consider"),
+    cluster_days: int = typer.Option(
+        0, "--cluster-days", help="Fold events within N sessions into one episode, shown on its deepest day"
+    ),
+    feed: str = typer.Option("delayed_sip", "--feed", help="delayed_sip (SIP bars, default) | iex"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    """A symbol's worst days and what followed: the day's move, the drawdown from the prior high, forward
+    returns at +5/+20/+60/+120/+250 sessions, and the lowest close in the next 60. A base rate, not a
+    forecast: why each day happened is research, not arithmetic."""
+    if threshold >= 0:
+        _fail("--threshold is a loss, e.g. -7")
+        raise typer.Exit(code=2)
+    try:
+        rep = _svc(feed).crashdays(symbol.upper(), threshold, _dt.date.fromisoformat(since),
+                                   cluster_days=cluster_days)
+    except (ProviderError, ValueError) as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(rep.model_dump_json())
+        return
+    unit = "episodes" if cluster_days else "days"
+    t = Table(title=f"{rep.symbol}: {rep.count} {unit} at or below {rep.threshold:g}% since {rep.since} "
+                    f"(data through {rep.through})")
+    cols = ["Date", "Day", "Off high", *(f"+{k}d" for k in rep.horizons), f"Worst close in {rep.low_window}d"]
+    if cluster_days:
+        cols.insert(1, "Episode")
+    for c in cols:
+        t.add_column(c, justify="left" if c in ("Date", "Episode") else "right")
+    for r in rep.rows:
+        fwd = [_cell(r.forward.get(str(k))) for k in rep.horizons]
+        row = [r.date, _cell(r.move_pct), _cell(r.off_high_pct), *fwd, _cell(r.worst_low_pct)]
+        if cluster_days:
+            span = f"{r.episode_start} → {r.episode_end} ({r.episode_days})"
+            row.insert(1, span if r.episode_days > 1 else "")
+        t.add_row(*row)
+    console.print(t)
+    for n in rep.notes:
+        console.print(f"[dim]  • {escape(n)}[/dim]")

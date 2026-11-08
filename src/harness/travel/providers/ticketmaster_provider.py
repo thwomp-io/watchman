@@ -22,7 +22,6 @@ from harness.travel.models import EventResult
 from harness.travel.providers.base import ProviderError
 
 _API = "https://app.ticketmaster.com/discovery/v2/events.json"
-_UA = "harness/0.1 (personal travel-planning harness)"
 _PAGE_SIZE = 200  # TM max per page
 _MAX_PAGES = 5  # TM deep-paging cap is size*page <= 1000 → 5 pages of 200 covers any trip window
 
@@ -97,7 +96,7 @@ class TicketmasterEventProvider:
         self._throttle()
         try:
             resp = get_with_retry(
-                _API, params=params, headers={"User-Agent": _UA},
+                _API, params=params,
                 client=self._client, timeout=self._timeout,
             )
         except httpx.HTTPError as e:

@@ -149,6 +149,16 @@ class Position(BaseModel):
     note: str = ""
 
 
+class SessionClose(BaseModel):
+    """A symbol's official close for one regular session (the price a closed session is valued at)."""
+
+    symbol: str
+    close: float
+    prior_close: float | None = None  # the session before it, when the same snapshot carries it
+    session: str  # ISO date of the regular session
+    source: str  # "delayed_sip" (the consolidated official close) | "iex" (IEX's last regular trade)
+
+
 class PortfolioSnapshot(BaseModel):
     """Read-only portfolio view: live-quoted where possible, last-known / static otherwise. Never a
     recommendation — an observation surface for the assistant."""
@@ -163,6 +173,9 @@ class PortfolioSnapshot(BaseModel):
     last_known_value: float = 0.0
     static_value: float = 0.0
     net_worth: float = 0.0
+    # what the live-quoted positions are priced at: "live" (the latest trade) during the regular session,
+    # "close YYYY-MM-DD" (that session's official close) once it is over, so after-hours prints stay out
+    price_basis: str = "live"
     notes: list[str] = Field(default_factory=list)
 
 
@@ -187,6 +200,7 @@ class NetWorth(BaseModel):
     live_value: float = 0.0
     last_known_value: float = 0.0
     static_value: float = 0.0
+    price_basis: str = "live"  # see PortfolioSnapshot.price_basis
     notes: list[str] = Field(default_factory=list)
 
 
@@ -198,8 +212,15 @@ class ProxyComponent(BaseModel):
     move_pct: float | None = None
     weight: float | None = None  # the name's % of the FUND (N-PORT), when the basket is weighted
     # quote lane: "alpaca" (IEX exchange feed) / "yahoo" (OTC ADR via the v8
-    # client) / "flat" (the cash-sweep component — 0% by definition). None = legacy/alpaca.
+    # client) / "flat" (the cash-sweep component — 0% by definition) / "fill" (an exposure ETF standing in
+    # for the roster names the basket can't quote). None = legacy/alpaca.
     source: str | None = None
+    # what was priced: "close YYYY-MM-DD" (the official close after the bell), "last trade", or for an
+    # OTC name the bar it was read from. Empty when unavailable.
+    basis: str = ""
+    reason: str = ""  # why it's unavailable, when it is
+    exposure: str = ""  # a fill's exposure (TW, CN…)
+    fills_for: list[str] = Field(default_factory=list)  # what a fill's weight is made of
 
 
 class ProxyEstimate(BaseModel):
@@ -214,6 +235,8 @@ class ProxyEstimate(BaseModel):
     weighted: bool = False  # True = cap-weighted basket; False = legacy equal-weight
     coverage_pct: float | None = None  # sum of basket weights = % of the FUND the basket represents
     live_coverage_pct: float | None = None  # weights of the names that actually quoted this run
+    # The same with the exposure fills counted: what the estimate actually stands on. None = no fills.
+    filled_coverage_pct: float | None = None
     # Which US session the day % measures (finance.sessions): "live" = today's regular session;
     # "pre-open"/"closed" = the last completed session + thin off-hours ticks — say so on the read.
     session_state: str | None = None
@@ -229,6 +252,91 @@ class DayGLRow(BaseModel):
     day_gl: float | None = None  # $ move on the day (None = flat/no estimate)
     day_pct: float | None = None
     detail: str = ""
+
+
+class SessionBar(BaseModel):
+    """One regular-session bar, its start time in ET (HH:MM)."""
+
+    t: str
+    o: float
+    h: float
+    low: float
+    c: float
+    v: int
+
+
+class SessionShape(BaseModel):
+    """`hn finance session SYM`: one regular session's intraday shape (09:30-16:00 ET, ET bar times)."""
+
+    symbol: str
+    session: str  # ISO date
+    state: str  # "complete" | "partial" (still trading) | "not open" | "no data"
+    bar: str  # bar size, e.g. "15Min"
+    feed: str = ""
+    open: float | None = None
+    high: float | None = None
+    high_bar: str | None = None  # ET start of the bar the high printed in
+    low: float | None = None
+    low_bar: str | None = None
+    close: float | None = None
+    close_basis: str = ""  # "official close" | "last bar close" | "latest (HH:MM ET)"
+    close_vs_low_pct: float | None = None
+    close_vs_high_pct: float | None = None
+    last15_pct: float | None = None  # the close vs the price 15 minutes before the newest bar's end
+    last30_pct: float | None = None
+    volume: int = 0  # regular-session volume
+    avg_15min_volume: float | None = None
+    last15_volume: int = 0
+    last15_rel_volume: float | None = None  # last-15-min volume as a multiple of the average 15 min
+    auction_volume: int | None = None  # the closing cross (the listing exchange's closing print)
+    auction_price: float | None = None
+    bars: list[SessionBar] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class AuctionPrint(BaseModel):
+    """The closing cross: the listing exchange's closing print (trade condition "6")."""
+
+    symbol: str
+    price: float
+    size: int
+    exchange: str = ""
+
+
+class ExtendedTrade(BaseModel):
+    """A symbol's latest trade, when it printed after a regular session's close (extended hours)."""
+
+    symbol: str
+    price: float
+    t: str  # ISO timestamp of the trade (UTC)
+
+
+class AfterHoursRow(BaseModel):
+    """One quoted holding: the latest extended-hours print against the last regular close."""
+
+    symbol: str
+    account: str
+    shares: float
+    close: float | None = None  # the last regular-session close
+    price: float | None = None  # the latest extended-hours trade
+    t: str | None = None  # that trade's ISO timestamp
+    move: float | None = None  # (price - close) × shares
+    move_pct: float | None = None
+    note: str = ""  # why a row is left out of the total
+
+
+class AfterHours(BaseModel):
+    """`hn finance daygl --after-hours`: the quoted sleeve re-priced at extended-hours trades against
+    the last regular close — the implied move into the next open. A thin-print estimate, not a forecast:
+    extended-hours volume is a sliver of the session's, and the open can land anywhere."""
+
+    session: str  # the regular session the closes are from (ISO date)
+    rows: list[AfterHoursRow] = Field(default_factory=list)
+    total_move: float = 0.0  # over the rows that have an extended-hours trade
+    total_pct: float | None = None  # vs those rows' value at the close
+    value_at_close: float = 0.0
+    excluded: list[str] = Field(default_factory=list)  # quoted holdings with no extended-hours trade
+    notes: list[str] = Field(default_factory=list)
 
 
 class DayGL(BaseModel):
@@ -725,4 +833,65 @@ class OptionGauges(BaseModel):
     hv30_returns: int = 0
     iv_hv_spread: float | None = None  # IV30 − HV30, points
     spread_read: str | None = None  # braced / neutral / complacent (±8-point thresholds) — a gauge label
+    notes: list[str] = Field(default_factory=list)
+
+
+class MoveRow(BaseModel):
+    """One name's move on each session of a window (aligned to MovesTable.sessions), and its cumulative."""
+
+    symbol: str
+    # "alpaca" (exchange, split-adjusted SIP bars) | "yahoo" (an OTC name's daily bars)
+    source: str = "alpaca"
+    moves: list[float | None] = Field(default_factory=list)  # None = no close that session
+    cumulative: float | None = None  # from the last close on or before the window's start
+    reason: str = ""  # why it's blank, when it is
+
+
+class MoveGroup(BaseModel):
+    """The plain mean of a group's members, per session and for the cumulative."""
+
+    name: str
+    members: list[str] = Field(default_factory=list)
+    moves: list[float | None] = Field(default_factory=list)
+    cumulative: float | None = None
+    counted: int = 0  # members with a cumulative
+
+
+class MovesTable(BaseModel):
+    """Close-to-close moves for several names over a window (`hn finance moves`)."""
+
+    start: str  # the base date: moves are measured from the last close on or before it
+    end: str
+    sessions: list[str] = Field(default_factory=list)
+    rows: list[MoveRow] = Field(default_factory=list)
+    groups: list[MoveGroup] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class CrashDay(BaseModel):
+    """One session at or below the threshold, and what followed it."""
+
+    date: str
+    move_pct: float
+    off_high_pct: float | None = None  # vs the highest close before it
+    forward: dict[str, float | None] = Field(default_factory=dict)  # sessions ahead -> %; None = not reached
+    worst_low_pct: float | None = None  # the lowest close in the next low_window sessions; None = not reached
+    index: int = Field(default=0, exclude=True)
+    episode_start: str | None = None  # with --cluster-days: the episode this day stands for
+    episode_end: str | None = None
+    episode_days: int = 1
+    episode_last_index: int = Field(default=0, exclude=True)
+
+
+class CrashDays(BaseModel):
+    """A symbol's worst days and their aftermath (`hn finance crashdays`)."""
+
+    symbol: str
+    threshold: float
+    since: str
+    through: str = ""  # the last close in the data
+    horizons: list[int] = Field(default_factory=list)
+    low_window: int = 60
+    count: int = 0
+    rows: list[CrashDay] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

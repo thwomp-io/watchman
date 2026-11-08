@@ -23,6 +23,7 @@ from urllib.parse import quote_plus, urlparse
 from harness._http import get_with_retry
 from harness.errors import ProviderError
 from harness.finance.models import Filing, FilingRef, NewsItem
+from harness.finance.providers.sec_policy import refusal_cause
 from harness.finance.scan import paced
 
 _YAHOO_RSS_URL = "https://feeds.finance.yahoo.com/rss/2.0/headline"
@@ -149,6 +150,10 @@ def _submissions_recent(cik: str, *, label: str) -> dict[str, Any]:
     try:
         with paced(_SUBMISSIONS_URL.format(cik=cik)):
             resp = get_with_retry(_SUBMISSIONS_URL.format(cik=cik))
+    except _httpx.HTTPStatusError as e:
+        cause = refusal_cause(e.response)
+        suffix = f" — {cause}" if cause else ""
+        raise ProviderError(f"{label}: HTTP {e.response.status_code}{suffix}") from e
     except _httpx.HTTPError as e:
         raise ProviderError(f"{label}: {e}") from e
     if resp.status_code != 200:

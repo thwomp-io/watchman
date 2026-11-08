@@ -5,13 +5,15 @@ proxy and the full-book day G/L. Functions of the service (quotes + the portfoli
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
 
     pass
 
 from harness.finance.models import (
+    AfterHours,
+    AfterHoursRow,
     DayGL,
     DayGLRow,
     NetWorth,
@@ -22,16 +24,30 @@ from harness.finance.models import (
     ProxyEstimate,
 )
 from harness.finance.providers.base import ProviderError
+from harness.finance.sessions import us_session
 
 if TYPE_CHECKING:
     from harness.finance.service import FinanceService
 
-def positions(svc: FinanceService) -> PortfolioSnapshot:
+def positions(svc: FinanceService, now: datetime | None = None) -> PortfolioSnapshot:
+    """The portfolio priced now. During the regular session a quoted holding is priced at its latest
+    trade; once the session is over (after the bell, overnight, weekends) at that session's official
+    close, so an after-hours print (an earnings reaction) never lands in an end-of-day number. The
+    basis is stated in `price_basis` and the notes."""
     seed = svc.reader.read_portfolio()
     quotable = [h for h in seed.holdings if h.quotable]
     quotes = {q.symbol: q for q in svc.quote([h.symbol for h in quotable])} if quotable else {}
+    state, session = us_session(now)
+    closes = svc.session_closes([h.symbol for h in quotable], session) if quotable and state != "live" else {}
 
     snap = PortfolioSnapshot()
+    if state != "live":
+        sources = {c.source for c in closes.values()}
+        snap.price_basis = f"close {session.isoformat()}"
+        snap.notes.append(
+            f"The regular session is over: quoted positions are valued at the {session.isoformat()} "
+            f"close ({' + '.join(sorted(sources)) or 'none available'}), not after-hours prints."
+        )
     for h in seed.holdings:
         pos = Position(
             symbol=h.symbol,
@@ -46,7 +62,25 @@ def positions(svc: FinanceService) -> PortfolioSnapshot:
             as_of=h.as_of,
         )
         q = quotes.get(h.symbol)
-        if h.valuation == "live" and q is not None and q.available and q.price is not None:
+        closed = closes.get(h.symbol.upper())
+        if h.valuation == "live" and closed is not None:
+            pos.price = closed.close
+            pos.market_value = closed.close * h.shares
+            pos.unrealized_gl = pos.market_value - h.cost_basis
+            if h.cost_basis:
+                pos.unrealized_gl_pct = pos.unrealized_gl / h.cost_basis * 100.0
+            if closed.prior_close:
+                pos.day_change_pct = (closed.close / closed.prior_close - 1.0) * 100.0
+                pos.day_gl = (closed.close - closed.prior_close) * h.shares
+            pos.note = f"{closed.session} close ({closed.source})"
+            snap.live_value += pos.market_value
+            snap.quoted_cost_basis += h.cost_basis
+            snap.quoted_unrealized_gl += pos.unrealized_gl
+            if pos.day_gl is not None:
+                snap.quoted_day_gl += pos.day_gl
+        elif h.valuation == "live" and q is not None and q.available and q.price is not None:
+            if state != "live":
+                pos.note = f"no {session.isoformat()} close available: priced at the latest trade"
             pos.price = q.price
             pos.market_value = q.price * h.shares
             pos.unrealized_gl = pos.market_value - h.cost_basis
@@ -113,7 +147,9 @@ def networth(svc: FinanceService) -> NetWorth:
         live_value=snap.live_value,
         last_known_value=snap.last_known_value,
         static_value=snap.static_value,
+        price_basis=snap.price_basis,
     )
+    nw.notes.extend(n for n in snap.notes if n.startswith("The regular session is over"))
     nw.notes.append(
         "Full-picture net worth (brokerage + retirement + cash, across institutions). Static / "
         "last-known balances are manually synced — refresh from a current broker screenshot at "
@@ -226,112 +262,130 @@ def allocation_pie(svc: FinanceService) -> dict[str, object]:
     }
 
 
-def fund_proxy(svc: FinanceService,  now: datetime | None = None) -> ProxyEstimate:
+def fund_proxy(svc: FinanceService, now: datetime | None = None) -> ProxyEstimate:
+    """A mutual fund's direction from its roster's live proxies: the basket names, each at its N-PORT
+    weight; the cash sweep flat; and, with `fills:` configured, one exposure ETF per region standing in
+    for the roster names the basket can't quote (and any basket name unavailable this run).
+
+    Pricing follows the session it measures. During the regular session the Alpaca lane reads the last
+    trade; once it's over, the official close against the prior close (the basis `positions` uses), so an
+    evening read stops drifting on after-hours prints. OTC names are read from their daily bars and count
+    only with a trade on the session and a real close on the session before (`proxy_fills.otc_move`)."""
+    from harness.finance import proxy_fills
+    from harness.finance.providers import global_provider
+    from harness.finance.sessions import us_session
+
     basket = svc.reader.read_portfolio().proxy
     weighted = bool(basket.weights)
-    # Two quote lanes: exchange-listed names ride the Alpaca IEX feed; OTC
-    # ADRs (invisible to IEX) ride the keyless Yahoo v8 client the global command already uses. The lane is
-    # config-declared per name (source: yahoo), never guessed.
+    state, sdate = us_session(now)
+    fill_syms = [f.symbol for f in basket.fills] if weighted else []
     alpaca_syms = [sym for sym in basket.symbols if basket.sources.get(sym, "alpaca") != "yahoo"]
     yahoo_syms = [sym for sym in basket.symbols if basket.sources.get(sym) == "yahoo"]
-    quotes = svc.quote(alpaca_syms) if alpaca_syms else []
-    yahoo_quotes: dict[str, Any] = {}
-    if yahoo_syms:
-        try:
-            from harness.finance.providers.global_provider import fetch_global_quotes
 
-            yahoo_quotes = fetch_global_quotes(yahoo_syms)
-        except Exception:
-            yahoo_quotes = {}  # lane-level outage degrades honestly to per-name missing below
+    exchange = list(dict.fromkeys(alpaca_syms + fill_syms))
+    quotes = {q.symbol: q for q in svc.quote(exchange)} if exchange else {}
+    closes = svc.session_closes(exchange, sdate) if exchange and state != "live" else {}
+    priced: dict[str, ProxyComponent] = {}
+    for sym in exchange:
+        q, close = quotes.get(sym), closes.get(sym)
+        if close is not None and close.prior_close:
+            priced[sym] = ProxyComponent(
+                symbol=sym, price=close.close, prev_close=close.prior_close,
+                move_pct=(close.close / close.prior_close - 1.0) * 100.0,
+                basis=f"close {sdate.isoformat()}",
+            )
+        elif q is not None and q.available and q.day_change_pct is not None:
+            basis = "last trade" if state == "live" else f"last trade (no official {sdate.isoformat()} close)"
+            priced[sym] = ProxyComponent(symbol=sym, price=q.price, prev_close=q.prev_close,
+                                         move_pct=q.day_change_pct, basis=basis)
+
+    try:
+        histories = global_provider.fetch_daily_history(yahoo_syms) if yahoo_syms else {}
+    except Exception:  # noqa: BLE001 — a lane-level outage degrades to per-name unavailable below
+        histories = {}
+    prior = proxy_fills.previous_session(list(histories.values()), sdate)
+
     components: list[ProxyComponent] = []
     avail: list[tuple[float, float]] = []  # (move_pct, weight) — weight=1.0 in equal-weight mode
     missing: list[str] = []
-    for q in quotes:
-        w = basket.weights.get(q.symbol) if weighted else None
-        if q.available and q.day_change_pct is not None:
-            components.append(
-                ProxyComponent(
-                    symbol=q.symbol,
-                    available=True,
-                    price=q.price,
-                    prev_close=q.prev_close,
-                    move_pct=q.day_change_pct,
-                    weight=w,
-                    source="alpaca",
-                )
-            )
-            avail.append((q.day_change_pct, w if (weighted and w is not None) else 1.0))
-        else:
-            components.append(ProxyComponent(symbol=q.symbol, available=False, weight=w, source="alpaca"))
-            missing.append(q.symbol)
-    for sym in yahoo_syms:
+    for sym in basket.symbols:
         w = basket.weights.get(sym) if weighted else None
-        gq = yahoo_quotes.get(sym)
-        if gq is not None and gq.change_pct is not None:
-            prev = (
-                round(gq.price - gq.change, 4)
-                if (gq.price is not None and gq.change is not None)
-                else None
-            )
-            components.append(
-                ProxyComponent(
-                    symbol=sym,
-                    available=True,
-                    price=gq.price,
-                    prev_close=prev,
-                    move_pct=gq.change_pct,
-                    weight=w,
-                    source="yahoo",
-                )
-            )
-            avail.append((gq.change_pct, w if (weighted and w is not None) else 1.0))
+        lane = "yahoo" if basket.sources.get(sym) == "yahoo" else "alpaca"
+        if lane == "yahoo":
+            r = proxy_fills.otc_move(histories.get(sym), sdate, prior)
+            c = ProxyComponent(symbol=sym, available=r.ok, price=r.price, prev_close=r.prev_close,
+                               move_pct=r.move_pct, basis=r.basis, reason=r.reason)
         else:
-            # thin OTC names miss prints some sessions — drop from the day's coverage, say so
-            components.append(ProxyComponent(symbol=sym, available=False, weight=w, source="yahoo"))
+            c = priced.get(sym) or ProxyComponent(symbol=sym, available=False,
+                                                  reason="no quote")
+        c.weight, c.source = w, lane
+        components.append(c)
+        if c.available and c.move_pct is not None:
+            avail.append((c.move_pct, w if (weighted and w is not None) else 1.0))
+        else:
             missing.append(sym)
+
     if weighted and basket.cash_weight > 0:
         # the fund's cash sweep: a real slice of the book that moves 0% by definition —
         # including it dampens the estimate exactly the way the fund's own cash does.
-        components.append(
-            ProxyComponent(
-                symbol="CASH", available=True, move_pct=0.0,
-                weight=basket.cash_weight, source="flat",
-            )
-        )
+        components.append(ProxyComponent(symbol="CASH", available=True, move_pct=0.0,
+                                         weight=basket.cash_weight, source="flat"))
         avail.append((0.0, basket.cash_weight))
+    live_coverage = round(sum(w for _, w in avail), 2) if weighted else None
+
+    plan = proxy_fills.FillPlan()
+    if fill_syms:
+        roster = proxy_fills.read_roster(basket.holdings_ref)
+        plan = proxy_fills.plan_fills(roster, basket.weights, set(missing), basket.fills)
+        for f in basket.fills:
+            w = round(plan.weights.get(f.exposure, 0.0), 2)
+            if not w:
+                continue
+            got = priced.get(f.symbol)
+            c = got.model_copy() if got else ProxyComponent(symbol=f.symbol, available=False,
+                                                            reason="no quote")
+            c.weight, c.source, c.exposure = w, "fill", f.exposure
+            c.fills_for = plan.parts.get(f.exposure, [])
+            components.append(c)
+            if c.available and c.move_pct is not None:
+                avail.append((c.move_pct, w))
 
     weight_sum = sum(w for _, w in avail)
     estimate = sum(m * w for m, w in avail) / weight_sum if avail and weight_sum else None
     coverage = round(sum(basket.weights.values()) + basket.cash_weight, 2) if weighted else None
-    live_coverage = round(sum(w for _, w in avail), 2) if weighted else None
+    filled = round(weight_sum, 2) if (weighted and fill_syms) else None
     notes = [basket.note] if basket.note else []
-    if missing:
-        notes.append(
-            f"Unavailable on the feed (OTC/ADR not covered): {', '.join(missing)}. "
-            "Estimate uses the available names only."
-        )
+    gone = [c for c in components if not c.available]
+    if gone:
+        listed = "; ".join(f"{c.symbol} ({c.reason or 'no quote'})" for c in gone)
+        notes.append(f"Unavailable: {listed}.")
     if weighted:
         notes.append(
-            f"CAP-WEIGHTED proxy (N-PORT weights): the basket represents "
-            f"{coverage}% of the fund ({live_coverage}% quoted live this run). The unmapped "
-            "tail is a disclosed blind spot — quiet-day sign flips remain possible when the "
-            "tail moves against the basket; NAV truth is the EOD sync, never the proxy."
+            f"CAP-WEIGHTED proxy (N-PORT weights): the basket represents {coverage}% of the fund "
+            f"({live_coverage}% quoted this run)."
+            + (f" Exposure fills take it to {filled}%: each fill stands in for the roster names the basket "
+               "can't quote in that region, plus any basket name unavailable this run."
+               + (f" {plan.unfilled}% fits no fill and is spread over the rest." if plan.unfilled else "")
+               + (" Over 100% is the filing's own: its positions sum past 100 when other assets net negative."
+                  if filled is not None and filled > 100 else "")
+               if filled is not None else
+               " The unmapped tail is spread over the quoted names, so a selloff concentrated there reads "
+               "shallow.")
+            + " NAV truth is the EOD sync, never the proxy."
         )
+        if fill_syms and not proxy_fills.read_roster(basket.holdings_ref):
+            notes.append("Fills are configured but the roster file wasn't found, so none were weighed.")
     else:
         notes.append(
             "Equal-weight directional proxy ONLY — a cap-weighted fund won't match an equal-weight "
             "basket, so treat this as a rough sign-and-magnitude read, not a NAV prediction."
         )
-    from harness.finance.sessions import us_session
-
-    state, sdate = us_session(now)
     if state != "live":
         # First note, not a footnote: an off-hours estimate re-measures a struck session.
         notes.insert(0, (
             f"US session {state.upper()} — this estimate measures the {sdate:%a %m-%d} US session "
-            f"(its NAV is already struck) plus thin off-hours ADR ticks, which move it without "
-            "new information; Asia's live session is NOT in this number — read "
-            "`hn finance global -s asia` for the next session's lean."
+            f"(its NAV is already struck) at the official close where one exists; Asia's live session is "
+            "NOT in this number — read `hn finance global -s asia` for the next session's lean."
         ))
     return ProxyEstimate(
         fund=basket.fund,
@@ -343,9 +397,64 @@ def fund_proxy(svc: FinanceService,  now: datetime | None = None) -> ProxyEstima
         weighted=weighted,
         coverage_pct=coverage,
         live_coverage_pct=live_coverage,
+        filled_coverage_pct=filled,
         session_state=state,
         session_date=sdate.isoformat(),
     )
+
+
+def after_hours(svc: FinanceService, now: datetime | None = None) -> AfterHours:
+    """The quoted sleeve at its latest extended-hours trades vs the last regular close: the implied
+    move into the next open. Only outside the regular session (after the bell, overnight, pre-market);
+    the anchor is the same official close `positions` uses once the session is over. Fund NAVs and
+    static balances are not in it (no extended-hours price exists for them)."""
+    state, session = us_session(now)
+    if state == "live":
+        raise ProviderError(
+            "the regular session is live: there are no extended-hours prints to read yet "
+            "(`hn finance daygl` is the session's move)"
+        )
+    seed = svc.reader.read_portfolio()
+    live = [h for h in seed.holdings if h.quotable and h.valuation == "live" and h.shares]
+    symbols = sorted({h.symbol.upper() for h in live})
+    closes = svc.session_closes(symbols, session) if symbols else {}
+    trades = svc.extended_trades(symbols, session) if symbols else {}
+    out = AfterHours(session=session.isoformat())
+    for h in live:
+        sym = h.symbol.upper()
+        row = AfterHoursRow(symbol=sym, account=h.account, shares=h.shares)
+        close, trade = closes.get(sym), trades.get(sym)
+        row.close = close.close if close else None
+        if close is None:
+            row.note = f"no {session.isoformat()} close"
+        elif trade is None:
+            row.note = "no extended-hours trade"
+        else:
+            row.price, row.t = trade.price, trade.t
+            row.move = (trade.price - close.close) * h.shares
+            row.move_pct = (trade.price / close.close - 1.0) * 100.0
+            out.total_move += row.move
+            out.value_at_close += close.close * h.shares
+        if row.move is None:
+            out.excluded.append(sym)
+        out.rows.append(row)
+    out.rows.sort(key=lambda r: (r.move is None, -abs(r.move or 0.0)))
+    if out.value_at_close:
+        out.total_pct = out.total_move / out.value_at_close * 100.0
+    funds = [h.symbol for h in seed.holdings if h.valuation == "last_known"]
+    statics = [h.symbol for h in seed.holdings if h.valuation == "static"]
+    if funds:
+        out.notes.append(
+            f"Not in it: {', '.join(funds)} (a fund strikes NAV at the close; for its direction "
+            "`hn finance fund-proxy` + the Asia rows of `hn finance global`)."
+        )
+    if statics:
+        out.notes.append(f"Static balances, flat by definition: {', '.join(statics)}.")
+    out.notes.append(
+        "Thin-print estimate, not a forecast: extended-hours volume is a sliver of the session's and "
+        "the open can land anywhere."
+    )
+    return out
 
 
 def daygl(svc: FinanceService) -> DayGL:

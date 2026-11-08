@@ -305,16 +305,20 @@ def wire_read(
         None, "--match", help="Instead of a URL: read the NEWEST wire headline containing this text"
     ),
     max_chars: int = typer.Option(6000, "--max-chars", help="Body characters to print (0 = all)"),
+    grep: str = typer.Option(
+        None, "--grep", help="Print only where this text occurs, with its page number for a PDF"
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
-    """Fetch ONE article and extract its body (keyless) — the read behind a wire headline.
+    """Fetch ONE article and extract its body (keyless) — the read behind a wire headline. A PDF (a
+    regulator's deck, a filing exhibit) comes back as page-numbered text.
 
     Order of trust: the publisher's JSON-LD articleBody → <article> paragraphs → page paragraphs →
     the dek. Google News links (the AP/Reuters/Bloomberg lanes) resolve to the publisher first.
     Paywalls, bot walls and JS-only pages are reported as such, never papered over."""
     from dataclasses import asdict
 
-    from harness.finance.providers.article_provider import read_article
+    from harness.finance.providers.article_provider import grep_article, read_with_mirror
 
     if (url is None) == (match is None):
         _fail("give a URL or --match TEXT (one, not both)")
@@ -333,17 +337,34 @@ def wire_read(
                 console.print(f"[dim]  also: {other.source} {other.published} "
                               f"{escape(other.title[:90])}[/dim]")
     assert url is not None
+    headline = hits[0].title if match is not None else ""
     try:
-        art = read_article(url)
+        art = read_with_mirror(url, headline)
     except ProviderError as e:
         _fail(str(e))
         raise typer.Exit(code=1) from e
+    matches = grep_article(art, grep) if grep else None
     if as_json:
-        console.print_json(json.dumps(asdict(art)))
+        payload = asdict(art)
+        if matches is not None:
+            payload["grep"] = [{"page": p, "text": t} for p, t in matches]
+        console.print_json(json.dumps(payload))
+        return
+    if matches is not None:
+        where = f"{len(art.pages)} pages" if art.pages else f"{art.words} words"
+        head = f"[bold]{escape(art.title or '(no title)')}[/bold]"
+        console.print(f"{head} [dim]· {escape(art.site)} · {where} · {len(matches)} match(es) for "
+                      f"{escape(repr(grep))}[/dim]")
+        for page, text in matches:
+            console.print(f"[cyan]{'p.' + str(page) if page else '—'}[/cyan]  {escape(text)}")
+        if not matches:
+            console.print("[yellow]  no match[/yellow]")
         return
     console.print(f"[bold]{escape(art.title or '(no title)')}[/bold]")
     meta = " · ".join(x for x in (art.site, art.published[:16], f"{art.words} words",
                                    f"via {art.method}") if x)
+    if art.mirror:
+        meta += f" · syndicated copy; original {art.original}"
     console.print(f"[dim]{escape(meta)}[/dim]")
     if art.dek and art.method != "dek":
         console.print(f"[italic]{escape(art.dek)}[/italic]")

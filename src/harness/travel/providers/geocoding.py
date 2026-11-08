@@ -24,7 +24,6 @@ from harness.travel.models import GeoLocation
 from harness.travel.providers.base import ProviderError
 
 _GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
-_UA = "harness/0.1 (personal travel-planning harness)"
 
 # Country/territory name → ISO-3166 alpha-2, for qualifier matching where Open-Meteo returns a null
 # `country` field (most territories) or the user uses an abbreviation. Full country *names* that ARE
@@ -50,7 +49,7 @@ def _search(
     params: dict[str, str | int] = {"name": query, "count": count, "language": "en", "format": "json"}
     try:
         resp = get_with_retry(
-            _GEOCODE_URL, params=params, headers={"User-Agent": _UA},
+            _GEOCODE_URL, params=params,
             client=client, timeout=timeout,
         )
         results = resp.json().get("results") or []

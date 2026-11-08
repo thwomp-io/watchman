@@ -25,6 +25,7 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { chromium } from "playwright";
+import { SANDBOXED } from "./browser.mjs";
 
 const VIEWPORTS = {
   phone: { width: 390, height: 844 }, // iPhone-class viewport
@@ -64,7 +65,7 @@ const hoverSel = arg("--hover", ""); // CSS selector to hover before capture (to
 const clickSel = arg("--click", ""); // CSS selector(s), comma-separated, clicked in order (modal/popup + tab verification)
 const settleMs = Number(arg("--settle-ms", "4000"));
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(SANDBOXED); // trusted page (our console); sandbox on
 const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
 if (tokenFile) {
   const token = readFileSync(tokenFile, "utf8").trim();

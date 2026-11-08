@@ -427,6 +427,69 @@ def fetch_global_quotes(symbols: list[str]) -> dict[str, GlobalQuote]:
     return out
 
 
+@dataclass
+class DailyHistory:
+    """A symbol's recent daily bars (exchange-local dates) and its last trade, for judging whether a thin
+    OTC name's day move is real. `last_trade` is the date of the latest regular-session print."""
+
+    symbol: str
+    price: float | None
+    last_trade: date | None
+    bars: list[tuple[date, float | None, int | None]]  # (date, close, volume)
+
+
+def parse_daily_history(symbol: str, result: dict[str, Any]) -> DailyHistory | None:
+    """One v8 chart result (interval=1d) as a DailyHistory; None on a shape surprise."""
+    try:
+        meta = result["meta"]
+        tz = ZoneInfo(meta.get("exchangeTimezoneName") or "America/New_York")
+        quote = result["indicators"]["quote"][0]
+        stamps = result.get("timestamp") or []
+        closes, volumes = quote.get("close") or [], quote.get("volume") or []
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    bars: list[tuple[date, float | None, int | None]] = []
+    for i, t in enumerate(stamps):
+        c = closes[i] if i < len(closes) else None
+        v = volumes[i] if i < len(volumes) else None
+        bars.append((datetime.fromtimestamp(int(t), tz).date(),
+                     None if c is None else float(c), None if v is None else int(v)))
+    rmt = meta.get("regularMarketTime")
+    last = datetime.fromtimestamp(int(rmt), tz).date() if isinstance(rmt, int | float) else None
+    price = meta.get("regularMarketPrice")
+    return DailyHistory(symbol=symbol, price=None if price is None else float(price), last_trade=last,
+                        bars=bars)
+
+
+def fetch_daily_history(symbols: list[str], *, start: date | None = None,
+                        end: date | None = None) -> dict[str, DailyHistory]:
+    """Daily bars per symbol, self-paced: the last five (range=5d), or `start` through `end` when given. A
+    failed symbol is simply absent: the chart's own previousClose is not trusted for thin names (it can
+    be days old), so the bars decide."""
+    if start is not None:
+        lo = int(datetime.combine(start, datetime.min.time(), tzinfo=UTC).timestamp())
+        hi = int(datetime.combine((end or date.today()) + timedelta(days=1), datetime.min.time(),
+                                  tzinfo=UTC).timestamp())
+        params: dict[str, str | int] = {"interval": "1d", "period1": lo, "period2": hi}
+    else:
+        params = {"interval": "1d", "range": "5d"}
+    out: dict[str, DailyHistory] = {}
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+        for i, sym in enumerate(symbols):
+            if i:
+                time.sleep(_PACE_SECONDS)
+            try:
+                resp = get_with_retry(
+                    _CHART_URL.format(symbol=sym), client=client, headers=_HDRS, params=params, retries=2,
+                )
+                h = parse_daily_history(sym, resp.json()["chart"]["result"][0])
+            except Exception:  # noqa: BLE001 — per-symbol resilience: absent means unavailable
+                h = None
+            if h is not None:
+                out[sym] = h
+    return out
+
+
 _ET = ZoneInfo("America/New_York")
 
 

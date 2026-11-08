@@ -6,12 +6,13 @@
 //
 // Usage:
 //   node scripts/apply-fill.mjs --packet <folder>/packet.json --profile <dir> --shot <out.png>
-//                               [--after <post-submit.png>] [--wait-min 30] [--no-wait]
+//                               [--after <post-submit.png>] [--wait-min 30] [--no-wait] [--allow-stale-browser]
 //
 // Posture:
-// - Playwright is already in this package's devDependencies (the agent's eye uses it); the
-//   browser is the Chromium build Playwright already installed. Zero new dependencies, no new
-//   browser download, nothing branded or signed in to any account.
+// - Playwright is already in this package's devDependencies (the agent's eye uses it). The browser
+//   is installed Google Chrome when present (it patches itself), else the bundled Chromium — either
+//   way sandboxed and checked current against Google's stable list first (scripts/browser.mjs);
+//   a stale build is refused unless --allow-stale-browser. Nothing signed in to any account.
 // - HEADED, never headless; no stealth / fingerprint flags. A real window with a human at the
 //   keyboard is the honest posture — reCAPTCHA scores the human's click, not this script.
 // - The profile dir is dedicated + empty (cookies/history isolated from the daily browser).
@@ -32,6 +33,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { chromium } from "playwright";
+import { openWebLaunch } from "./browser.mjs";
 
 function arg(flag, dflt) {
   const i = process.argv.indexOf(flag);
@@ -43,8 +45,9 @@ const shotPath = arg("--shot", "");
 const afterPath = arg("--after", "");
 const waitMin = Number(arg("--wait-min", "30"));
 const noWait = process.argv.includes("--no-wait");
+const allowStale = process.argv.includes("--allow-stale-browser");
 if (!packetPath || !profileDir || !shotPath) {
-  console.error("usage: apply-fill.mjs --packet <packet.json> --profile <dir> --shot <out.png> [--after <png>] [--wait-min N] [--no-wait]");
+  console.error("usage: apply-fill.mjs --packet <packet.json> --profile <dir> --shot <out.png> [--after <png>] [--wait-min N] [--no-wait] [--allow-stale-browser]");
   process.exit(2);
 }
 
@@ -308,7 +311,15 @@ if (!fill) {
   process.exit(1);
 }
 
+// Third-party pages: a current, sandboxed browser or nothing (scripts/browser.mjs).
+const pick = await openWebLaunch({ allowStale });
+if (!pick.ok) {
+  console.log(`RESULT ${JSON.stringify({ ok: false, error: pick.error })}`);
+  process.exit(1);
+}
+log(`browser: ${pick.note}`);
 const context = await chromium.launchPersistentContext(profileDir, {
+  ...pick.launch,
   headless: false,
   viewport: { width: 1280, height: 1000 },
 });

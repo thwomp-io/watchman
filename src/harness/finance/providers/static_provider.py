@@ -15,10 +15,11 @@ Fixture format — `{ "SYM": {"price": 1.0, "prev_close": 0.99, ...}, ... }`. A 
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any
 
-from harness.finance.models import Bar, Quote
+from harness.finance.models import AuctionPrint, Bar, ExtendedTrade, Quote, SessionClose
 from harness.finance.providers.base import ProviderError
 
 _OPTIONAL_FLOATS = ("prev_close", "day_open", "day_high", "day_low")
@@ -61,6 +62,18 @@ class StaticQuoteProvider:
             out.append(Quote(symbol=sym.upper(), available=True, price=float(price),
                              as_of=q.get("as_of"), feed="static", note="offline demo data", **kwargs))
         return out
+
+    def get_session_closes(self, symbols: list[str], session: date) -> dict[str, SessionClose]:
+        """Offline demo data has no session history: positions keep the static price."""
+        return {}
+
+    def get_extended_trades(self, symbols: list[str], session: date) -> dict[str, ExtendedTrade]:
+        """Offline demo data has no extended-hours prints."""
+        return {}
+
+    def get_closing_auction(self, symbol: str, session: date) -> AuctionPrint | None:
+        """Offline demo data has no trade tape."""
+        return None
 
     def get_bars(
         self, symbol: str, *, start: str, end: str | None = None, timeframe: str = "1Day"

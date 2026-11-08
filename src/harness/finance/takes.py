@@ -23,12 +23,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from harness.finance.sessions import tz_label
+
 TAKES_REL = Path("finance") / "market" / "takes"
 MAX_BODY_BYTES = 64 * 1024
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
-# US zone abbreviations → the corpus's two-letter labels ("20:50 PT"); anything else keeps %Z.
-_TZ_LABEL = {"PDT": "PT", "PST": "PT", "MDT": "MT", "MST": "MT", "CDT": "CT", "CST": "CT",
-             "EDT": "ET", "EST": "ET"}
 
 
 class TakeError(ValueError):
@@ -70,7 +69,7 @@ def write_take(body: str, *, tracker_path: Path, author: str, session: str = "",
             clean_tags.append(tag)
 
     stamp = (now or datetime.now()).astimezone()
-    tz = _TZ_LABEL.get(stamp.strftime("%Z"), stamp.strftime("%Z"))
+    tz = tz_label(stamp)
     date, hhmm = stamp.strftime("%Y-%m-%d"), stamp.strftime("%H:%M")
     if not text.startswith("# "):
         text = f"# Take: {stamp:%a} {stamp.month}/{stamp.day} {hhmm} {tz} ({author})\n\n" + text

@@ -2,7 +2,8 @@
 
 Uses the MediaWiki API's `pageimages` + `generator=search` to fetch the lead image of the
 best-matching article — usually the iconic representative shot for a place / landmark / hotel.
-No API key required; Wikimedia policy expects a descriptive User-Agent.
+No API key required; Wikimedia policy refuses a User-Agent without contact information, so this
+provider sends `_http.CONTACT_USER_AGENT`.
 
 This is the zero-setup image source: it costs no SerpAPI quota and needs no credentials, so it's
 the default for attractions/landmarks. Specific-hotel-room photos come later from `google_hotels`
@@ -11,17 +12,21 @@ the default for attractions/landmarks. Specific-hotel-room photos come later fro
 
 from __future__ import annotations
 
+import time
 from typing import Any, cast
 
 import httpx
 
-from harness._http import get_with_retry
+from harness._http import CONTACT_USER_AGENT, describe_http_error, get_with_retry
 from harness.travel.models import ImageCandidate
 from harness.travel.providers.base import ProviderError
 
 _API = "https://en.wikipedia.org/w/api.php"
-_UA = "harness/0.1 (personal travel-planning harness)"
 _THUMB_PX = 1600
+# Wikimedia's robot policy for the unauthenticated Action API: one request at a time, and wait 5
+# seconds after any request that took more than 1 second to serve (a slow answer means load).
+_SLOW_S = 1.0
+_BACKOFF_S = 5.0
 
 
 class WikimediaImageProvider:
@@ -30,6 +35,7 @@ class WikimediaImageProvider:
     def __init__(self, client: httpx.Client | None = None, timeout: float = 15.0) -> None:
         self._client = client
         self._timeout = timeout
+        self._not_before = 0.0  # monotonic ts the next request must wait for (set after a slow one)
 
     def search_images(self, query: str, limit: int = 1) -> list[ImageCandidate]:
         params: dict[str, str | int] = {
@@ -45,14 +51,20 @@ class WikimediaImageProvider:
             "gsrnamespace": 0,
             "redirects": 1,
         }
-        headers = {"User-Agent": _UA}
+        wait = self._not_before - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        start = time.monotonic()
         try:
             resp = get_with_retry(
-                _API, params=params, headers=headers,
+                _API, params=params, headers={"User-Agent": CONTACT_USER_AGENT},
                 client=self._client, timeout=self._timeout,
             )
         except httpx.HTTPError as e:
-            raise ProviderError(f"wikimedia search failed for {query!r}: {e}") from e
+            raise ProviderError(f"wikimedia search failed for {query!r}: {describe_http_error(e)}") from e
+        finally:
+            if time.monotonic() - start > _SLOW_S:
+                self._not_before = time.monotonic() + _BACKOFF_S
 
         payload = cast(dict[str, Any], resp.json())
         pages = payload.get("query", {}).get("pages", {})

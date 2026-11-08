@@ -17,7 +17,6 @@ from harness.travel.models import DailyAirQuality
 from harness.travel.providers.base import ProviderError
 
 _URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
-_UA = "harness/0.1 (personal travel-planning harness)"
 
 
 def aqi_category(aqi: int | None) -> str:
@@ -65,7 +64,7 @@ class OpenMeteoAirQualityProvider:
         }
         try:
             resp = get_with_retry(
-                _URL, params=params, headers={"User-Agent": _UA},
+                _URL, params=params,
                 client=self._client, timeout=self._timeout,
             )
             payload = resp.json()

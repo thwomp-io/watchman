@@ -798,6 +798,12 @@ def _h_set_active_pack(args: dict[str, Any]) -> None:
         scenario.set_active_pack(str(pack) if pack is not None else None)
     except ValueError as exc:
         raise CommandError(str(exc)) from exc
+    if _demo_mode() and pack:
+        # Seed the new persona's Inbox before answering, so the console's refetch after the switch
+        # never shows the previous persona's events.
+        from harness.console.demo import seed_inbox
+
+        seed_inbox(Path(str(pack)).expanduser(), scenario.demo_seal_state_dir() / "bus.db")
 
 
 def _h_run_producer(args: dict[str, Any]) -> str:

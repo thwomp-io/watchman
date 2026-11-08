@@ -4,10 +4,14 @@ Proportionate hardening for a low-volume *personal* tool: serial, interactive, a
 per turn — NOT a rate limiter (a token bucket would be over-engineering for this load). One place
 for the backoff policy + the UA, so every domain's call path behaves identically.
 
-The UA is deliberately *tool*-identifying only (`harness/<version>`): descriptive enough to satisfy
-provider policy + be a good API citizen (some providers, e.g. Wikimedia, throttle/block
-requests lacking a proper UA), and carrying **zero PII** (no name/email) by deliberate choice for a
-personal tool — the UA identifies the software, never the person running it.
+The default UA identifies the *tool* only: `harness/<version>`, **zero PII**. It identifies the
+software, never the person running it.
+
+Providers disagree about a contact, so it is opt-in per host (verified 2026-10-27):
+- Wikimedia's robot policy refuses a UA without contact information (403); `CONTACT_USER_AGENT`
+  adds the public project page: `harness/<version> (+<project URL>)`.
+- SEC's data.sec.gov refuses that same contact form (403) and accepts the bare default.
+So the contact form is sent only where a provider's policy requires it. Never an email.
 """
 
 from __future__ import annotations
@@ -18,7 +22,9 @@ import httpx
 
 from harness import __version__
 
+PROJECT_URL = "https://github.com/thwomp-io/watchman"
 USER_AGENT = f"harness/{__version__}"
+CONTACT_USER_AGENT = f"{USER_AGENT} (+{PROJECT_URL})"  # only for hosts that require a contact
 
 _RETRY_STATUS = {429, 500, 502, 503, 504}
 

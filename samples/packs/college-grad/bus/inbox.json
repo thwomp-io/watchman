@@ -1,0 +1,55 @@
+[
+  {
+    "lane": "career",
+    "kind": "application",
+    "subject": "new-grad",
+    "severity": "alert",
+    "producer": "career.pipeline",
+    "ago_min": 15,
+    "title": "Offer deadline Friday: Software Engineer I",
+    "body": "Base, sign-on and the RSU grant are on the offer card. Compare against the open loop."
+  },
+  {
+    "lane": "finance",
+    "kind": "vest_approaching",
+    "subject": "DDOG",
+    "severity": "warn",
+    "producer": "finance.calendar",
+    "ago_min": 50,
+    "title": "First RSU vest in 6 days: 12 shares",
+    "body": "The sell-to-cover withholding is set by payroll; plan the remainder."
+  },
+  {
+    "lane": "travel",
+    "kind": "fare_drop",
+    "subject": "aus-den",
+    "severity": "warn",
+    "producer": "travel.pulse",
+    "ago_min": 130,
+    "title": "Austin to Denver round trip down to $148 for the long weekend",
+    "body": "Nonstop, carry-on included. Last week it was $231."
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "NVDA",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 70,
+    "title": "NVIDIA to report third-quarter results on the 19th",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "Results after the close, with the call at 2:00 p.m. PT. Last quarter's guide was $54B in revenue."
+    }
+  },
+  {
+    "lane": "career",
+    "kind": "scan_delta",
+    "subject": "watchlist",
+    "severity": "info",
+    "producer": "career.scan",
+    "ago_min": 420,
+    "read": true,
+    "title": "7 new new-grad openings across the watchlist"
+  }
+]

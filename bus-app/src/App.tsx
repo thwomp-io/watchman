@@ -289,7 +289,8 @@ export default function App() {
 
       <main>
         <ErrorBoundary resetKey={JSON.stringify(navState.current)}>
-          {zone === "inbox" && <Inbox onUnread={setUnread} />}
+          {/* pack swap remounts the Inbox: its events and agenda belong to the active persona */}
+          {zone === "inbox" && <Inbox key={pack} onUnread={setUnread} />}
           {/* pack swap: Dash refetches IN PLACE (reloadKey → forceTick) so the active tab is kept;
               surfaces remount (no tab to preserve there). */}
           {zone === "dash" && <Dash reloadKey={pack} />}

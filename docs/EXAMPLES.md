@@ -8,11 +8,11 @@ sample personas — fictional data end to end, reproducible from a fresh clone (
 ## A pack is a persona
 
 Loading a different weight pack swaps the *whole* console — same widgets, same layouts, a
-different life. Here the Finance Core view re-renders across three bundled personas (an
-established index-anchored household, an early retiree on a withdrawal glidepath, and a new
-grad building their base):
+different life. Here the Finance Core view re-renders across the four bundled personas, picked from
+the **DEMO** menu in the header: an established index-anchored household, an early-career engineer
+with a growth tilt, an early retiree living off the portfolio, and a new grad building their base:
 
-![The same console under three personas](assets/pack-cycle.gif)
+![The same console under four personas](assets/pack-cycle.gif)
 
 ## The finance lane
 
@@ -75,7 +75,8 @@ persona's home base:
 
 Standing agents publish durable events to a local bus; the inbox triages them into **ACT**
 (needs you), **WATCH**, and the **CATALYST WIRE** (a skim-stream that never drives the urgent
-badge). Click a signal to inspect its payload:
+badge). Click a signal to inspect its payload. Each sample persona ships its own inbox, so switching
+personas switches the signals:
 
 ![Triage bands and the payload inspector](assets/inbox-tour.gif)
 
@@ -147,7 +148,7 @@ served browser renders the panel read-only.
 
 ---
 
-*Every asset on this page was produced by the repo's own tooling against sample data:
-`hn bus serve --console` with the environment pointed at a bundled pack, driven by
-`bus-app/scripts/console-tour.mjs` (video) and `console-shot.mjs` (stills), converted with the
-ffmpeg/gifsicle pipeline. If you change the console, you can re-record the docs.*
+*Every asset on this page was produced by the repo's own tooling against sample data: the sealed
+`hn console demo`, driven by `bus-app/scripts/console-tour.mjs` (video; its steps include `pack:` and
+`theme:`) and `console-shot.mjs` (stills), converted with the ffmpeg/gifsicle pipeline. If you change
+the console, you can re-record the docs.*

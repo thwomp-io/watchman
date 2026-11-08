@@ -7,7 +7,7 @@ recommends a trade — this is the assistant's eyes, not its hands on the order 
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,17 +21,21 @@ if TYPE_CHECKING:
 from harness.finance.cik_resolver import CikResolver
 from harness.finance.corpus.reader import CorpusReader
 from harness.finance.models import (
+    AfterHours,
     AnalystRatings,
     Bar,
     CikLookup,
     CompareReport,
     CorrelationReport,
+    CrashDays,
     DayGL,
+    ExtendedTrade,
     FilingReadout,
     FomcDecision,
     Fundamentals,
     GatesBoard,
     MarketOverview,
+    MovesTable,
     Multiples,
     NetWorth,
     OptionGauges,
@@ -39,6 +43,8 @@ from harness.finance.models import (
     ProxyEstimate,
     Quote,
     ScreenResult,
+    SessionClose,
+    SessionShape,
     SymbolNews,
     TrapMap,
     WireDigest,
@@ -70,6 +76,67 @@ class FinanceService:
     # ---- quotes ----
     def quote(self, symbols: list[str]) -> list[Quote]:
         return self._provider().get_quotes(symbols)
+
+    def session_shapes(
+        self, symbols: list[str], *, day: date | None = None, minutes: int = 15, now: datetime | None = None
+    ) -> list[SessionShape]:
+        """Each symbol's regular-session shape (`harness.finance.session_shape`) for `day` (default: the
+        current session). Bars come from this service's feed; a closed session also carries its official
+        close and closing-auction print."""
+        from harness.finance import session_shape
+        from harness.finance.sessions import CLOSE, ET, OPEN, us_session
+
+        state, current = us_session(now)
+        clock = (now or datetime.now(UTC)).astimezone(ET)
+        target = day or (clock.date() if state == "pre-open" else current)
+        complete = target < clock.date() or (target == clock.date() and state == "closed")
+        if target == clock.date() and state == "pre-open":
+            return [SessionShape(symbol=s.upper(), session=target.isoformat(), state="not open",
+                                 bar=f"{minutes}Min", feed=self._feed,
+                                 notes=[f"the {target.isoformat()} session hasn't opened (09:30 ET)"])
+                    for s in symbols]
+        provider = self._provider()
+        start = datetime.combine(target, OPEN, tzinfo=ET).astimezone(UTC)
+        end = datetime.combine(target, CLOSE, tzinfo=ET).astimezone(UTC) - timedelta(minutes=1)
+        closes = self.session_closes(symbols, target) if complete else {}
+        out: list[SessionShape] = []
+        for sym in (s.upper() for s in symbols):
+            bars = provider.get_bars(sym, start=start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                     end=end.strftime("%Y-%m-%dT%H:%M:%SZ"), timeframe=f"{minutes}Min")
+            close = closes.get(sym)
+            res = session_shape.shape(sym, target, bars, minutes=minutes, complete=complete,
+                                      official_close=close.close if close else None)
+            res.feed = self._feed
+            if complete and res.state == "complete":
+                try:
+                    cross = provider.get_closing_auction(sym, target)
+                except ProviderError as e:
+                    cross = None
+                    res.notes.append(f"closing auction unavailable: {e}")
+                if cross is not None:
+                    res.auction_volume, res.auction_price = cross.size, cross.price
+            out.append(res)
+        return out
+
+    def extended_trades(self, symbols: list[str], session: date) -> dict[str, ExtendedTrade]:
+        """Latest trades printed after `session`'s close (see the provider); {} on a provider error."""
+        try:
+            return self._provider().get_extended_trades(symbols, session)
+        except ProviderError:
+            return {}
+
+    def after_hours(self, now: datetime | None = None) -> AfterHours:
+        """Delegates to `harness.finance.book.after_hours` (documented there)."""
+        from harness.finance import book as _book
+
+        return _book.after_hours(self, now=now)
+
+    def session_closes(self, symbols: list[str], session: date) -> dict[str, SessionClose]:
+        """Official regular-session closes (see the provider); {} when the source has none."""
+        try:
+            return self._provider().get_session_closes(symbols, session)
+        except ProviderError:
+            return {}
 
     # ---- bird's-eye market overview ----
     def market(self) -> MarketOverview:
@@ -321,6 +388,74 @@ class FinanceService:
                 basis[h.symbol] = basis.get(h.symbol, 0.0) + (h.cost_basis or 0.0)
         return sorted(basis, key=lambda s: -basis[s])
 
+    def _daily_closes(self, symbol: str, start: date, end: date | None = None) -> list[tuple[date, float]]:
+        bars = self.history(symbol, start=start.isoformat(), end=end.isoformat() if end else None)
+        return [(date.fromisoformat(b.t[:10]), b.c) for b in bars]
+
+    def moves(self, symbols: list[str], start: date, end: date,
+              groups: dict[str, list[str]] | None = None) -> MovesTable:
+        """Each name's close-to-close move per session over (start, end] (`event_study.moves`). Exchange names
+        come from split-adjusted daily bars; a name the exchange feed doesn't carry (an OTC ADR) from its
+        Yahoo daily bars, where a session without a trade is left blank rather than carrying the old price."""
+        from datetime import timedelta
+
+        from harness.finance import event_study
+        from harness.finance.providers import global_provider
+
+        wanted = list(dict.fromkeys([*symbols, *(m for ms in (groups or {}).values() for m in ms)]))
+        lead = start - timedelta(days=14)  # room for the last close on or before a holiday-adjacent start
+        series: dict[str, list[tuple[date, float]]] = {}
+        sources: dict[str, str] = {}
+        failed: dict[str, str] = {}
+        for sym in wanted:
+            try:
+                closes = self._daily_closes(sym, lead, end)
+            except ProviderError as e:
+                closes, failed[sym] = [], str(e).split(" — ")[0]
+            if closes:
+                series[sym] = closes
+            else:
+                failed.setdefault(sym, "no bars on the exchange feed")
+        reasons: dict[str, str] = {}
+        if failed:
+            try:
+                otc = global_provider.fetch_daily_history(list(failed), start=lead, end=end)
+            except Exception:  # noqa: BLE001 — a lane-level outage leaves each name unavailable, named
+                otc = {}
+            for sym, why in failed.items():
+                h = otc.get(sym)
+                closes = [(d, c) for d, c, v in h.bars if c is not None and (v or 0) > 0] if h else []
+                if closes:
+                    series[sym], sources[sym] = closes, "yahoo"
+                elif h is not None:
+                    reasons[sym] = f"{why}; Yahoo shows no trade in the window"
+                else:
+                    reasons[sym] = f"{why}; no Yahoo daily bars either"
+        table = event_study.moves(series, start, end, sources=sources, reasons=reasons, groups=groups)
+        if sources:
+            table.notes.append(f"From Yahoo daily bars (no exchange feed): {', '.join(sources)}; a session "
+                               "with no trade is blank.")
+        table.notes.append("Close-to-close price returns from split-adjusted bars; dividends not added back.")
+        return table
+
+    def crashdays(self, symbol: str, threshold: float, since: date, *, cluster_days: int = 0) -> CrashDays:
+        """A symbol's sessions at or below `threshold`% since `since`, and what followed each
+        (`event_study.crash_days`). Bars start a year before `since`, so the first events' drawdown is
+        measured from a real prior high."""
+        from datetime import timedelta
+
+        from harness.finance import event_study
+
+        closes = self._daily_closes(symbol, since - timedelta(days=365))
+        if not closes:
+            raise ProviderError(f"no daily bars for {symbol}")
+        out = event_study.crash_days(symbol, closes, threshold, since, cluster_days=cluster_days)
+        out.notes.append(
+            f"Close-to-close, split-adjusted; drawdown is from the highest close before the day (bars from "
+            f"{closes[0][0].isoformat()}). A horizon not yet reached is blank, not zero."
+        )
+        return out
+
     def correlate(
         self,
         symbols: list[str],
@@ -411,11 +546,11 @@ class FinanceService:
         )
 
     # ---- positions: the full asset table — live quotes + last-known NAV + static balances ----
-    def positions(self) -> PortfolioSnapshot:
+    def positions(self, now: datetime | None = None) -> PortfolioSnapshot:
         """Delegates to `harness.finance.book.positions` (documented there)."""
         from harness.finance import book as _book
 
-        return _book.positions(self)
+        return _book.positions(self, now=now)
 
     # ---- net worth: the full-picture rollup by account/institution ----
     def networth(self) -> NetWorth:

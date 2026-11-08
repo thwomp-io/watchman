@@ -77,6 +77,20 @@ class ProxyBasket:
     # the fund's cash sweep as a flat component (% of fund, 0% day-move by definition) — dampens
     # the estimate the way the fund's own cash does (the roster's cash-sweep lines).
     cash_weight: float = 0.0
+    # The unmapped tail, filled by exposure: the fund's full roster (a reference yaml, resolved against this
+    # portfolio file's directory) and one ETF per exposure. Empty = no fills; the tail re-spreads as before.
+    holdings_ref: Path | None = None
+    fills: list[ProxyFill] = field(default_factory=list)
+
+
+@dataclass
+class ProxyFill:
+    """One exposure's stand-in for the roster names the basket can't quote: `countries` are the roster's
+    country codes that map to it; a roster row's own `exposure:` field overrides its country."""
+
+    symbol: str
+    exposure: str
+    countries: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -264,6 +278,19 @@ class CorpusReader:
             weights=proxy_weights,
             sources=proxy_sources,
             cash_weight=float(proxy_raw.get("cash_weight", 0.0) or 0.0),
+            holdings_ref=(
+                (self._path.parent / str(proxy_raw["holdings_ref"])).resolve()
+                if proxy_raw.get("holdings_ref") else None
+            ),
+            fills=[
+                ProxyFill(
+                    symbol=str(f["symbol"]).upper(),
+                    exposure=str(f.get("exposure") or f["symbol"]),
+                    countries=[str(c).upper() for c in f.get("countries", []) or []],
+                )
+                for f in proxy_raw.get("fills", []) or []
+                if f.get("symbol")
+            ],
         )
 
         screen_raw = data.get("values_screen", {}) or {}

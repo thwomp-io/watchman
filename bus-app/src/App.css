@@ -1592,6 +1592,12 @@ a.viz-tip-link { text-decoration: none; box-sizing: border-box; }
    the widgets above it fill the viewport (the tiles become unreachable) */
 .dash-grid > .widget.kind-bank { min-height: 640px; }
 
+/* the beads board: the same floor problem — a viz tile otherwise sits at the generic 96px, which
+   crushes the tree to one clipped row under its own caption */
+.dash-grid > .widget:has(.beadtree-canvas) { min-height: 380px; }
+/* its caption flows under the tree (like the calendar's) instead of overlaying the shelf row */
+.dash-grid .beadtree-canvas .viz-hint { position: static; padding: 4px 12px 6px; }
+
 /* price chart: a canvas needs a real height (the grid will not grow a row to content) */
 .dash-grid > .widget.kind-chart { min-height: 440px; }
 .price-chart { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 4px 8px 8px; }

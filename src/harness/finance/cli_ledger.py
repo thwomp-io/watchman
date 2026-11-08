@@ -98,21 +98,30 @@ def networth(
     for g in nw.groups:
         table.add_row(g.account, f"${g.value:,.2f}", g.valuation, g.as_of or "live")
     console.print(table)
+    session = nw.price_basis.removeprefix("close ")
+    basis = "" if nw.price_basis == "live" else f" · quoted at the {session} close"
     console.print(
         f"\n[bold]Net worth ${nw.total:,.2f}[/bold]  "
         f"[dim](live ${nw.live_value:,.2f} + last-known ${nw.last_known_value:,.2f} + "
-        f"static ${nw.static_value:,.2f})[/dim]"
+        f"static ${nw.static_value:,.2f}){basis}[/dim]"
     )
     for n in nw.notes:
         console.print(f"[dim]  • {n}[/dim]")
     if log:
-        _log_networth(nw.total)
+        _log_networth(nw.total, nw.price_basis)
 
 
 def daygl(
+    after_hours: bool = typer.Option(
+        False, "--after-hours",
+        help="Outside the session: the quoted sleeve at extended-hours trades vs the last close",
+    ),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Full-book intraday day G/L: live quotes exact + fund NAV proxy-ESTIMATED + statics flat."""
+    if after_hours:
+        _after_hours(as_json)
+        return
     try:
         d = _svc().daygl()
     except ProviderError as e:
@@ -147,6 +156,95 @@ def daygl(
         console.print("[yellow]Nothing priced this run (no live quotes, no proxy estimate).[/yellow]")
     for n in d.notes:
         console.print(f"[dim]  • {n}[/dim]")
+
+
+def _after_hours(as_json: bool) -> None:
+    from harness.finance.sessions import ET
+
+    try:
+        ah = _svc().after_hours()
+    except ProviderError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if as_json:
+        console.print_json(ah.model_dump_json())
+        return
+    title = f"After hours vs the {ah.session} close — thin-print estimate (extended hours, not a forecast)"
+    table = Table(title=title)
+    for col in ("Symbol", "Shares", "Close", "Last", "Time (ET)", "Move $", "Move %"):
+        table.add_column(col)
+    for r in ah.rows:
+        when = _dt.datetime.fromisoformat(r.t.replace("Z", "+00:00")).astimezone(ET) if r.t else None
+        table.add_row(
+            r.symbol,
+            f"{r.shares:g}",
+            f"{r.close:,.2f}" if r.close is not None else "—",
+            f"{r.price:,.2f}" if r.price is not None else f"[dim]{r.note}[/dim]",
+            f"{when:%a %H:%M}" if when else "",
+            _signed(r.move, money=True) if r.move is not None else "[dim]excluded[/dim]",
+            _signed(r.move_pct) if r.move_pct is not None else "",
+        )
+    console.print(table)
+    pct = f" ({_signed(ah.total_pct)})" if ah.total_pct is not None else ""
+    console.print(f"\n[bold]Implied quoted-sleeve move {_signed(ah.total_move, money=True)}{pct}[/bold]  "
+                  f"[dim]on ${ah.value_at_close:,.2f} at the close[/dim]")
+    if ah.excluded:
+        console.print(f"[dim]  excluded (no extended-hours trade / close): {', '.join(ah.excluded)}[/dim]")
+    for n in ah.notes:
+        console.print(f"[dim]  • {n}[/dim]")
+
+
+def log_fill(
+    symbol: str = typer.Argument(..., help="The ticker that filled"),
+    qty: float = typer.Option(..., "--qty", help="Shares filled"),
+    price: float = typer.Option(..., "--price", help="Fill price"),
+    screen: str = typer.Option(..., "--screen", help="The evidence id (the broker screenshot's name)"),
+    account: str = typer.Option(None, "--account", help="Default: where SYM is held (needed for a new name)"),
+    broker_avg: float = typer.Option(None, "--broker-avg", help="The broker's avg cost after the fill"),
+    broker_basis: float = typer.Option(None, "--broker-basis", help="The broker's cost basis after the fill"),
+    pending: bool = typer.Option(False, "--pending", help="Net the unsettled debit out of the cash sweep"),
+    order_limit: float = typer.Option(None, "--order-limit", help="Pick the open order by limit (partials)"),
+    no_order: bool = typer.Option(False, "--no-order", help="The ledger never held an order for this fill"),
+    name: str = typer.Option(None, "--name", help="Required to open a new position"),
+    asset_type: str = typer.Option("stock", "--type", help="stock | etf (a new position)"),
+    at: str = typer.Option(None, "--at", help="YYYY-MM-DD HH:MM local (default: now) — dates the sync line"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print the diff; write nothing"),
+) -> None:
+    """Apply one broker fill (a buy) to the tracker-resident portfolio.yaml: shares/avg/basis with history
+    demotion, the open order → FILLED, the cash sweep net of a pending debit, a sync line; parse-smoked."""
+    from harness.finance.ledger_fill import Fill, FillError, write_fill
+
+    settings = get_settings()
+    path = settings.tracker_path / "finance" / "config" / "portfolio.yaml"
+    if settings.portfolio_path != path:
+        _fail(f"log-fill writes only the tracker-resident ledger ({path}); the active seed is "
+              f"{settings.portfolio_path} (a weight pack or the packaged default): nothing written")
+        raise typer.Exit(code=2)
+    try:
+        when = (_dt.datetime.strptime(at, "%Y-%m-%d %H:%M") if at else _dt.datetime.now()).astimezone()
+    except ValueError as e:
+        _fail("--at must look like 2026-10-30 08:02")
+        raise typer.Exit(code=2) from e
+    fill = Fill(symbol=symbol, qty=qty, price=price, screen=screen, when=when, account=account,
+                broker_avg=broker_avg, broker_basis=broker_basis, pending=pending, order_limit=order_limit,
+                no_order=no_order, name=name, asset_type=asset_type)
+    try:
+        res = write_fill(path, fill, dry_run=dry_run)
+    except FillError as e:
+        _fail(str(e))
+        raise typer.Exit(code=1) from e
+    if dry_run:
+        console.print(res.diff, markup=False, highlight=False)
+        console.print("[yellow]dry run — nothing written[/yellow]")
+    for c in res.changes:
+        console.print(f"  {'would ' if dry_run else ''}{escape(c)}")
+    if not dry_run:
+        console.print(f"[dim]  ↳ {path.name} written + parse-smoked[/dim]")
+    if not pending:
+        console.print("[dim]  cash sweep not adjusted (no --pending): the screen's is already net[/dim]")
+    if res.opened:
+        console.print("[yellow]  new position: re-render the living visuals (the concentration treemap, "
+                      "the allocation pie)[/yellow]")
 
 
 def _render_derived(diagram: str, data: dict[str, object], dest: str, name: str) -> None:
@@ -255,8 +353,8 @@ def fund_proxy(
         console.print_json(est.model_dump_json())
         return
     table = Table(title=f"{est.fund} proxy basket")
-    cols = ["Symbol", "Fund wt %", "Price", "Prev close", "Move %", "Status"] if est.weighted else [
-        "Symbol", "Price", "Prev close", "Move %", "Status"
+    cols = ["Symbol", "Fund wt %", "Price", "Prev close", "Move %", "Status", "Basis"] if est.weighted else [
+        "Symbol", "Price", "Prev close", "Move %", "Status", "Basis"
     ]
     for col in cols:
         table.add_column(col)
@@ -266,7 +364,8 @@ def fund_proxy(
             f"${c.price:,.2f}" if c.price is not None else "—",
             f"${c.prev_close:,.2f}" if c.prev_close is not None else "—",
             _signed(c.move_pct),
-            "ok" if c.available else "unavailable",
+            ("fill " + c.exposure if c.source == "fill" else "ok") if c.available else "unavailable",
+            c.basis if c.available else c.reason,
         ]
         if est.weighted:
             row.insert(1, f"{c.weight:.2f}" if c.weight is not None else "—")
@@ -281,7 +380,9 @@ def fund_proxy(
         console.print(
             f"\n[bold]Rough EOD estimate[/bold]: {headline}  "
             f"[dim](cap-weighted over {est.available_count} live names; basket = "
-            f"{est.coverage_pct}% of the fund, {est.live_coverage_pct}% live)[/dim]"
+            f"{est.coverage_pct}% of the fund, {est.live_coverage_pct}% live"
+            + (f", {est.filled_coverage_pct}% with fills" if est.filled_coverage_pct is not None else "")
+            + ")[/dim]"
         )
     else:
         console.print(
@@ -622,7 +723,7 @@ def symbols(
         console.print(s)
 
 
-def _log_networth(total: float) -> None:
+def _log_networth(total: float, basis: str = "live") -> None:
     """Upsert today's net-worth total into finance/networth-history.json (the `line` viz data shape).
     Non-destructive: replaces today's point if present, else appends; keeps the series date-sorted."""
     path = get_settings().tracker_path / "finance" / "networth-history.json"
@@ -642,4 +743,4 @@ def _log_networth(total: float) -> None:
     data["series"][0]["points"] = points
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n")
-    console.print(f"[dim]  ↳ logged ${total:,.2f} for {today} → {path.name}[/dim]")
+    console.print(f"[dim]  ↳ logged ${total:,.2f} for {today} ({basis}) → {path.name}[/dim]")

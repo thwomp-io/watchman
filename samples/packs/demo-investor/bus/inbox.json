@@ -1,0 +1,80 @@
+[
+  {
+    "lane": "finance",
+    "kind": "day_move",
+    "subject": "VTI",
+    "severity": "alert",
+    "producer": "finance.pulse",
+    "ago_min": 12,
+    "title": "VTI down 2.5% today: the index core crossed its day-move threshold",
+    "body": "VTI 296.70, -2.49% on the session (threshold -2%). 900 shares; day G/L -$6,813.",
+    "payload": {
+      "symbol": "VTI",
+      "day_change_pct": -2.49,
+      "threshold_pct": -2.0
+    }
+  },
+  {
+    "lane": "finance",
+    "kind": "trap_proximity",
+    "subject": "VTI",
+    "severity": "warn",
+    "producer": "finance.pulse",
+    "ago_min": 12,
+    "title": "VTI now 5.6% above the first buy rung (20 sh @ 280.00)",
+    "body": "Today's drop brought the ladder's first rung within reach. The second rung rests at 265.00.",
+    "payload": {
+      "symbol": "VTI",
+      "limit": 280.0,
+      "last": 296.7,
+      "distance_pct": 5.63
+    }
+  },
+  {
+    "lane": "travel",
+    "kind": "deadline",
+    "subject": "lisbon-spring",
+    "severity": "warn",
+    "producer": "travel.pulse",
+    "ago_min": 95,
+    "title": "Award-seat hold for the Lisbon trip expires in 3 days",
+    "body": "The two-seat hold on the outbound expires Thursday. Ticket it or release the miles."
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "COST",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 50,
+    "title": "Costco October comparable sales up 6.4% ex-gas",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "October net sales up 8.2%. US comparable sales +6.1% ex-gas; e-commerce +12%."
+    }
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "MSFT",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 140,
+    "title": "Microsoft raises quarterly dividend 10%",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "The quarterly dividend rises to $0.91 a share, payable in December. The buyback authorization is renewed."
+    }
+  },
+  {
+    "lane": "career",
+    "kind": "scan_delta",
+    "subject": "watchlist",
+    "severity": "info",
+    "producer": "career.scan",
+    "ago_min": 300,
+    "read": true,
+    "title": "2 new Director-level openings matched the watchlist",
+    "body": "Both remote-friendly; one lists a base range above your floor."
+  }
+]

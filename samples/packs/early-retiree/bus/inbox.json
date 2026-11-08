@@ -1,0 +1,68 @@
+[
+  {
+    "lane": "finance",
+    "kind": "tax_deadline",
+    "subject": "q4-estimate",
+    "severity": "alert",
+    "producer": "finance.calendar",
+    "ago_min": 30,
+    "title": "Q4 estimated tax payment due in 9 days",
+    "body": "Federal estimate due Jan 15. Last year's safe-harbor amount is on the plan."
+  },
+  {
+    "lane": "finance",
+    "kind": "cash_runway",
+    "subject": "runway",
+    "severity": "warn",
+    "producer": "finance.pulse",
+    "ago_min": 60,
+    "title": "Cash runway at 14 months: the refill rule says top up at 12",
+    "body": "The bond sleeve's next coupon lands Dec 1."
+  },
+  {
+    "lane": "travel",
+    "kind": "deadline",
+    "subject": "kyoto-autumn",
+    "severity": "warn",
+    "producer": "travel.pulse",
+    "ago_min": 180,
+    "title": "Kyoto ryokan: final payment due in 5 days",
+    "body": "Free cancellation ends with the payment."
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "KO",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 45,
+    "title": "Coca-Cola declares regular quarterly dividend",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "$0.51 a share, payable December 15 to holders of record December 1."
+    }
+  },
+  {
+    "lane": "finance",
+    "kind": "catalyst",
+    "subject": "JNJ",
+    "severity": "info",
+    "producer": "finance.wire",
+    "ago_min": 160,
+    "title": "Johnson & Johnson raises full-year sales outlook",
+    "payload": {
+      "publisher": "Company release",
+      "summary": "Full-year sales guidance raised by $500M at the midpoint on medtech and oncology strength."
+    }
+  },
+  {
+    "lane": "career",
+    "kind": "scan_delta",
+    "subject": "board",
+    "severity": "info",
+    "producer": "career.scan",
+    "ago_min": 600,
+    "read": true,
+    "title": "1 new advisory-board role matched the watchlist"
+  }
+]

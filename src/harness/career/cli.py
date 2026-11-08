@@ -502,6 +502,12 @@ def apply(
     no_wait: bool = typer.Option(
         False, "--no-wait", help="--fill: close the window right after the screenshot (a dry run)"
     ),
+    allow_stale_browser: bool = typer.Option(
+        False, "--allow-stale-browser",
+        help="--fill: open the ATS page even when the browser is behind Chrome stable's security fixes "
+        "(the sandbox stays on). Without it a stale browser is refused; installed Google Chrome is "
+        "preferred because it updates itself.",
+    ),
     as_json: bool = typer.Option(False, "--json", help="Machine output (the packet)"),
 ) -> None:
     """Assemble the application packet and STOP — or, with --submit --confirm, record ONE
@@ -563,7 +569,7 @@ def apply(
         if submit:
             _fail("--fill and --submit are separate acts: fill first, click Submit yourself, then record")
             raise typer.Exit(code=1)
-        _browser_fill(folder, pj, no_wait=no_wait)
+        _browser_fill(folder, pj, no_wait=no_wait, allow_stale_browser=allow_stale_browser)
         return
     if not submit:
         console.print(
@@ -664,7 +670,9 @@ def _run_node(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _browser_fill(folder: Path, packet_json: Path, *, no_wait: bool = False) -> None:
+def _browser_fill(
+    folder: Path, packet_json: Path, *, no_wait: bool = False, allow_stale_browser: bool = False
+) -> None:
     """Spawn the headed browser fill (bus-app/scripts/apply-fill.mjs) for an assembled packet.
 
     Zero new dependencies by design: Playwright ships in bus-app's devDependencies and its Chromium
@@ -702,8 +710,10 @@ def _browser_fill(folder: Path, packet_json: Path, *, no_wait: bool = False) -> 
     ]
     if no_wait:
         cmd.append("--no-wait")
+    if allow_stale_browser:
+        cmd.append("--allow-stale-browser")
     console.print(
-        "[bold]browser fill[/bold] — headed Chromium on the dedicated profile; the script "
+        "[bold]browser fill[/bold] — headed, sandboxed, current browser on the dedicated profile; the script "
         f"stops before Submit. Watch the window. [dim](runs from {bus_app})[/dim]"
     )
     res = _run_node(cmd, bus_app)
