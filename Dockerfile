@@ -61,8 +61,13 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 
+# Debian's published fixes first: the upstream python tag is rebuilt on its own schedule, and a fixed
+# package (zlib's +deb13u1, for one) can wait days for it while the image scan fails on the older copy.
 # Least-privilege: a non-root runtime user owns the mounted corpus dir.
-RUN useradd --create-home --uid 10001 watchman \
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 watchman \
     && mkdir -p /corpus \
     && chown watchman:watchman /corpus
 COPY --from=builder --chown=watchman:watchman /app/.venv /app/.venv

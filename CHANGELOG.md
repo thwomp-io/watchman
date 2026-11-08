@@ -11,6 +11,8 @@ All notable changes to Watchman, following [Keep a Changelog](https://keepachang
   pages only in a current browser: installed Google Chrome when present, else the bundled Chromium,
   checked against Google's stable version list first. A stale build is refused unless
   `--allow-stale-browser`.
+- The container image applies Debian's published updates at build time, which picks up zlib1g
+  `+deb13u1` (CVE-2026-76844, CVE-2026-85091) before the upstream Python image is rebuilt.
 - block-buffer 0.10 (GHSA-qwgh-2vcv-g2f7) is accepted in `osv-scanner.toml`: it is reached only
   through tauri-codegen's build-time hashing of the app's own assets, and the 0.10 line has no fix.
 
