@@ -17,6 +17,7 @@ import re
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel
@@ -299,8 +300,8 @@ def greenhouse_apply_url(absolute_url: str, board: str, job_id: str) -> str:
     the description and filled nothing. Greenhouse's standalone form,
     `embed/job_app?for={token}&token={id}`, renders for every board (verified live 2026-09) — that is
     the apply URL whenever `absolute_url` is off greenhouse.io."""
-    host = re.match(r"https?://([^/]+)", absolute_url or "")
-    if host and host.group(1).endswith("greenhouse.io"):
+    host = (urlparse(absolute_url or "").hostname or "").lower()
+    if host == "greenhouse.io" or host.endswith(".greenhouse.io"):
         return absolute_url
     if board and job_id:
         return _GH_EMBED_FORM.format(board=board, job_id=job_id)

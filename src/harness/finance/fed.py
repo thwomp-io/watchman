@@ -20,11 +20,11 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
-from html import unescape
 
 from harness._http import get_with_retry
 from harness.errors import ProviderError
 from harness.finance.models import FomcDecision
+from harness.textutil import html_to_line
 
 _FEED_URL = "https://www.federalreserve.gov/feeds/press_monetary.xml"
 
@@ -50,11 +50,7 @@ def parse_statement_html(html: str) -> tuple[str, str, str]:
 
     Strips tags, then slices the committee statement body out of the surrounding page chrome using
     stable Fed boilerplate anchors. Target-rate + vote are regex-pulled from the full text."""
-    text = re.sub(r"<script.*?</script>", " ", html, flags=re.S | re.I)
-    text = re.sub(r"<style.*?</style>", " ", text, flags=re.S | re.I)
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = unescape(text)  # decode &#8211; (en-dash), &#39; etc. — real pages mix entities + literals
-    text = re.sub(r"\s+", " ", text).strip()
+    text = html_to_line(html)  # tags to spaces, entities decoded (real pages mix them with literals)
 
     body = text
     start = re.search(r"approved the following statement for release[^:]*:\s*", text)

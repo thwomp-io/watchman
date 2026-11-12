@@ -5,6 +5,18 @@ All notable changes to Watchman, following [Keep a Changelog](https://keepachang
 
 ## [Unreleased]
 
+### Security
+- Eight code-scanning findings, each fixed where it was:
+  - A page read as running text (the Fed statement, the agency release pages) is flattened by the standard
+    library's HTML parser (`textutil.html_to_line`). A pattern decided where a script block ended, and
+    `</script >` did not match it.
+  - The news reader's body text comes from a detached document's text content, not from stripping tags with
+    a pattern.
+  - A Greenhouse apply URL and a Google News link are recognized by their parsed hostname. A suffix test
+    accepted `notgreenhouse.io`.
+  - The apply fill's id selector escapes backslashes as well as quotes; the screenshot and tour scripts match
+    a diagram's name as text, not as a pattern built from an argument.
+
 ### Changed
 - jsdom 30 → 31 in the console's test environment and the diagram renderer; `astral-sh/setup-uv`
   pinned at v10.3.3 in CI.

@@ -125,7 +125,7 @@ if (vizItem) {
     await page.waitForTimeout(150);
   }
   await page.waitForTimeout(400);
-  await page.locator(".viz-rail button", { hasText: new RegExp(vizItem, "i") }).first()
+  await page.locator(".viz-rail button", { hasText: vizItem }).first()
     .click().catch(() => {});
 }
 // bounded settle: let ACQUIRING widgets resolve (cold spawns are ~0.7s each after the perf pass)

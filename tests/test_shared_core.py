@@ -41,3 +41,13 @@ def test_lane_provider_errors_are_the_shared_one() -> None:
 
     assert FinErr is ProviderError
     assert TravErr is ProviderError
+
+
+def test_html_to_line_drops_script_and_style_however_the_end_tag_is_written() -> None:
+    from harness.textutil import html_to_line
+
+    page = (
+        "<p>Rates were&nbsp;held.</p><script>var a = 1;</script >"
+        "<SCRIPT>var b = 2;</SCRIPT\n><style>p { color: red }</style ><b>Vote: 9&#8211;1</b>"
+    )
+    assert html_to_line(page) == "Rates were held. Vote: 9–1"

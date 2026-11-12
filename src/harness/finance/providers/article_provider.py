@@ -207,7 +207,7 @@ def extract(html: str, url: str) -> Article:
 
 def _is_gnews(url: str) -> bool:
     u = urlparse(url)
-    return u.netloc.endswith("news.google.com") and "/articles/" in u.path
+    return (u.hostname or "").lower() == "news.google.com" and "/articles/" in u.path
 
 
 _GN_PAGE = "https://news.google.com/rss/articles/{aid}"

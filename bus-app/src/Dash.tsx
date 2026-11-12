@@ -182,21 +182,20 @@ function FeedBody({ events }: { events: BusEvent[] }) {
   );
 }
 
-// RSS summaries are external (untrusted) HTML → render as SANITIZED PLAIN TEXT: strip every tag (never
-// inserted into the live DOM) + decode entities via a detached textarea (its content is not parsed as
-// elements, so it's XSS-safe + needs no sanitizer dependency). Block-closers become newlines so multi-
+// RSS summaries are external (untrusted) HTML → render as PLAIN TEXT. The markup is parsed into a
+// detached document (never inserted into the live DOM, so nothing in it runs or loads) and only its
+// text content is kept; the browser's parser decides what is a tag. Block-closers become newlines so multi-
 // paragraph bodies (feeds that ship full article bodies) stay readable; `.news-detail-body`
 // renders them with `white-space: pre-wrap`. The full formatted (often paywalled) article is one
 // "open original ↗" click away.
 function htmlToText(html: string): string {
   if (!html) return "";
-  let t = html
-    .replace(/<\/(p|div|li|h[1-6]|blockquote)\s*>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-  const ta = document.createElement("textarea");
-  ta.innerHTML = t; // entity-decode only; no element parsing → safe
-  t = ta.value;
+  // Parsed into a detached document: nothing in it runs or loads, and textContent is text, never markup.
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script, style").forEach((n) => n.remove());
+  doc.querySelectorAll("br").forEach((n) => n.replaceWith("\n"));
+  doc.querySelectorAll("p, div, li, h1, h2, h3, h4, h5, h6, blockquote").forEach((n) => n.append("\n"));
+  const t = doc.body.textContent ?? "";
   return t.replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").trim();
 }
 

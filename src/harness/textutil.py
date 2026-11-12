@@ -84,6 +84,38 @@ class _TextExtractor(HTMLParser):
         return "\n".join(out).strip()
 
 
+class _LineExtractor(HTMLParser):
+    """Every piece of text outside script and style, in document order."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ("script", "style"):
+            self._skip += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip:
+            self.parts.append(data)
+
+
+def html_to_line(html: str) -> str:
+    """A page as one line of running text: tags become spaces, entities are decoded, script and
+    style content is dropped, whitespace is collapsed. For pulling sentences and figures out of a
+    page with patterns. A parser decides where a script ends, not a pattern: `</script >` and
+    `</SCRIPT\n>` both close one."""
+    parser = _LineExtractor()
+    parser.feed(html)
+    parser.close()
+    return " ".join(" ".join(parser.parts).split())
+
+
 def html_to_text(html: str) -> str:
     """Convert HTML to readable plain text (tables as ` | `-joined rows)."""
     parser = _TextExtractor()

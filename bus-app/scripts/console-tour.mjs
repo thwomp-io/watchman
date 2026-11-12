@@ -97,7 +97,7 @@ for (const step of steps) {
   else if (op === "viz") {
     for (const t of await page.locator('.viz-top-toggle:has-text("▸")').all()) await t.click().catch(() => {});
     await page.waitForTimeout(300);
-    await page.locator(".viz-rail button", { hasText: new RegExp(val, "i") }).first().click().catch(() => {});
+    await page.locator(".viz-rail button", { hasText: val }).first().click().catch(() => {});
   } else if (op === "hover") await page.locator(val).first().hover({ force: true }).catch(() => {});
   else if (op === "click") await page.locator(val).first().click({ force: true }).catch(() => {});
   else if (op === "esc") await page.keyboard.press("Escape").catch(() => {});

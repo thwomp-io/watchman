@@ -58,8 +58,8 @@ const report = []; // {key, label, status: filled|skipped|unresolved, note}
 const mark = (f, status, note = "") => report.push({ key: f.key, label: f.label, status, note });
 
 const labelOf = (v) => (Array.isArray(v) ? v : [v]).map((x) => String(x));
-// Node has no CSS.escape; an attribute selector takes any id verbatim (quotes escaped).
-const byId = (key) => `[id="${String(key).replace(/"/g, '\\"')}"]`;
+// Node has no CSS.escape; an attribute selector takes any id verbatim once backslashes and quotes are escaped.
+const byId = (key) => `[id="${String(key).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`;
 
 // ----- Greenhouse -----
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

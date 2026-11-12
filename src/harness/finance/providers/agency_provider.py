@@ -46,6 +46,7 @@ import httpx
 
 from harness._http import USER_AGENT
 from harness.errors import ProviderError
+from harness.textutil import html_to_line
 
 _BLS = "https://api.bls.gov/publicAPI/v1/timeseries/data/"
 _BEA = "https://www.bea.gov"
@@ -77,10 +78,7 @@ def _send(client: httpx.Client, method: str, url: str, **kw: Any) -> httpx.Respo
     return resp
 
 
-def _text(markup: str) -> str:
-    """Markup to one line of readable text (scripts and styles dropped)."""
-    body = re.sub(r"<script.*?</script>|<style.*?</style>", " ", markup, flags=re.S | re.I)
-    return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", body))).strip()
+_text = html_to_line  # a page as one line of running text
 
 
 def _long_date(s: str) -> date:
