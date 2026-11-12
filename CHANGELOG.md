@@ -3,6 +3,12 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- jsdom 30 → 31 in the console's test environment and the diagram renderer; `astral-sh/setup-uv`
+  pinned at v10.3.3 in CI.
+
 ## [0.17.0] - 2026-11-11
 
 ### Security
