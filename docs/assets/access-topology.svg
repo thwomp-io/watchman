@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="1000" height="470" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 470" width="2000" height="940" role="img"
      aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
   <title id="t">One server, every device</title>
   <desc id="d">An always-on machine runs one server that holds your files, the engine and its scheduled jobs.
@@ -10,18 +10,18 @@
     .inner { fill: #ffffff; stroke: #d1d9e0; }
     .core  { fill: #f3f8ff; stroke: #0969da; }
     .agent { fill: #fbf8ff; stroke: #8250df; stroke-dasharray: 6 5; }
-    .h     { fill: #1f2328; font-size: 17px; font-weight: 600; }
-    .k     { fill: #59636e; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; }
-    .t     { fill: #1f2328; font-size: 13.5px; }
-    .m     { fill: #59636e; font-size: 12.5px; }
-    .c     { fill: #1f2328; font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+    .h     { fill: #1f2328; font-size: 18.5px; font-weight: 600; }
+    .k     { fill: #59636e; font-size: 12px; font-weight: 600; letter-spacing: 0.09em; }
+    .t     { fill: #1f2328; font-size: 15px; }
+    .m     { fill: #59636e; font-size: 13.5px; }
+    .c     { fill: #1f2328; font-size: 13.5px; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
     .ln    { stroke: #59636e; stroke-width: 1.6; fill: none; }
     .lnb   { stroke: #0969da; stroke-width: 1.8; fill: none; }
     .lnp   { stroke: #8250df; stroke-width: 1.6; fill: none; stroke-dasharray: 6 5; }
     .ah    { fill: #59636e; }
     .ahb   { fill: #0969da; }
     .ahp   { fill: #8250df; }
-    .lab   { fill: #59636e; font-size: 12px; }
+    .lab   { fill: #59636e; font-size: 13px; }
     .blue  { fill: #0969da; }
     .purp  { fill: #8250df; }
     @media (prefers-color-scheme: dark) {
