@@ -75,7 +75,7 @@ IMG_MIME = {
 MAX_IMAGE_BYTES = 16 * 1024 * 1024
 
 
-from harness.console.errors import CommandError  # noqa: E402 — re-exported: handlers raise it
+from harness.console.errors import CommandError, from_stderr  # noqa: E402 — re-exported: handlers raise it
 
 
 def _vault_root() -> Path:
@@ -278,6 +278,8 @@ def _execute_json_command(cmd: str, args: list[str], cwd: str, label: str) -> st
     # The active scenario: a pack shapes every read, and a bundled sample pack seals corpus,
     # state, bus and cache so nothing real on this machine can render.
     env = scenario.spawn_env(env)
+    # Ask a harness command for its failure as fields (kind, message, hint), not as prose to parse.
+    env["HARNESS_ERROR_FORMAT"] = "json"
     # A configured cwd that doesn't exist here (a dashboard authored on another machine) runs from
     # the server's own cwd: the `hn` rewrite above makes the cwd irrelevant to what runs.
     run_dir = Path(cwd).expanduser() if cwd else None
@@ -297,7 +299,7 @@ def _execute_json_command(cmd: str, args: list[str], cwd: str, label: str) -> st
     except subprocess.TimeoutExpired as exc:
         raise CommandError(f"{label} timed out") from exc
     if out.returncode != 0:
-        raise CommandError(f"{label} exited {out.returncode}: {out.stderr[:800]}")
+        raise from_stderr(label, out.returncode, out.stderr)
     trimmed = out.stdout.strip()
     try:
         json.loads(trimmed)
@@ -963,11 +965,9 @@ def console_routes(token: str, writes: frozenset[str] = frozenset()) -> list[Rou
     global _serve_writes
     writes = frozenset(writes) & WRITE_GATED - {"set_bus_config", "test_bus_connection"}
     _serve_writes = writes
-    from harness.bus.server import _authorized, _unauthorized
+    from harness.bus.server import require_token
 
     async def invoke(request: Request) -> JSONResponse:
-        if not _authorized(request, token):
-            return _unauthorized()
         cmd = request.path_params["cmd"]
         if cmd in WRITE_GATED and cmd not in writes:
             return JSONResponse(
@@ -1005,6 +1005,6 @@ def console_routes(token: str, writes: frozenset[str] = frozenset()) -> list[Rou
         except CommandError as exc:
             # The Tauri failure shape: invoke rejects with the command's error string — the
             # transport turns this into the same rejection the native path produces.
-            return JSONResponse({"error": str(exc)}, status_code=400)
+            return JSONResponse(exc.to_response(), status_code=400)
 
-    return [Route("/api/invoke/{cmd}", invoke, methods=["POST"])]
+    return [Route("/api/invoke/{cmd}", require_token(token)(invoke), methods=["POST"])]

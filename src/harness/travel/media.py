@@ -10,14 +10,23 @@ from __future__ import annotations
 
 import io
 import re
+import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
 from harness._http import CONTACT_USER_AGENT, describe_http_error, get_with_retry
+from harness.paths import cache_file
+from harness.travel.config.settings import get_settings
 from harness.travel.imaging import shrink_bytes
 from harness.travel.models import ImageCandidate, ImageResult
+from harness.travel.providers import get_image_provider
+from harness.travel.providers.base import ProviderError
+
+if TYPE_CHECKING:
+    from harness.travel.service import TravelService
 
 _SHEET_PAD = 12
 _SHEET_LABEL_H = 26
@@ -175,3 +184,63 @@ def build_contact_sheet(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(out_path, "PNG")
     return out_path
+
+
+def fetch_destination_images(svc: TravelService, dest: str,
+    subjects: list[str],
+    provider_name: str = "wikimedia",
+    vault_root: Path | None = None,
+    delay_s: float = 1.0,
+    keep_original: bool = False,
+    errors: dict[str, str] | None = None,
+) -> list[ImageResult]:
+    """For each subject (hotel / attraction / view), find an image and store it locally under
+    the doc's assets/ dir. `dest` is a bare destination slug (→ travel/destinations/{slug}/assets,
+    back-compat) OR a vault path under travel/ (→ travel/{dest}/assets, like `viz --dest` — lets
+    visits/ + trips/ folder-notes be illustrated). Returns embeddable ImageResults.
+
+    Resilient + polite: a brief `delay_s` between subjects smooths bursts (Wikimedia throttles
+    rapid runs), and a subject that finds nothing OR errors is skipped, not fatal — the rest still
+    come back. A subject that ERRORED is recorded in `errors` (subject → reason, the HTTP status
+    when there is one), so a blocked provider never reads as an empty search."""
+    root = vault_root or get_settings().tracker_path
+    provider = get_image_provider(provider_name)
+    results: list[ImageResult] = []
+    for i, subject in enumerate(subjects):
+        if i:
+            time.sleep(delay_s)  # politeness throttle — not a limiter; just spaces the burst
+        try:
+            candidates = provider.search_images(subject, limit=1)
+            if not candidates:
+                continue
+            results.append(
+                store_image(candidates[0], root, dest, subject, keep_original=keep_original)
+            )
+        except (ProviderError, RuntimeError) as e:
+            if errors is not None:
+                errors[subject] = str(e)  # skip this subject, keep the rest, say why
+    return results
+
+
+def make_contact_sheet(svc: TravelService, dest: str | None = None,
+    paths: list[str] | None = None,
+    *,
+    name: str | None = None,
+    cols: int = 4,
+    vault_root: Path | None = None,
+) -> Path:
+    """Tile a destination's `assets/` (by slug/path) OR an explicit list of image paths into one
+    labeled grid PNG — the eyeball aid for reviewing a fetched batch in a single look before
+    embedding. Written to `~/.cache/harness/contact-sheets/` (NOT the vault). Returns its path."""
+    if paths:
+        imgs = [Path(p) for p in paths]
+    elif dest:
+        root = vault_root or get_settings().tracker_path
+        assets = root.joinpath(*dest_dir_parts(dest, root), "assets")
+        imgs = sorted(p for p in assets.glob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    else:
+        raise ValueError("make_contact_sheet: pass dest or paths")
+    if not imgs:
+        raise ValueError("make_contact_sheet: no images found")
+    out = cache_file("contact-sheets", f"{name or dest or 'sheet'}.png")  # sealable (paths.py)
+    return build_contact_sheet(imgs, out, cols=cols)

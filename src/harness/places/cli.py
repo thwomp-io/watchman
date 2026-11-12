@@ -12,10 +12,13 @@ import typer
 from rich.console import Console
 from rich.markup import escape
 
+from harness._cli import ReportingGroup
+
 if TYPE_CHECKING:
     from harness.places.service import PlacesService
 
 app = typer.Typer(
+    cls=ReportingGroup,
     no_args_is_help=True, help="Local place search near a ZIP / place / lat,lon (Google Maps via SerpAPI)."
 )
 console = Console()
@@ -53,14 +56,7 @@ def search(
     """Places matching QUERY near --near, in Google's relevance order (--nearest to sort by
     distance): name · distance · open now / today's hours · rating, then address · phone, then
     website · place_id (for `hn places show`)."""
-    from harness.travel.providers.base import ProviderError
-
-    svc = _svc()
-    try:
-        res = svc.search(query, near, limit=limit, spend=yes, refresh=refresh, by_distance=nearest)
-    except ProviderError as e:
-        console.print(f"[red]{escape(str(e))}[/red]")
-        raise typer.Exit(code=1) from e
+    res = _svc().search(query, near, limit=limit, spend=yes, refresh=refresh, by_distance=nearest)
     if as_json:
         typer.echo(res.model_dump_json(indent=2))
         return
@@ -108,13 +104,7 @@ def show(
 ) -> None:
     """One place in full: every day's hours, type, phone, website, rating. Free when a cached search
     returned it; otherwise one live place-page lookup (with --yes)."""
-    from harness.travel.providers.base import ProviderError
-
-    try:
-        place, spent = _svc().show(place_id, spend=yes)
-    except ProviderError as e:
-        console.print(f"[red]{escape(str(e))}[/red]")
-        raise typer.Exit(code=1) from e
+    place, spent = _svc().show(place_id, spend=yes)
     if place is None:
         console.print("[yellow]dry run[/yellow] — not in the cache: 1 live search · pass --yes")
         return

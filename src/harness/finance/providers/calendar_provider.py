@@ -11,8 +11,8 @@
   announced coupon auctions (Notes / Bonds / TIPS) with the offering amount and closing time.
 
 Every fetch is per-source resilient: the calendar verb turns a dead source into a note.
-BLS (CPI, payrolls) is NOT a source: its site refuses tool User-Agents (an Akamai wall); Nasdaq
-carries those releases with the numbers.
+The agencies' own numbers for a printed release, and the market-holiday schedules, are read in
+agency_provider.py (the BLS website refuses tool User-Agents; its API host does not).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import httpx
 
 from harness._http import get_with_retry
 from harness.errors import ProviderError
-from harness.finance.providers.nasdaq_provider import _HDRS as _NASDAQ_HDRS
+from harness.finance.providers import nasdaq_provider
 
 _NASDAQ_ECON = "https://api.nasdaq.com/api/calendar/economicevents"
 _FED_CAL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
@@ -68,19 +68,22 @@ def _clean(v: object) -> str | None:
     return s or None
 
 
-def fetch_econ_day(day: date, client: httpx.Client) -> list[EconRow]:
+def fetch_econ_day(day: date) -> list[EconRow]:
     """One day's US economic releases from Nasdaq (actual/consensus/previous when present).
 
     ⚠ The endpoint's `date=D` returns the releases of D−1 (verified live: `date=…-22` served a
     Monday's Chicago Fed index + bill auctions, `date=…-23` the Tuesday's Redbook + Richmond Fed
     with actuals). So day X is requested as X+1 and its rows are labeled X — without this every
     release lands a day late (EIA crude on a Thursday, durable goods on a Saturday)."""
+    # Through the Nasdaq provider's transport: the site refuses the Python HTTP client and answers
+    # the system curl, for this endpoint as for its analyst ones.
+    asked = (day + timedelta(days=1)).isoformat()
     try:
-        resp = get_with_retry(_NASDAQ_ECON, client=client, headers=_NASDAQ_HDRS,
-                              params={"date": (day + timedelta(days=1)).isoformat()}, retries=2)
-        rows = (resp.json().get("data") or {}).get("rows") or []
-    except (httpx.HTTPError, ValueError) as e:
-        raise ProviderError(f"nasdaq economic calendar {day}: {e}") from e
+        body = nasdaq_provider.get_json(f"{_NASDAQ_ECON}?date={asked}")
+    except ProviderError as e:
+        raise ProviderError(f"{e} (economic calendar {day})", transient=True) from e
+    data = body.get("data") if isinstance(body, dict) else None
+    rows = (data or {}).get("rows") or []
     out = []
     for r in rows:
         if r.get("country") != "United States" or not _clean(r.get("eventName")):

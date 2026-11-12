@@ -49,6 +49,7 @@ import GatesBoard from "./viz/GatesBoard";
 import BeadTree from "./viz/BeadTree";
 import Calendar from "./viz/Calendar";
 import { useNav } from "./nav";
+import FailureNote, { toFailure } from "./FailureNote";
 import { preprocessLinks, VaultImage } from "./VaultZone";
 
 const MARKET_MS = 10 * 60_000;
@@ -391,7 +392,7 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
       const tookSecs = Math.round((Date.now() - startedAt.getTime()) / 1000);
       setState({ status: "ok", data, at: new Date(), tookSecs });
     } catch (e) {
-      setState({ status: "error", message: String(e), at: new Date() });
+      setState({ status: "error", ...toFailure(e), at: new Date() });
     }
   }, [lane, widget, effSymbol, ck]);
 
@@ -479,7 +480,7 @@ function WidgetCard({ lane, widget, forceTick }: { lane: string; widget: Widget;
                 disabled={state.status === "running" || (state.status === "ok" && state.refreshing === true)}>⟳</button>
       </header>
       {(state.status === "running" || (state.status === "ok" && state.refreshing)) && <div className="sweep" />}
-      {state.status === "error" && <p className="surface-error">{state.message}</p>}
+      {state.status === "error" && <FailureNote failure={state} onRetry={() => void run()} />}
       {state.status === "ok" && (
         <ErrorBoundary resetKey={`${widget.id}`}>
           {widget.kind === "stat" && <StatBody data={state.data} widget={widget} />}

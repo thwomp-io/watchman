@@ -7,9 +7,17 @@ one place the lane resolves that root, mirroring finance's `Settings.portfolio_p
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 from harness.settings import BaseToolkitSettings
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> BaseToolkitSettings:
+    """Lane settings — the shared base only (tracker_path + .env). A career-specific
+    Settings subclass lands when the lane grows provider keys (scanners, comp data)."""
+    return BaseToolkitSettings()
 
 
 def role_hunt_root(settings: BaseToolkitSettings) -> Path:

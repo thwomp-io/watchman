@@ -75,14 +75,14 @@
           "run",
           "hn",
           "finance",
-          "pulse",
+          "market",
           "--json"
         ],
         "cwd": "."
       },
       "refresh": "market10m",
       "span": 2,
-      "value_path": "indexes",
+      "value_path": "indices",
       "prefix": null,
       "suffix": null,
       "signed": null,
@@ -134,7 +134,8 @@
           "hn",
           "finance",
           "watch",
-          "--no-mark",
+          "--only",
+          "moves",
           "--json"
         ],
         "cwd": "."
@@ -170,7 +171,7 @@
           "run",
           "hn",
           "finance",
-          "pulse",
+          "orders",
           "--json"
         ],
         "cwd": "."
@@ -292,7 +293,8 @@
           "hn",
           "finance",
           "watch",
-          "--no-mark",
+          "--only",
+          "prints",
           "--json"
         ],
         "cwd": "."

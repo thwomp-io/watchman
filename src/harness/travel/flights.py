@@ -13,9 +13,14 @@ import re
 import urllib.parse
 from datetime import date, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from harness.travel.media import dest_dir_parts
-from harness.travel.models import FlightItinerary, FlightSearch
+from harness.travel.models import FlightItinerary, FlightQuery, FlightSearch
+from harness.travel.providers import get_flight_provider
+
+if TYPE_CHECKING:
+    from harness.travel.service import TravelService
 
 # First-class-upgrade calibration — a SAMPLE calibration for a first-class-on-long-hauls
 # preference profile (tune to taste; the design point is that the preference is
@@ -360,3 +365,56 @@ def write_flights_report(
 
     report.write_text("\n".join(lines))
     return report
+
+
+def research_flights(svc: TravelService, destination: str,
+    depart: date,
+    return_: date | None = None,
+    *,
+    origins: list[str] | None = None,
+    cabins: tuple[str, ...] = ("economy", "first"),
+    limit: int = 3,
+    provider_name: str = "serpapi",
+) -> FlightSearch:
+    """Rich, cabin-aware flight research for a route+window across one or more origins — the flights
+    twin of `search_hotels`. Default `origins` (config-driven, `FlightWeights`): the **local/home
+    airport + a hub** for a destination the local airport serves (the local airport leads — the
+    convenience win, with the hub as the price/frequency comparison), else the hub only. A small
+    local airport is fully queryable but can have a sparse schedule, so it returns no options when it
+    doesn't fly the window. Spends one search per origin × cabin (default 2 origins × 2 cabins = 4) —
+    opt-in deepen-after-pick."""
+    provider = get_flight_provider(
+        provider_name, avoid_iata=svc.weights.flight.airline_avoid_iata
+    )
+    fw = svc.weights.flight
+    dest = destination.upper()
+    home_airport_served = dest in fw.home_airport_served_iata
+    if origins is None:
+        origins = fw.query_origins(home_airport_served)
+    origins = [o.upper() for o in origins]
+    hub = fw.comparison_airport.upper()
+    options = []
+    insight = None
+    for org in origins:
+        for cabin in cabins:
+            query = FlightQuery(
+                origins=[org], destination=dest, depart=depart, return_=return_
+            )
+            options.extend(provider.search_itineraries(query, cabin=cabin, limit=limit))
+            # fare-context comes from the hub's economy (the deepest, most-comparable market)
+            if org == hub and cabin == "economy" and provider.last_insight is not None:
+                insight = provider.last_insight
+    return FlightSearch(
+        origins=origins,
+        dest_iata=dest,
+        depart=depart,
+        return_=return_,
+        round_trip=return_ is not None,
+        home_airport_served=home_airport_served,
+        home_airport=fw.home_airport.upper(),
+        comparison_airport=hub,
+        home_airport_note=fw.home_airport_note,
+        cabins=list(cabins),
+        options=options,
+        price_insight=insight,
+    )

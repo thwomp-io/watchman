@@ -9,8 +9,9 @@ threshold flags ride on top.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -24,7 +25,12 @@ from harness.travel.models import (
     Trip,
     WeatherForecast,
 )
+from harness.travel.providers import get_weather_provider
+from harness.travel.providers.base import ProviderError
 from harness.travel.ranking.weights import ConditionsThresholds
+
+if TYPE_CHECKING:
+    from harness.travel.service import TravelService
 
 # kind -> bus severity (snow/smoke are the loud ones; heat + gusts warn; wet day + UV are
 # informational — UV is a bring-sunscreen note, not a change-your-plans event).
@@ -56,7 +62,7 @@ class ConditionsReport(BaseModel):
     armed_trips: list[str] = Field(default_factory=list)  # human labels of finalized trips under watch
     outdoor: OutdoorPlan | None = None  # today's outdoor-windows read (None = hourly down)
     now: CurrentConditions | None = None  # the right-now read (None = current down)
-    tiles: dict[str, float | str | None] = Field(default_factory=dict)  # the FLAT dashboard-tile
+    tiles: dict[str, int | float | str | None] = Field(default_factory=dict)  # the FLAT dashboard-tile
     #                    contract (tier C) — stable keys the Conditions-subtab stat row plucks
     #                    (now_temp/feels/uv/gusts/aqi/sunset/window). Derived by conditions_tiles().
 
@@ -248,7 +254,7 @@ def _good_why(run: list[HourlyWeather]) -> str:
     return f"feels {lo:.0f}–{hi:.0f}°" if lo != hi else f"feels {lo:.0f}°"
 
 
-def conditions_tiles(rep: ConditionsReport) -> dict[str, float | str | None]:
+def conditions_tiles(rep: ConditionsReport) -> dict[str, int | float | str | None]:
     """PURE: the report → the FLAT tile contract for the Conditions-subtab stat row (tier C).
 
     Stable keys, one level deep (the dashboard plucks by value_path — the daygl/global flat-scalars
@@ -259,7 +265,7 @@ def conditions_tiles(rep: ConditionsReport) -> dict[str, float | str | None]:
     a0 = rep.air.days[0] if rep.air and rep.air.days else None
     best = max(rep.outdoor.windows, key=lambda w: w.hours) if rep.outdoor and rep.outdoor.windows else None
 
-    def r0(v: float | None) -> float | None:
+    def r0(v: float | None) -> int | None:
         # Tile-display rounding (whole degrees/mph — "71°", never "71.20°").
         return round(v) if v is not None else None
 
@@ -412,3 +418,64 @@ def morning_event(rep: ConditionsReport, report_rel: str | None = None) -> Event
         payload=payload,
         idempotency_key=f"travel.conditions:morning_report:{rep.home}:{rep.as_of}",
     )
+
+
+def conditions_pulse(svc: TravelService, *, today: date | None = None) -> ConditionsReport:
+    """Travel Watchman conditions watch: flag threshold crossings (heat/smoke/wet_day/
+    snow) for the configured **home** locale over the near horizon AND for any **finalized trip**
+    within ``arm_days`` of its start — thresholds from weights.yaml ``conditions:``. quiet=True ->
+    a standing run ends silently. Detection only; the agent narrates. `today` is injectable for tests."""
+    cfg = svc.weights.conditions
+    day0 = today or date.today()
+    end = day0 + timedelta(days=max(0, cfg.horizon_days))
+
+    weather = svc.get_weather(cfg.home, day0, end)  # ProviderError propagates (home must resolve)
+    try:
+        air = svc.get_air_quality(cfg.home, day0, end)
+    except ProviderError:
+        air = None  # air sense down -> weather flags still fire (graceful degradation)
+    flags = compute_flags(scope="home", place=cfg.home, weather=weather, air=air, th=cfg.thresholds)
+
+    # today's outdoor-windows read + the current-conditions "now" half
+    # (ONE hourly+current fetch + the pure solver; overlay prefs). Best-effort — a down
+    # hourly endpoint degrades to outdoor=None/now=None, never kills the pulse.
+    outdoor = None
+    now = None
+    try:
+        provider = get_weather_provider("open-meteo")
+        hours, now = provider.hourly_forecast(
+            weather.latitude, weather.longitude, day0, day0, fahrenheit=True
+        )
+        outdoor = compute_outdoor_plan(day0.isoformat(), hours, outdoor_prefs_from_overlay())
+    except ProviderError:
+        outdoor = None  # a down hourly endpoint never kills the pulse (hourly is contract now)
+
+    # finalized trips within arm_days -> watch the destination over its (horizon-capped) window
+    armed: list[str] = []
+    for trip in svc.reader.scan_trips():
+        if not should_arm(trip, day0, cfg.arm_statuses, cfg.arm_days):
+            continue
+        assert trip.start is not None  # guaranteed by should_arm
+        t_end = min(trip.end or trip.start, day0 + timedelta(days=15))  # ~16d weather horizon
+        try:
+            t_wx = svc.get_weather(trip.destination, trip.start, t_end)
+        except ProviderError:
+            continue  # can't resolve/forecast the destination -> skip it, never kill the home pulse
+        try:
+            t_air = svc.get_air_quality(
+                trip.destination, trip.start, min(t_end, day0 + timedelta(days=5))
+            )
+        except ProviderError:
+            t_air = None
+        flags += compute_flags(
+            scope="trip", place=trip.destination, weather=t_wx, air=t_air, th=cfg.thresholds
+        )
+        armed.append(f"{trip.destination} ({trip.start.isoformat()})")
+
+
+    rep = ConditionsReport(
+        as_of=day0.isoformat(), home=cfg.home, quiet=not flags,
+        flags=flags, weather=weather, air=air, armed_trips=armed, outdoor=outdoor, now=now,
+    )
+    rep.tiles = conditions_tiles(rep)  # the flat dashboard contract — derived last
+    return rep

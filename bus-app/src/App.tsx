@@ -18,6 +18,7 @@ import UpdatePill from "./UpdatePill";
 import { NavContext, type Nav, type Ref } from "./nav";
 import { clearTheme, setTheme, storedTheme, THEMES, useTheme, type Theme } from "./theme";
 import { PUBLISHED } from "./published";
+import FailureNote, { toFailure } from "./FailureNote";
 import type { AppConfig, Surface, SurfaceState } from "./types";
 
 function clock(d: Date): string {
@@ -50,7 +51,7 @@ function SurfaceCard({ surface, state, now, onRun }: {
       </header>
       {state.status === "running" && <div className="sweep" />}
       {state.status === "ok" && <JsonView data={state.data} />}
-      {state.status === "error" && <p className="surface-error">{state.message}</p>}
+      {state.status === "error" && <FailureNote failure={state} onRetry={onRun} />}
       {state.status === "idle" && (
         <p className="empty">STANDBY — ACQUIRE TO RUN `{surface.cmd} {surface.args.join(" ")}`</p>
       )}
@@ -79,7 +80,7 @@ function Surfaces() {
         ...s, [id]: { status: "ok", data: JSON.parse(raw), at: new Date(), tookSecs },
       }));
     } catch (e) {
-      setStates((s) => ({ ...s, [id]: { status: "error", message: String(e), at: new Date() } }));
+      setStates((s) => ({ ...s, [id]: { status: "error", ...toFailure(e), at: new Date() } }));
     }
   };
 

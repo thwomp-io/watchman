@@ -1,2 +1,137 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1386.8000000000002 392" width="1386.8000000000002" height="392" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif"><rect width="1386.8000000000002" height="392" fill="#08090c"></rect><text x="30" y="32" font-size="20" font-weight="700" fill="#f4f6fb">How Watchman works</text><text x="30" y="54" font-size="12.5" fill="#aab2c2">Your corpus in, live views and a sealed agent out — reachable from any device you own.</text><defs><marker id="flow-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#aab2c2"></path></marker><marker id="flow-arrow-fb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b7382"></path></marker><linearGradient id="flow-grad-0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e8a33d" stop-opacity="0.2"></stop><stop offset="100%" stop-color="#e8a33d" stop-opacity="0.03"></stop></linearGradient><filter id="flow-glow-0" x="-45%" y="-45%" width="190%" height="190%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#e8a33d" flood-opacity="0.6"></feDropShadow></filter><linearGradient id="flow-grad-1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#59b9ff" stop-opacity="0.2"></stop><stop offset="100%" stop-color="#59b9ff" stop-opacity="0.03"></stop></linearGradient><filter id="flow-glow-1" x="-45%" y="-45%" width="190%" height="190%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#59b9ff" flood-opacity="0.6"></feDropShadow></filter><linearGradient id="flow-grad-2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d98fb6" stop-opacity="0.2"></stop><stop offset="100%" stop-color="#d98fb6" stop-opacity="0.03"></stop></linearGradient><filter id="flow-glow-2" x="-45%" y="-45%" width="190%" height="190%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#d98fb6" flood-opacity="0.6"></feDropShadow></filter><linearGradient id="flow-grad-3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7dd6a0" stop-opacity="0.2"></stop><stop offset="100%" stop-color="#7dd6a0" stop-opacity="0.03"></stop></linearGradient><filter id="flow-glow-3" x="-45%" y="-45%" width="190%" height="190%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#7dd6a0" flood-opacity="0.6"></feDropShadow></filter><linearGradient id="flow-grad-4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c9d65e" stop-opacity="0.2"></stop><stop offset="100%" stop-color="#c9d65e" stop-opacity="0.03"></stop></linearGradient><filter id="flow-glow-4" x="-45%" y="-45%" width="190%" height="190%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#c9d65e" flood-opacity="0.6"></feDropShadow></filter></defs><line x1="230" y1="187" x2="402.6" y2="125.5" stroke="#aab2c2" stroke-width="2" marker-end="url(#flow-arrow)"></line><text x="317.8" y="147.25" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" stroke="#08090c" stroke-width="3.5" fill="none">weights + narrative</text><text x="317.8" y="147.25" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" fill="#ffffff">weights + narrative</text><line x1="230" y1="187" x2="402.6" y2="248.5" stroke="#aab2c2" stroke-width="2" marker-end="url(#flow-arrow)"></line><text x="317.8" y="208.75" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" stroke="#08090c" stroke-width="3.5" fill="none">reads</text><text x="317.8" y="208.75" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" fill="#ffffff">reads</text><line x1="605.6" y1="125.5" x2="778.2" y2="187" stroke="#aab2c2" stroke-width="2" marker-end="url(#flow-arrow)"></line><text x="693.4000000000001" y="147.25" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" stroke="#08090c" stroke-width="3.5" fill="none">live, deterministic data</text><text x="693.4000000000001" y="147.25" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" fill="#ffffff">live, deterministic data</text><line x1="605.6" y1="248.5" x2="778.2" y2="187" stroke="#aab2c2" stroke-width="2" marker-end="url(#flow-arrow)"></line><text x="693.4000000000001" y="208.75" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" stroke="#08090c" stroke-width="3.5" fill="none">streamed replies</text><text x="693.4000000000001" y="208.75" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" fill="#ffffff">streamed replies</text><line x1="981.2" y1="187" x2="1153.8000000000002" y2="187" stroke="#aab2c2" stroke-width="2" marker-end="url(#flow-arrow)"></line><text x="1069" y="178" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" stroke="#08090c" stroke-width="3.5" fill="none">token-authed</text><text x="1069" y="178" text-anchor="middle" font-size="11" font-weight="600" font-style="normal" fill="#ffffff">token-authed</text><path d="M881.2,234.5 C881.2,352 130,352 130,237.5" fill="none" stroke="#6b7382" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#flow-arrow-fb)"></path><text x="505.6" y="357" text-anchor="middle" font-size="11" font-weight="500" font-style="italic" stroke="#08090c" stroke-width="3.5" fill="none">research artifacts written back</text><text x="505.6" y="357" text-anchor="middle" font-size="11" font-weight="500" font-style="italic" fill="#aab2c2">research artifacts written back</text><g transform="translate(30,139.5)"><rect width="200" height="95" rx="13" fill="#10131a" stroke="#e8a33d" stroke-width="1.8" filter="url(#flow-glow-0)"></rect><rect width="200" height="95" rx="13" fill="url(#flow-grad-0)"></rect><text x="100" y="30" text-anchor="middle" font-size="15.5" font-weight="800" letter-spacing="0.2" fill="#e8a33d">Corpus</text><text x="100" y="48" text-anchor="middle" font-size="11" fill="#aab2c2">your narrative + voice</text><text x="100" y="63" text-anchor="middle" font-size="11" fill="#aab2c2">stories, reasoning, weights</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#aab2c2">(the product)</text></g><g transform="translate(405.6,78)"><rect width="200" height="95" rx="13" fill="#10131a" stroke="#59b9ff" stroke-width="1.8" filter="url(#flow-glow-1)"></rect><rect width="200" height="95" rx="13" fill="url(#flow-grad-1)"></rect><text x="100" y="30" text-anchor="middle" font-size="15.5" font-weight="800" letter-spacing="0.2" fill="#59b9ff">Harness · hn</text><text x="100" y="48" text-anchor="middle" font-size="11" fill="#aab2c2">reads corpus + live data</text><text x="100" y="63" text-anchor="middle" font-size="11" fill="#aab2c2">finance · career · travel</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#aab2c2">read-rich, execute-gated</text></g><g transform="translate(405.6,201)"><rect width="200" height="95" rx="13" fill="#10131a" stroke="#d98fb6" stroke-width="1.8" filter="url(#flow-glow-2)"></rect><rect width="200" height="95" rx="13" fill="url(#flow-grad-2)"></rect><text x="100" y="30" text-anchor="middle" font-size="15.5" font-weight="800" letter-spacing="0.2" fill="#d98fb6">Your agent</text><text x="100" y="48" text-anchor="middle" font-size="11" fill="#aab2c2">Claude Code on your own plan</text><text x="100" y="63" text-anchor="middle" font-size="11" fill="#aab2c2">reads corpus + hn read tools</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#aab2c2">sealed: read-only by default</text></g><g transform="translate(781.2,139.5)"><rect width="200" height="95" rx="13" fill="#10131a" stroke="#7dd6a0" stroke-width="1.8" filter="url(#flow-glow-3)"></rect><rect width="200" height="95" rx="13" fill="url(#flow-grad-3)"></rect><text x="100" y="30" text-anchor="middle" font-size="15.5" font-weight="800" letter-spacing="0.2" fill="#7dd6a0">Watchman</text><text x="100" y="48" text-anchor="middle" font-size="11" fill="#aab2c2">dashboards · bus · CHAT</text><text x="100" y="63" text-anchor="middle" font-size="11" fill="#aab2c2">no model in the render loop</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#aab2c2">served over your private mesh</text></g><g transform="translate(1156.8000000000002,139.5)"><rect width="200" height="95" rx="13" fill="#10131a" stroke="#c9d65e" stroke-width="1.8" filter="url(#flow-glow-4)"></rect><rect width="200" height="95" rx="13" fill="url(#flow-grad-4)"></rect><text x="100" y="30" text-anchor="middle" font-size="15.5" font-weight="800" letter-spacing="0.2" fill="#c9d65e">You</text><text x="100" y="48" text-anchor="middle" font-size="11" fill="#aab2c2">desktop app</text><text x="100" y="63" text-anchor="middle" font-size="11" fill="#aab2c2">any browser</text><text x="100" y="78" text-anchor="middle" font-size="11" fill="#aab2c2">phone (PWA + push)</text></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 610" width="1240" height="610" role="img"
+     aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+  <title id="t">How Watchman works</title>
+  <desc id="d">Plain files you own and public data sources feed a deterministic engine. The engine's commands
+  fill a web console and publish events to a bus that pushes alerts to your devices. An optional agent on
+  your own machine reads through the same commands, sealed to read-only, and answers in the console's chat tab.</desc>
+  <style>
+    .bg    { fill: #ffffff; stroke: #d1d9e0; }
+    .card  { fill: #f6f8fa; stroke: #d1d9e0; }
+    .inner { fill: #ffffff; stroke: #d1d9e0; }
+    .core  { fill: #f3f8ff; stroke: #0969da; }
+    .agent { fill: #fbf8ff; stroke: #8250df; stroke-dasharray: 6 5; }
+    .h     { fill: #1f2328; font-size: 17px; font-weight: 600; }
+    .k     { fill: #59636e; font-size: 11px; font-weight: 600; letter-spacing: 0.09em; }
+    .t     { fill: #1f2328; font-size: 13.5px; }
+    .m     { fill: #59636e; font-size: 12.5px; }
+    .c     { fill: #1f2328; font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace; }
+    .ln    { stroke: #59636e; stroke-width: 1.6; fill: none; }
+    .lnb   { stroke: #0969da; stroke-width: 1.8; fill: none; }
+    .lnp   { stroke: #8250df; stroke-width: 1.6; fill: none; stroke-dasharray: 6 5; }
+    .ah    { fill: #59636e; }
+    .ahb   { fill: #0969da; }
+    .ahp   { fill: #8250df; }
+    .lab   { fill: #59636e; font-size: 12px; }
+    .blue  { fill: #0969da; }
+    .purp  { fill: #8250df; }
+    @media (prefers-color-scheme: dark) {
+      .bg    { fill: #0d1117; stroke: #3d444d; }
+      .card  { fill: #151b23; stroke: #3d444d; }
+      .inner { fill: #0d1117; stroke: #3d444d; }
+      .core  { fill: #0f1a2b; stroke: #4493f8; }
+      .agent { fill: #17132a; stroke: #ab7df8; }
+      .h, .t, .c { fill: #f0f6fc; }
+      .k, .m, .lab { fill: #9198a1; }
+      .ln    { stroke: #9198a1; }
+      .lnb   { stroke: #4493f8; }
+      .lnp   { stroke: #ab7df8; }
+      .ah    { fill: #9198a1; }
+      .ahb   { fill: #4493f8; }
+      .ahp   { fill: #ab7df8; }
+      .blue  { fill: #4493f8; }
+      .purp  { fill: #ab7df8; }
+    }
+  </style>
+  <defs>
+    <marker id="a"  viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ah"  d="M0,1 L9,5 L0,9 z"/></marker>
+    <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ahb" d="M0,1 L9,5 L0,9 z"/></marker>
+    <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path class="ahp" d="M0,1 L9,5 L0,9 z"/></marker>
+  </defs>
+
+  <rect class="bg" x="0.5" y="0.5" width="1239" height="609" rx="12"/>
+
+  <!-- column headings -->
+  <text class="k" x="40"  y="44">WHAT GOES IN</text>
+  <text class="k" x="370" y="44">THE ENGINE</text>
+  <text class="k" x="900" y="44">WHAT YOU LOOK AT</text>
+
+  <!-- inputs -->
+  <rect class="card" x="40" y="62" width="250" height="176" rx="10"/>
+  <text class="h" x="60" y="94">Your files</text>
+  <text class="m" x="60" y="116">Plain YAML and Markdown you own</text>
+  <text class="c" x="60" y="148">finance/portfolio.yaml</text>
+  <text class="c" x="60" y="170">career/watchlist.yml</text>
+  <text class="c" x="60" y="192">travel/trips/</text>
+  <text class="m" x="60" y="220">or a bundled sample persona</text>
+
+  <rect class="card" x="40" y="270" width="250" height="150" rx="10"/>
+  <text class="h" x="60" y="302">Public sources</text>
+  <text class="m" x="60" y="324">Read-only requests, no accounts</text>
+  <text class="t" x="60" y="354">prices · filings · the calendar</text>
+  <text class="t" x="60" y="376">job boards · pay data</text>
+  <text class="t" x="60" y="398">flights · events · weather</text>
+
+  <!-- engine -->
+  <rect class="core" x="370" y="62" width="450" height="358" rx="10" stroke-width="1.6"/>
+  <text class="h" x="392" y="94">Engine</text>
+  <text class="c blue" x="456" y="94">hn</text>
+  <text class="m" x="392" y="116">One lane per domain, the same layers in each</text>
+
+  <rect class="inner" x="392" y="134" width="126" height="38" rx="19"/>
+  <text class="t" x="455" y="158" text-anchor="middle">finance</text>
+  <rect class="inner" x="532" y="134" width="126" height="38" rx="19"/>
+  <text class="t" x="595" y="158" text-anchor="middle">career</text>
+  <rect class="inner" x="672" y="134" width="126" height="38" rx="19"/>
+  <text class="t" x="735" y="158" text-anchor="middle">travel</text>
+
+  <rect class="inner" x="392" y="196" width="406" height="44" rx="8"/>
+  <text class="t" x="410" y="223"><tspan font-weight="600">Providers</tspan><tspan class="m" dx="10">one module per outside source</tspan></text>
+  <path class="ln" d="M595,240 L595,256" marker-end="url(#a)"/>
+  <rect class="inner" x="392" y="258" width="406" height="44" rx="8"/>
+  <text class="t" x="410" y="285"><tspan font-weight="600">Service</tspan><tspan class="m" dx="10">one surface per lane, typed models</tspan></text>
+  <path class="ln" d="M595,302 L595,318" marker-end="url(#a)"/>
+  <rect class="inner" x="392" y="320" width="406" height="44" rx="8"/>
+  <text class="t" x="410" y="347"><tspan font-weight="600">CLI + MCP</tspan><tspan class="m" dx="10">the same verbs for people and agents</tspan></text>
+
+  <text class="t blue" x="392" y="394" font-weight="600">Deterministic. Read-only by default.</text>
+  <text class="m" x="392" y="410" font-size="11.5">No model in a render loop or an alert path.</text>
+
+  <!-- outputs -->
+  <rect class="card" x="900" y="62" width="300" height="212" rx="10"/>
+  <text class="h" x="920" y="94">Console</text>
+  <text class="m" x="920" y="116">One page, served from your machine</text>
+  <text class="t" x="920" y="148">Dashboards · Inbox · Vault · Chat</text>
+  <rect class="inner" x="920" y="168" width="82" height="34" rx="17"/>
+  <text class="t" x="961" y="190" text-anchor="middle">browser</text>
+  <rect class="inner" x="1010" y="168" width="74" height="34" rx="17"/>
+  <text class="t" x="1047" y="190" text-anchor="middle">phone</text>
+  <rect class="inner" x="1092" y="168" width="88" height="34" rx="17"/>
+  <text class="t" x="1136" y="190" text-anchor="middle">desktop</text>
+  <text class="m" x="920" y="232">One token, on your private network.</text>
+  <text class="m" x="920" y="250">Nothing is hosted for you.</text>
+
+  <rect class="card" x="900" y="316" width="300" height="104" rx="10"/>
+  <text class="h" x="920" y="348">Bus</text>
+  <text class="m" x="920" y="372">Scheduled jobs publish events here.</text>
+  <text class="m" x="920" y="392">Alerts push to your devices.</text>
+
+  <!-- agent -->
+  <rect class="agent" x="370" y="476" width="450" height="96" rx="10" stroke-width="1.6"/>
+  <text class="h" x="392" y="508">Your agent <tspan class="m" font-weight="400" dx="4">optional</tspan></text>
+  <text class="m" x="392" y="532">Runs on your own machine and plan. Sealed read-only by the</text>
+  <text class="m" x="392" y="550">runner and the OS sandbox, not by the prompt.</text>
+
+  <!-- flows -->
+  <path class="ln"  d="M290,150 L366,150" marker-end="url(#a)"/>
+  <path class="ln"  d="M290,345 L366,345" marker-end="url(#a)"/>
+  <path class="lnb" d="M820,150 L896,150" marker-end="url(#ab)"/>
+  <text class="lab" x="858" y="140" text-anchor="middle">views</text>
+  <path class="lnb" d="M820,368 L896,368" marker-end="url(#ab)"/>
+  <text class="lab" x="858" y="358" text-anchor="middle">events</text>
+  <path class="lnb" d="M1050,316 L1050,278" marker-end="url(#ab)"/>
+
+  <path class="lnp" d="M595,476 L595,424" marker-end="url(#ap)"/>
+  <text class="lab purp" x="607" y="454">reads through the same commands</text>
+  <path class="lnp" d="M820,524 L1220,524 L1220,120 L1204,120" marker-end="url(#ap)"/>
+  <text class="lab purp" x="1020" y="514" text-anchor="middle">replies in the Chat tab</text>
+</svg>

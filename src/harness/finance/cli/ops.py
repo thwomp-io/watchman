@@ -1,5 +1,5 @@
-"""Standing-agent and surface verbs of `hn finance`: pulse (+ its bus publish), watch, the gates
-board, the trap map, viz, the MCP server.
+"""Standing-agent and surface verbs of `hn finance`: pulse (+ its bus publish), watch, the resting
+orders, the gates board, the trap map, viz, the MCP server.
 
 Commands are registered on the `finance` app in `harness.finance.cli` (that file fixes the
 order `hn finance --help` lists them in)."""
@@ -14,14 +14,14 @@ from typing import TYPE_CHECKING
 import typer
 from rich.table import Table
 
+from harness.errors import HarnessError
+from harness.finance.cli.common import console, finance_service, money_short, signed
 from harness.finance.config.settings import get_settings
-from harness.finance.providers.base import ProviderError
+from harness.finance.watch import Section
+from harness.viz import KNOWN_TYPES, VizError, render_diagram
 
 if TYPE_CHECKING:
-    from harness.finance.watch import PulseReport
-from harness._cli import fail as _fail
-from harness.finance._cli import _money_short, _signed, _svc, console
-from harness.viz import KNOWN_TYPES, VizError, render_diagram
+    from harness.finance.pulse import OpenOrderStatus, PulseReport
 
 
 def _publish_to_bus(rep: PulseReport) -> str:
@@ -145,11 +145,7 @@ def pulse(
     """Market pulse: watch digest + open-GTC trap distances + DETERMINISTIC flags
     (day-move / trap-proximity / print-soon; thresholds in portfolio.yaml `pulse:`). Quiet days say
     quiet — the cron consumer notifies on flags only."""
-    try:
-        rep = _svc().pulse(mark_seen=not no_mark_seen)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    rep = finance_service().pulse(mark_seen=not no_mark_seen)
 
     if notify:
         _pulse_notify(rep, bus_note=_publish_to_bus(rep))
@@ -167,20 +163,45 @@ def pulse(
         for f in rep.flags:
             console.print(f"  [red]•[/red] [{f.kind}] {f.message}")
     if rep.orders:
-        table = Table(title="Open orders (the GTC ledger)")
-        for col in ("Side", "Symbol", "Qty", "Limit", "Price", "Distance", "Expires"):
-            table.add_column(col)
-        for o in rep.orders:
-            table.add_row(
-                o.side.upper(), o.symbol, f"{o.qty:g}", f"${o.limit:,.2f}",
-                f"${o.price:,.2f}" if o.price is not None else "—",
-                f"{o.distance_pct:+.1f}%" if o.distance_pct is not None else "—",
-                o.expires or "—",
-            )
-        console.print(table)
+        console.print(_orders_table(rep.orders))
     if rep.digest and rep.digest.fresh_news:
         n = len(rep.digest.fresh_news)
         console.print(f"[dim]  {n} fresh headline(s) since last pulse — `hn finance watch` for detail[/dim]")
+
+
+def _orders_table(orders: list[OpenOrderStatus]) -> Table:
+    table = Table(title="Open orders (the GTC ledger)")
+    for col in ("Side", "Symbol", "Qty", "Limit", "Price", "Distance", "Expires"):
+        table.add_column(col)
+    for o in orders:
+        table.add_row(
+            o.side.upper(), o.symbol, f"{o.qty:g}", f"${o.limit:,.2f}",
+            f"${o.price:,.2f}" if o.price is not None else "—",
+            f"{o.distance_pct:+.1f}%" if o.distance_pct is not None else "—",
+            o.expires or "—",
+        )
+    return table
+
+
+def orders(
+    as_json: bool = typer.Option(False, "--json", help="Machine output: {as_of, orders}"),
+) -> None:
+    """Resting orders against the live price: how far each is from filling.
+
+    Reads the `open_orders:` ledger in portfolio.yaml and costs one quote request, so it suits a
+    dashboard widget; `pulse` reports the same rows as part of its full pass. Read-only: the harness
+    never places or cancels an order."""
+    resting = finance_service().open_orders()
+    if as_json:
+        console.print_json(json.dumps({
+            "as_of": date.today().isoformat(),
+            "orders": [o.model_dump() for o in resting],
+        }))
+        return
+    if not resting:
+        console.print("[dim]no resting orders[/dim]")
+        return
+    console.print(_orders_table(resting))
 
 
 def watch(
@@ -192,18 +213,21 @@ def watch(
         False, "--no-ticker-news",
         help="Skip the per-held-stock Google News search (single-name catalyst breadth) for a faster run",
     ),
+    only: list[Section] = typer.Option(
+        [], "--only",
+        help="Build just this section (repeatable). A widget that shows one section asks for it "
+        "alone: `--only moves` reads positions and nothing else.",
+    ),
     as_json: bool = typer.Option(False, "--json", help="Raw JSON digest"),
 ) -> None:
-    """One-shot standing-watch digest: day moves, rebalance-band drift, the concentrated-holding
+    """One-shot standing-watch digest: day moves, the watchlist, rebalance-band drift, the
     wash-sale window, days-to-print, and only-new headlines (seen-cache delta).
 
-    Read-only observation. Designed to be cron-able later — v1 is on-demand.
+    Read-only observation.
     """
-    try:
-        d = _svc().watch(mark_seen=not no_mark, news_limit=limit, ticker_news=not no_ticker_news)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    d = finance_service().watch(
+        mark_seen=not no_mark, news_limit=limit, ticker_news=not no_ticker_news, only=only or None
+    )
     if as_json:
         console.print_json(d.model_dump_json())
         return
@@ -214,8 +238,8 @@ def watch(
         for p in d.day_moves:
             arrow = "▲" if (p.day_change_pct or 0) >= 0 else "▼"
             console.print(
-                f"  {p.symbol:<6} {arrow} {_signed(p.day_change_pct)}   "
-                f"{_signed(p.day_gl, money=True)}  [dim]@ ${p.price:,.2f}[/dim]"
+                f"  {p.symbol:<6} {arrow} {signed(p.day_change_pct)}   "
+                f"{signed(p.day_gl, money=True)}  [dim]@ ${p.price:,.2f}[/dim]"
             )
     if d.watchlist_moves:
         console.print("\n[bold]watchlist[/bold] [dim](non-held — graduated research candidates)[/dim]")
@@ -223,7 +247,7 @@ def watch(
             if m.available and m.price is not None:
                 arrow = "▲" if (m.day_change_pct or 0) >= 0 else "▼"
                 console.print(
-                    f"  {m.symbol:<6} {arrow} {_signed(m.day_change_pct)}  [dim]@ ${m.price:,.2f}"
+                    f"  {m.symbol:<6} {arrow} {signed(m.day_change_pct)}  [dim]@ ${m.price:,.2f}"
                     f"{' · ' + m.note if m.note else ''}[/dim]"
                 )
             else:
@@ -249,7 +273,7 @@ def watch(
         if w.harvestable_loss is not None and w.harvestable_loss < 0:
             verb = "harvestable now" if not w.today_poisoned else "harvestable when clean"
             console.print(
-                f"  [yellow]TLH inventory: {_money_short(w.harvestable_loss)} across "
+                f"  [yellow]TLH inventory: {money_short(w.harvestable_loss)} across "
                 f"{w.harvestable_shares:,.0f} sh ({verb})[/yellow]"
             )
         console.print(f"  [dim]{w.note}[/dim]")
@@ -260,9 +284,10 @@ def watch(
             if pc.days_out is not None and pc.days_out <= 3:  # print-soon = caution
                 days = f"[yellow]{days}[/yellow]"
             console.print(f"  {pc.symbol:<6} {days} [dim]{pc.estimate}[/dim]")
-    console.print(f"\n[bold]fresh headlines[/bold] ({len(d.fresh_news)} new since last watch)")
-    for h in d.fresh_news:
-        console.print(f"  {h.symbol:<6} {h.published or '—':<17} {h.title}", markup=False)
+    if not only or Section.NEWS in only:
+        console.print(f"\n[bold]fresh headlines[/bold] ({len(d.fresh_news)} new since last watch)")
+        for h in d.fresh_news:
+            console.print(f"  {h.symbol:<6} {h.published or '—':<17} {h.title}", markup=False)
     for n in d.notes:
         console.print(f"[dim]  • {n}[/dim]")
 
@@ -279,11 +304,7 @@ def gates(
     print_soon/macro_soon flags (no quotes, no wire): the Plans tab's countdown board reads
     this; the terminal render is the same calendar at a glance. Confirmed print dates say so;
     estimates are labeled (est)."""
-    try:
-        board = _svc(feed).gates(horizon_days=horizon)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    board = finance_service(feed).gates(horizon_days=horizon)
 
     if as_json:
         console.print_json(board.model_dump_json())
@@ -320,11 +341,7 @@ def trap_map(
     positioned to catch. Read-only observation of the portfolio.yaml `open_orders:` ledger; the
     harness never places or cancels an order.
     """
-    try:
-        tm = _svc(feed).trap_map(days=days)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    tm = finance_service(feed).trap_map(days=days)
 
     if as_json:
         console.print_json(tm.model_dump_json())
@@ -335,12 +352,12 @@ def trap_map(
         return
     console.print(
         f"\n[bold]TRAP MAP[/bold] — {len(tm.symbols)} laddered symbol(s), "
-        f"[bold]{_money_short(tm.committed)}[/bold] committed by resting buys · as of {tm.as_of}\n"
+        f"[bold]{money_short(tm.committed)}[/bold] committed by resting buys · as of {tm.as_of}\n"
     )
     for lad in tm.symbols:
         head = f"[bold]{lad.symbol}[/bold]"
         if lad.price is not None:
-            head += f" @ ${lad.price:,.2f}  {_signed(lad.day_change_pct)}"
+            head += f" @ ${lad.price:,.2f}  {signed(lad.day_change_pct)}"
         else:
             head += "  [dim](unquotable — rungs shown without distance)[/dim]"
         console.print(head)
@@ -350,7 +367,7 @@ def trap_map(
         for r in lad.rungs:
             dist = f"{r.distance_pct:+.1f}%" if r.distance_pct is not None else "—"
             t.add_row(
-                r.side.upper(), f"{r.qty:g}", f"${r.limit:,.2f}", _money_short(r.value),
+                r.side.upper(), f"{r.qty:g}", f"${r.limit:,.2f}", money_short(r.value),
                 dist, r.expires or "—", r.note or "",
             )
         console.print(t)
@@ -384,20 +401,17 @@ def viz(
     Read-only artifact; nothing here trades.
     """
     if diagram not in KNOWN_TYPES:
-        _fail(f"unknown diagram type {diagram!r}; known: {', '.join(KNOWN_TYPES)}")
-        raise typer.Exit(code=1)
+        raise HarnessError(f"unknown diagram type {diagram!r}; known: {', '.join(KNOWN_TYPES)}")
     try:
         data = json.loads(Path(data_file).read_text())
     except (OSError, ValueError) as e:
-        _fail(f"could not read --data {data_file!r}: {e}")
-        raise typer.Exit(code=1) from e
+        raise HarnessError(f"could not read --data {data_file!r}: {e}") from e
     tracker = get_settings().tracker_path
     out = tracker / dest / "visuals" / f"{name}.svg"
     try:
         written = render_diagram(diagram, data, out, theme=theme)
     except VizError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     rel = written.resolve().relative_to(tracker.resolve())
     console.print(f"wrote {written}")
     console.print("\nObsidian embed (paste into the doc):")

@@ -55,6 +55,22 @@ def test_api_requires_bearer_token(client: TestClient) -> None:
     assert client.get("/api/bus/stats", headers=bad).status_code == 401
 
 
+def test_every_api_route_is_guarded(client: TestClient) -> None:
+    """Every route the app registers, except /health, refuses a missing or wrong token, so a route
+    added later without the guard fails here."""
+    from starlette.routing import Route
+
+    routes = [r for r in client.app.routes if isinstance(r, Route) and r.path != "/health"]  # type: ignore[attr-defined]
+    assert len(routes) >= 9
+    for route in routes:
+        for method in route.methods or ():
+            if method == "HEAD":
+                continue
+            for headers in ({}, {"Authorization": "Bearer wrong-token"}):
+                res = client.request(method, route.path, headers=headers, json={})
+                assert res.status_code == 401, (method, route.path, headers)
+
+
 def test_publish_single_then_duplicate(client: TestClient) -> None:
     first = client.post("/api/bus/events", headers=AUTH, json=_draft())
     assert first.status_code == 200

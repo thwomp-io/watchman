@@ -15,16 +15,16 @@ import typer
 from rich.markup import escape
 from rich.table import Table
 
+from harness.errors import HarnessError, UsageError
+from harness.finance.cli.common import console, finance_service, signed
 from harness.finance.config.settings import get_settings
+from harness.finance.levels import support_levels
 from harness.finance.providers.alpaca_provider import bars_feed
 from harness.finance.providers.base import ProviderError
 from harness.finance.sessions import local_stamp, tz_label
 
 if TYPE_CHECKING:
     pass
-from harness._cli import fail as _fail
-from harness.finance._cli import _signed, _svc, console
-from harness.finance.levels import support_levels
 
 # Alpaca intraday timeframes (15Min / 15T / 1Hour / 1H): the table shows time of day for these.
 _INTRADAY = re.compile(r"^\d+(Min|T|Hour|H)$")
@@ -38,11 +38,7 @@ def quote(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Live quote(s) for one or more symbols (price + day change vs. previous close)."""
-    try:
-        quotes = _svc(feed).quote([s.upper() for s in symbols])
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    quotes = finance_service(feed).quote([s.upper() for s in symbols])
 
     if as_json:
         console.print_json(json.dumps([q.model_dump() for q in quotes]))
@@ -54,8 +50,8 @@ def quote(
         table.add_row(
             q.symbol,
             f"${q.price:,.2f}" if q.price is not None else "—",
-            _signed(q.day_change, money=True),
-            _signed(q.day_change_pct),
+            signed(q.day_change, money=True),
+            signed(q.day_change_pct),
             f"${q.prev_close:,.2f}" if q.prev_close is not None else "—",
             q.feed,
             q.note if q.available else (q.note or "unavailable"),
@@ -72,11 +68,7 @@ def market(
     A point-in-time regime snapshot (one Alpaca snapshots call). Deterministic gather + computed
     breadth facts; the interpretive 'take' lives separately in finance/market/take.md (an agent
     writes it on request, so this never depends on a model call)."""
-    try:
-        ov = _svc(feed).market()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    ov = finance_service(feed).market()
 
     if as_json:
         console.print_json(ov.model_dump_json())
@@ -96,8 +88,8 @@ def market(
                 r.symbol,
                 r.label,
                 f"${r.price:,.2f}" if r.price is not None else "—",
-                _signed(r.day_change_pct),
-                _signed(r.day_change, money=True),
+                signed(r.day_change_pct),
+                signed(r.day_change, money=True),
             )
         return t
 
@@ -112,20 +104,20 @@ def market(
     spread = f"{b.megacap_spread_pct:.2f}pp" if b.megacap_spread_pct is not None else "—"
     console.print(
         f"\n[bold]Breadth[/bold]  sectors {b.sectors_advancing}▲/{b.sectors_declining}▼  ·  "
-        f"equal-wt − cap (RSP−SPY) {_signed(b.equal_weight_minus_cap_pct)}  ·  "
-        f"Mag7 avg {_signed(b.megacap_avg_pct)} (spread {spread})  ·  "
-        f"semis avg {_signed(b.semis_avg_pct)}  ·  "
-        f"credit HY−Tsy {_signed(b.credit_hy_minus_tsy_pct)}  ·  "
-        f"KRE {_signed(b.kre_pct)}"
+        f"equal-wt − cap (RSP−SPY) {signed(b.equal_weight_minus_cap_pct)}  ·  "
+        f"Mag7 avg {signed(b.megacap_avg_pct)} (spread {spread})  ·  "
+        f"semis avg {signed(b.semis_avg_pct)}  ·  "
+        f"credit HY−Tsy {signed(b.credit_hy_minus_tsy_pct)}  ·  "
+        f"KRE {signed(b.kre_pct)}"
     )
     console.print(
-        f"[bold]Rates[/bold]    duration TLT−SHY {_signed(b.tsy_long_minus_short_pct)}  ·  "
-        f"breakevens TIP−IEF {_signed(b.tip_minus_ief_pct)}  "
+        f"[bold]Rates[/bold]    duration TLT−SHY {signed(b.tsy_long_minus_short_pct)}  ·  "
+        f"breakevens TIP−IEF {signed(b.tip_minus_ief_pct)}  "
         f"[dim](intraday ETF tape; cash-curve levels + 2s10s on `hn finance global -s rates`)[/dim]"
     )
 
     def _movers(ms: list[MarketMover]) -> str:
-        return ", ".join(f"{m.symbol} {_signed(m.day_change_pct)}" for m in ms)
+        return ", ".join(f"{m.symbol} {signed(m.day_change_pct)}" for m in ms)
 
     console.print(f"[green]Leaders[/green]  {_movers(ov.leaders)}")
     console.print(f"[red]Laggards[/red] {_movers(ov.laggards)}")
@@ -141,11 +133,7 @@ def fed(
     """Latest FOMC decision — statement text + target-rate range + vote, from federalreserve.gov
     (keyless, Fed-direct). The SEP/dot-plot is LINKED, not parsed (eyeball the dots). So a post-FOMC
     read is confirmed, not tape-inferred. The hawkish/dovish call is yours. READ-ONLY."""
-    try:
-        d = _svc().fed()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    d = finance_service().fed()
 
     if as_json:
         console.print_json(d.model_dump_json())
@@ -177,11 +165,7 @@ def history(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Historical OHLCV bars (chart-able data) for a symbol."""
-    try:
-        bars = _svc(feed).history(symbol.upper(), start=start, end=end, timeframe=timeframe)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    bars = finance_service(feed).history(symbol.upper(), start=start, end=end, timeframe=timeframe)
 
     if as_json:
         console.print_json(json.dumps([b.model_dump(by_alias=True) for b in bars]))
@@ -214,21 +198,20 @@ def session(
     move, last-15-min volume vs the session's average, the closing-auction size."""
     m = _INTRADAY_BAR.match(bar)
     if not m or int(m.group(1)) not in (5, 15):
-        _fail("--bar must be 5Min or 15Min")
-        raise typer.Exit(code=2)
+        raise UsageError("--bar must be 5Min or 15Min")
     span: tuple[str, str] | None = None
     if window:
         w = _WINDOW.match(window)
         if not w:
-            _fail("--window must look like 14:00-16:00 (ET)")
-            raise typer.Exit(code=2)
+            raise UsageError("--window must look like 14:00-16:00 (ET)")
         span = (w.group(1).zfill(5), w.group(2).zfill(5))
     try:
         target = _dt.date.fromisoformat(day) if day else None
-        shapes = _svc(feed).session_shapes([s.upper() for s in symbols], day=target, minutes=int(m.group(1)))
+        shapes = finance_service(feed).session_shapes(
+            [s.upper() for s in symbols], day=target, minutes=int(m.group(1))
+        )
     except (ProviderError, ValueError) as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     if as_json:
         console.print_json(json.dumps([s.model_dump() for s in shapes]))
         return
@@ -246,8 +229,8 @@ def session(
                    else "[dim]—[/dim]" if s.state != "complete" else "[dim]n/a[/dim]")
         table.add_row(
             s.symbol, f"{s.open:,.2f}", f"{s.high:,.2f} ({s.high_bar})", f"{s.low:,.2f} ({s.low_bar})",
-            f"{s.close:,.2f}", _signed(s.close_vs_low_pct), _signed(s.close_vs_high_pct),
-            _signed(s.last15_pct), _signed(s.last30_pct),
+            f"{s.close:,.2f}", signed(s.close_vs_low_pct), signed(s.close_vs_high_pct),
+            signed(s.last15_pct), signed(s.last30_pct),
             f"{s.last15_rel_volume:.1f}× avg" if s.last15_rel_volume is not None else "—", auction,
         )
     console.print(table)
@@ -290,11 +273,7 @@ def bars(
     """
     sym = symbol.upper()
     start = (_dt.date.today() - _dt.timedelta(days=days)).isoformat()
-    try:
-        bar_list = _svc(feed).history(sym, start=start)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    bar_list = finance_service(feed).history(sym, start=start)
     if not bar_list:
         if as_viz:
             # Offline / keyless (the static-quote demo path has no historical bars): emit a VALID empty
@@ -317,8 +296,7 @@ def bars(
                                notes=["historical bars need a live market-data key (set ALPACA_API_KEY_ID)"])
             console.print_json(empty.model_dump_json(by_alias=True))
             return
-        _fail(f"no bars returned for {sym} (unknown symbol / not on feed?)")
-        raise typer.Exit(code=1)
+        raise HarnessError(f"no bars returned for {sym} (unknown symbol / not on feed?)")
     levels = support_levels(bar_list, wing=wing, tol_pct=tol)
     last = bar_list[-1]
 
@@ -363,7 +341,7 @@ def bars(
     for lv in levels:
         kind = "support" if lv.kind == "support" else "[yellow]overhead (broken support)[/yellow]"
         lt.add_row(f"${lv.level:,.2f}", kind, str(lv.touches), lv.last_touch,
-                   _signed(lv.distance_pct))
+                   signed(lv.distance_pct))
     console.print(lt)
     console.print(
         f"[dim]  • last close ${last.c:,.2f} ({last.t[:10]}) · levels describe PAST swing lows "
@@ -394,22 +372,16 @@ def correlate(
     the days the FOCAL (first) name moved most INDEPENDENTLY of the factor. Read-only: the math is
     deterministic; the interpretation (is it ballast?) is yours, for the research.
     """
-    syms = _svc(feed).held_symbols()[:limit] if held else [s.upper() for s in symbols or []]
+    syms = finance_service(feed).held_symbols()[:limit] if held else [s.upper() for s in symbols or []]
     if len(syms) < 2:
-        _fail("give two or more symbols, or --held for the book")
-        raise typer.Exit(code=1)
+        raise UsageError("give two or more symbols, or --held for the book")
     fac = [s.strip().upper() for s in factor.split(",") if s.strip()] if factor else None
-    try:
-        rep = _svc(feed).correlate(syms, days=days, factor=fac)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    rep = finance_service(feed).correlate(syms, days=days, factor=fac)
     if as_json:
         console.print_json(rep.model_dump_json())
         return
     if rep.n_obs < 3:
-        _fail("insufficient overlapping history — " + "; ".join(rep.notes or ["no data"]))
-        raise typer.Exit(code=1)
+        raise HarnessError("insufficient overlapping history — " + "; ".join(rep.notes or ["no data"]))
 
     def _cstyle(v: float) -> str:  # warm = correlated (less diversifying), cool = decorrelated
         return "red" if v >= 0.5 else "green" if v <= 0.2 else "yellow"
@@ -444,7 +416,7 @@ def correlate(
         for col in ("Date", f"{rep.symbols[0]} %", "factor %", "gap %"):
             dt.add_column(col, justify="right")
         for d in rep.divergence_days:
-            dt.add_row(d.date, _signed(d.focal_ret_pct), _signed(d.factor_ret_pct), _signed(d.gap_pct))
+            dt.add_row(d.date, signed(d.focal_ret_pct), signed(d.factor_ret_pct), signed(d.gap_pct))
         console.print(dt)
     if rep.notes:
         console.print("[dim]  • " + " · ".join(rep.notes) + "[/dim]")
@@ -465,11 +437,7 @@ def gauges(
     label. SENTIMENT THERMOMETERS, never advice — heavy puts can be fear or longs buying insurance;
     the interpretation is yours. Short interest is NOT here (broker card / FINRA is the source).
     """
-    try:
-        rep = _svc(feed).gauges(symbol.upper())
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    rep = finance_service(feed).gauges(symbol.upper())
     if as_json:
         console.print_json(rep.model_dump_json())
         return
@@ -527,7 +495,10 @@ def calendar(
 ) -> None:
     """The macro release calendar from primary sources — economic releases (with actual /
     consensus / previous once printed, Nasdaq), FOMC decisions + estimated minutes (the Fed's own
-    calendar), coupon auctions (TreasuryDirect). High tier by default: CPI, PPI, payrolls, PCE, GDP,
+    calendar), coupon auctions (TreasuryDirect), market holidays and early closes (SIFMA, NYSE).
+    A printed number is read from its agency where one is reachable (BLS, BEA, Census) and shown
+    with the agency's name; a figure the agency left out reads 'not published'.
+    High tier by default: CPI, PPI, payrolls, PCE, GDP,
     retail sales, ISM, S&P Global PMIs, JOLTS, claims, the Fed (decisions, minutes, every scheduled
     Fed speaker), UMich, consumer confidence, EIA crude, durables. A release past its time with no
     number yet reads 'printed · actual not posted yet' (the source lags; read the wire).
@@ -551,7 +522,8 @@ def calendar(
             current = e.date
             console.print(f"\n[bold]{_dt.date.fromisoformat(e.date):%a %m-%d}[/bold]")
         mark = "[bold]●[/bold]" if e.tier == "high" else " "
-        num = f"  [green]actual {escape(e.actual)}[/green]" if e.actual else (
+        via = f" ({e.actual_source})" if e.actual_source and e.actual_source != e.source else ""
+        num = f"  [green]actual {escape(e.actual)}{via}[/green]" if e.actual else (
             "  [yellow]printed · actual not posted yet (read the wire)[/yellow]" if e.awaiting_actual else "")
         rest = " · ".join(x for x in (
             f"cons {e.consensus}" if e.consensus else "", f"prev {e.previous}" if e.previous else "",
@@ -599,21 +571,12 @@ def global_markets(
     if as_json:
         from harness.finance.reads import global_payload
 
-        try:
-            console.print_json(json.dumps(global_payload(secs)))
-        except ProviderError as e:
-            _fail(str(e))
-            raise typer.Exit(code=1) from e
+        console.print_json(json.dumps(global_payload(secs)))
         return
     bad = [s for s in (secs or []) if s not in GLOBAL_RAILS]
     if bad:
-        _fail(f"unknown section(s): {', '.join(bad)} (valid: {', '.join(GLOBAL_RAILS)})")
-        raise typer.Exit(code=1)
-    try:
-        resolved = resolve_rails(secs)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(f"unknown section(s): {', '.join(bad)} (valid: {', '.join(GLOBAL_RAILS)})")
+    resolved = resolve_rails(secs)
     rails = resolved.rails
 
     # The cash curve rides with the rates rail (default read includes it). Best-effort: a
@@ -697,11 +660,7 @@ def ratings(
     12mo). Read the consensus + the range + the count; never bet on a single target.
     """
     sym = symbol.upper()
-    try:
-        r = _svc().ratings(sym)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    r = finance_service().ratings(sym)
 
     if as_json:
         console.print_json(r.model_dump_json())
@@ -725,7 +684,7 @@ def ratings(
         t.add_column(col)
     cur = r.current_price
     def _vs(v: float | None) -> str:
-        return _signed(round((v - cur) / cur * 100.0, 2)) if (v and cur) else "—"
+        return signed(round((v - cur) / cur * 100.0, 2)) if (v and cur) else "—"
     t.add_row("Mean", f"${r.target_mean:,.2f}" if r.target_mean else "—", _vs(r.target_mean))
     t.add_row("Median", f"${r.target_median:,.2f}" if r.target_median else "—", _vs(r.target_median))
     t.add_row("High", f"${r.target_high:,.2f}" if r.target_high else "—", _vs(r.target_high))
@@ -750,7 +709,7 @@ def _parse_groups(spec: str) -> dict[str, list[str]]:
 
 
 def _cell(v: float | None) -> str:
-    return _signed(v) if v is not None else ""
+    return signed(v) if v is not None else ""
 
 
 def moves(
@@ -771,10 +730,9 @@ def moves(
         grp = _parse_groups(groups) if groups else None
         lo = _dt.date.fromisoformat(start)
         hi = _dt.date.fromisoformat(end) if end else _dt.date.today()
-        table = _svc(feed).moves([s.upper() for s in symbols], lo, hi, groups=grp)
+        table = finance_service(feed).moves([s.upper() for s in symbols], lo, hi, groups=grp)
     except (ProviderError, ValueError) as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     if as_json:
         console.print_json(table.model_dump_json())
         return
@@ -811,14 +769,12 @@ def crashdays(
     returns at +5/+20/+60/+120/+250 sessions, and the lowest close in the next 60. A base rate, not a
     forecast: why each day happened is research, not arithmetic."""
     if threshold >= 0:
-        _fail("--threshold is a loss, e.g. -7")
-        raise typer.Exit(code=2)
+        raise UsageError("--threshold is a loss, e.g. -7")
     try:
-        rep = _svc(feed).crashdays(symbol.upper(), threshold, _dt.date.fromisoformat(since),
+        rep = finance_service(feed).crashdays(symbol.upper(), threshold, _dt.date.fromisoformat(since),
                                    cluster_days=cluster_days)
     except (ProviderError, ValueError) as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     if as_json:
         console.print_json(rep.model_dump_json())
         return

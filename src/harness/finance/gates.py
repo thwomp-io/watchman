@@ -31,7 +31,7 @@ def gates(svc: FinanceService,  *, horizon_days: int = 30) -> GatesBoard:
     from datetime import date as _date
 
     from harness.finance.providers.nasdaq_provider import fetch_earnings_date
-    from harness.finance.watch import EarningsDateCache
+    from harness.finance.watch_state import EarningsDateCache
 
     seed = svc.reader.read_portfolio()
     today = _date.today()
@@ -65,7 +65,7 @@ def gates(svc: FinanceService,  *, horizon_days: int = 30) -> GatesBoard:
                 ))
             continue
         # cadence fallback (honest estimate; unresolvable symbols skip silently — ETF-shaped)
-        cik = svc._cik_resolver.cik_for(h.symbol)
+        cik = svc.cik_for(h.symbol)
         if not cik:
             continue
         try:

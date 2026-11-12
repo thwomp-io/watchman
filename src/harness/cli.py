@@ -1,24 +1,68 @@
-"""Root Typer CLI — the thin `harness` (shorthand `hn`) entry point.
+"""The root CLI: `hn` (also `harness`).
 
-Mounts each domain's noun-group sub-app verbatim (`travel <verb>`, `finance <verb>`, `career <verb>`)
-via ``add_typer`` — the noun-group sub-commands pattern. The root holds no domain logic; it only
-composes. New domains mount here with one line.
+It holds no logic of its own. Each command group is a Typer app defined beside the code it drives
+(`harness/<group>/cli`), and this file mounts them under their names.
+
+A group is imported when it is first asked for, not when this file loads: most invocations are one
+command spawned by a dashboard widget or an agent, and importing every lane to run one verb more
+than doubled the start time. `hn --help` still lists them all, at the cost of importing them all.
 """
 
 from __future__ import annotations
 
+import importlib
 import sys
+from typing import Any
 
 import typer
 
 from harness import __version__
-from harness.backup.cli import app as backup_app
-from harness.bus.cli import app as bus_app
-from harness.career.cli import app as career_app
-from harness.finance.cli import app as finance_app
-from harness.packs import packs_app
+from harness._cli import ReportingGroup, run
 from harness.scaffold import init as init_cmd
-from harness.travel.cli import app as travel_app
+
+# Where each group's Typer app lives, in the order `hn --help` lists them: the three lanes, then
+# the tools around them.
+GROUPS: dict[str, str] = {
+    "travel": "harness.travel.cli:app",
+    "finance": "harness.finance.cli:app",
+    "career": "harness.career.cli:app",
+    "bus": "harness.bus.cli:app",  # the event bus and its HTTP server
+    "backup": "harness.backup.cli:app",
+    "packs": "harness.packs:packs_app",  # the bundled sample packs
+    "console": "harness.console.demo:app",  # the web console's sealed demo
+    "beads": "harness.beads.cli:app",  # a read-only board over an issue-tracker export
+    "config": "harness.overlay_cli:app",  # the user's settings overlay (harness.yaml)
+    "media": "harness.media.cli:app",  # transcripts and frames from a video
+    "pocket": "harness.pocket.cli:app",  # the read-only phone chat with an agent
+    "places": "harness.places.cli:app",  # local place search
+    "calibration": "harness.calibration.cli:app",  # scored predictions
+}
+
+
+def group_app(name: str) -> typer.Typer:
+    """The Typer app behind a group in `GROUPS`, importing its module."""
+    module, _, attr = GROUPS[name].partition(":")
+    sub: typer.Typer = getattr(importlib.import_module(module), attr)
+    return sub
+
+
+class _RootGroup(ReportingGroup):
+    """The root command group: the commands registered on it directly, plus every group in `GROUPS`,
+    each built on first use."""
+
+    def list_commands(self, ctx: Any) -> list[str]:
+        # Plain commands first, then the groups, then any group an extension registered directly.
+        registered = super().list_commands(ctx)
+        plain = [name for name in registered if not hasattr(self.commands[name], "commands")]
+        return [*plain, *GROUPS, *(name for name in registered if name not in plain)]
+
+    def get_command(self, ctx: Any, name: str) -> Any:
+        if name not in GROUPS:
+            return super().get_command(ctx, name)
+        group = typer.main.get_group(group_app(name))
+        group.name = name
+        return group
+
 
 # Piped spawns on Windows hand Python a legacy-codepage stdout/stderr (cp1252), which can't
 # encode characters the toolkit legitimately emits (the ≈ in estimate labels, the → in
@@ -33,50 +77,14 @@ for _stream in (sys.stdout, sys.stderr):
             pass
 
 app = typer.Typer(
+    cls=_RootGroup,
     add_completion=False,
     help="harness — a personal agentic-harness toolkit. One CLI of domain submodules.",
     no_args_is_help=True,
+    # Failures are reported by `main` below, in one shape. Typer's own handler would print a
+    # boxed traceback instead, which neither a person nor a spawning console can use.
+    pretty_exceptions_enable=False,
 )
-
-app.add_typer(travel_app, name="travel")
-app.add_typer(finance_app, name="finance")
-app.add_typer(career_app, name="career")
-app.add_typer(bus_app, name="bus")
-app.add_typer(backup_app, name="backup")
-app.add_typer(packs_app, name="packs")
-
-# `hn console` — the served web console's own verbs (the sealed demo).
-from harness.console.demo import app as console_app  # noqa: E402
-
-app.add_typer(console_app, name="console")
-
-# the beads lane: a read-only board over the tracker's .beads/issues.jsonl export —
-# imported lazily-in-place like the others; zero bd/Dolt dependency.
-from harness.beads.cli import app as beads_app  # noqa: E402
-
-app.add_typer(beads_app, name="beads")
-
-# `hn config` — the user overlay (harness.yaml) surface.
-from harness.overlay_cli import app as config_app  # noqa: E402
-
-app.add_typer(config_app, name="config")
-
-# `hn media` — read a video the agent cannot watch.
-from harness.media.cli import app as media_app  # noqa: E402
-
-app.add_typer(media_app, name="media")
-
-# `hn pocket` — the read-only phone chat with an agent lane (runner + operator verbs).
-from harness.pocket.cli import app as pocket_app  # noqa: E402
-
-app.add_typer(pocket_app, name="pocket")
-
-
-# `hn places` — ad-hoc local place search near a ZIP / place (cross-lane; the travel lane's SerpAPI client).
-from harness.places.cli import app as places_app  # noqa: E402
-
-app.add_typer(places_app, name="places")
-
 
 # ————— the private extension seam —————
 # An install may run a permanent `personal` branch (a worktree) that carries ONLY new
@@ -90,8 +98,6 @@ PRIVATE_LANES: list[str] = []
 
 def mount_private_lanes(root: typer.Typer) -> list[str]:
     """Mount `harness.private.register(root)` lanes when the module exists. Returns the lane names."""
-    import importlib
-
     try:
         private = importlib.import_module("harness.private")
     except ImportError:
@@ -117,5 +123,10 @@ def version() -> None:
     typer.echo(f"harness {__version__}")
 
 
+def main() -> None:
+    """The `hn` / `harness` entry point."""
+    run(app)
+
+
 if __name__ == "__main__":
-    app()
+    main()

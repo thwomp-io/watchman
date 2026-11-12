@@ -1,54 +1,46 @@
-"""Standing-watch layer — the one-shot vigilance pass behind `hn finance watch`.
+"""The standing watch: one pass over the book, behind `hn finance watch`.
 
-Composes mechanical checks the corpus previously held only as prose:
-- **Rebalance-band drift** — positions vs. the configured bands in `portfolio.yaml`; the corpus's
-  rebalance-band drift check made mechanical. Symbols without bands aren't checked.
-- **Concentrated-holding wash-sale window** — vest dates (manual-synced from a vesting calendar)
-  poison loss-sales ±30 days; reports poisoned/clean *today* + the next clean window.
-- **Days-to-print** — CONFIRMED earnings dates (nasdaq analyst API, day-TTL cache) where
-  available, honest `est.` from 10-Q/10-K filing cadence where not. The label is the contract:
-  a consumer can always tell an announcement from a projection (the wire-integrity fix for the
-  month-off cadence-estimate class).
-- **Ratings wire** — consensus PT + rating-mix snapshots per held name (same nasdaq API, same
-  TTL), diffed run-over-run; a material move surfaces as a `[RATING]` wire item so a price-target
-  cut on a holding is first-class news, not luck-of-the-RSS.
-- **New headlines only** — the news scan filtered through a seen-cache
-  (`~/.cache/harness/news-seen.json`), so repeat watches surface deltas, not repeats.
+It composes checks that are each mechanical:
 
-Read-only by doctrine. Cron-able later (scheduling — cron/launchd — is left to the user); v1 is on-demand.
+- Day moves for what is held and what is watched.
+- Rebalance-band drift: each banded position against its band in `portfolio.yaml`.
+- The wash-sale window of the holding that vests on a schedule (`wash_sale`).
+- Days to each held stock's next print. A confirmed date (Nasdaq's analyst API) is labeled
+  confirmed; otherwise the date is an estimate from the filing cadence and labeled `est.`, so a
+  reader can always tell an announcement from a projection.
+- Rating changes: a material move in a held stock's consensus price target or rating mix, as a
+  `[RATING]` item beside the headlines.
+- New headlines only: every feed is filtered through the seen-cache, so a repeat run reports what
+  changed since the last one.
+
+Read-only. What it remembers between runs lives in `watch_state`.
 """
 
 from __future__ import annotations
 
-import json
-from datetime import date, timedelta
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Collection
+from datetime import date
+from enum import StrEnum
+from functools import partial
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from harness.finance.models import (
-    ConsensusPT,
-    EarningsDate,
-    NewsItem,
-    Position,
-    PrintCountdown,
-    Quote,
-)
+from harness.finance import catalysts, service
+from harness.finance.models import NewsItem, Position, PrintCountdown
+from harness.finance.providers import nasdaq_provider, news_provider
 from harness.finance.providers.base import ProviderError
 from harness.finance.providers.news_provider import fetch_recent_filings
-from harness.paths import cache_file
+from harness.finance.research import estimate_next_print
+from harness.finance.scan import run_parallel
+from harness.finance.unwind import classify_lots
+from harness.finance.wash_sale import WashSaleStatus, wash_sale_status
+from harness.finance.watch_state import ConsensusState, EarningsDateCache, SeenCache
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from harness.finance.corpus.reader import PortfolioSeed
+    from harness.finance.models import PortfolioSnapshot
     from harness.finance.service import FinanceService
-
-
-_SEEN_CACHE = "news-seen.json"
-_EARNINGS_CACHE = "earnings-dates.json"
-_CONSENSUS_STATE = "ratings-consensus.json"
-_WASH_DAYS = 30
 
 
 class DriftFlag(BaseModel):
@@ -57,18 +49,6 @@ class DriftFlag(BaseModel):
     band_min: float
     band_max: float
     status: str  # "in-band" | "above" | "below"
-
-
-class WashSaleStatus(BaseModel):
-    today_poisoned: bool
-    reason: str  # which vest poisons today, or "clean"
-    next_clean_start: str | None = None
-    next_clean_end: str | None = None
-    note: str = ""
-    # lot-aware enrichment: the harvestable-loss inventory at the current price,
-    # populated by the service when the holding has per-lot basis. None = lots not available.
-    harvestable_loss: float | None = None  # sum of underwater-lot losses (negative)
-    harvestable_shares: float | None = None
 
 
 def check_drift(
@@ -85,37 +65,6 @@ def check_drift(
             DriftFlag(symbol=sym, pct_of_account=round(pct, 2), band_min=lo, band_max=hi, status=status)
         )
     return out
-
-
-def wash_sale_status(vest_dates: list[str], today: date | None = None) -> WashSaleStatus:
-    """Is a concentrated-holding loss-sale wash-sale-poisoned today, and when is the next fully-clean window?
-
-    A window is "clean" when no vest lands within ±30 days. (The share-count-cap path — harvest
-    bigger than the replacement shares — works even inside poisoned windows.)"""
-    today = today or date.today()
-    vests = sorted(date.fromisoformat(v) for v in vest_dates)
-    poison: list[tuple[date, date, date]] = [
-        (v - timedelta(days=_WASH_DAYS), v + timedelta(days=_WASH_DAYS), v) for v in vests
-    ]
-    hit = next((p for p in poison if p[0] <= today <= p[1]), None)
-
-    # next clean day ≥ today: scan forward past merged poison ranges
-    cursor = today
-    for lo, hi, _v in poison:
-        if cursor >= lo and cursor <= hi:
-            cursor = hi + timedelta(days=1)
-    # clean window ends the day before the next poison range begins after cursor
-    nxt = next((lo for lo, _hi, _v in poison if lo > cursor), None)
-    end = (nxt - timedelta(days=1)) if nxt else None
-
-    known_through = vests[-1].isoformat() if vests else "—"
-    return WashSaleStatus(
-        today_poisoned=hit is not None,
-        reason=(f"±30d window of the {hit[2].isoformat()} vest" if hit else "clean"),
-        next_clean_start=cursor.isoformat(),
-        next_clean_end=end.isoformat() if end else None,
-        note=f"vest schedule known through {known_through} — confirm forward schedule with your broker",
-    )
 
 
 class WatchlistMove(BaseModel):
@@ -149,533 +98,299 @@ class WatchDigest(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
-class OpenOrderStatus(BaseModel):
-    """A resting order vs the live price — pulse's trap-distance view."""
+class Section(StrEnum):
+    """The independent parts of the digest. A caller that needs one (a dashboard widget showing the
+    day's moves) asks for it alone and pays only for what that part reads."""
 
-    symbol: str
-    side: str
-    qty: float
-    limit: float
-    price: float | None = None
-    distance_pct: float | None = None  # (price - limit) / price * 100 for buys; sign-flipped for sells
-    day_pct: float | None = None  # underlying's signed day move — negative = fell today = trap got CLOSER
-    expires: str = ""
-    note: str = ""
+    MOVES = "moves"
+    WATCHLIST = "watchlist"
+    DRIFT = "drift"
+    WASH_SALE = "wash-sale"
+    PRINTS = "prints"
+    NEWS = "news"
 
 
-class PulseFlag(BaseModel):
-    """One deterministic escalation flag. The model narrates; this detects."""
-
-    kind: str  # day_move | trap_proximity | print_soon
-    symbol: str
-    message: str
-
-
-def vest_reconciliation_flags(
-    vest_calendar: list[Any],
-    lots: list[Any],
-    *,
-    symbol: str,
-    today: date | None = None,
-    grace_days: int = 2,
-    window_days: int = 45,
-    match_days: int = 5,
-) -> list[PulseFlag]:
-    """The vest-reconciliation guard — closes a subtle failure mode: a vest can
-    be delivered at the broker without the portfolio lots ever being synced, and nothing
-    reconciled the vest CALENDAR against the ledgered LOTS (brokers often expose no API; the
-    corpus is manual-sync; the vest_approaching flag fires BEFORE the event, nothing checks after) —
-    a passed vest can sit unnoticed for weeks. Two pure config-vs-config checks, zero API,
-    zero model:
-
-    - **vest_unreconciled**: a calendar vest older than `grace_days` (posting lag) with NO lot
-      acquired within `match_days` after it → nag (daily, via the pulse dedup) until the lot is
-      ledgered or the vest ages past `window_days`.
-    - **unscheduled_lot**: the inverse failure shape (a delivered lot the calendar never knew
-      about) — a recent lot with NO calendar vest just before it → the calendar needs the row.
-
-    A vest is confirmed by the DELIVERED LOT on the broker screen, never by same-day absence on
-    an activity view. `vest_calendar` needs `.date`/`.units`; `lots` needs `.acquired`/`.qty`."""
-    today = today or date.today()
-
-    def _d(s: str) -> date | None:
-        try:
-            return date.fromisoformat(s)
-        except ValueError:
-            return None
-
-    lot_dates = [(d, lot) for lot in lots if (d := _d(lot.acquired)) is not None]
-    flags: list[PulseFlag] = []
-
-    for v in vest_calendar:
-        vd = _d(v.date)
-        if vd is None:
-            continue
-        age = (today - vd).days
-        if age <= grace_days or age > window_days:
-            continue
-        matched = any(0 <= (ld - vd).days <= match_days for ld, _ in lot_dates)
-        if not matched:
-            flags.append(PulseFlag(
-                kind="vest_unreconciled", symbol=symbol,
-                message=f"{symbol} vest {v.date} ({v.units}u) has NO ledgered lot {age}d later — "
-                        "verify on the broker's vesting/stock-plan screen and sync the "
-                        "portfolio lots (a vest is confirmed by the DELIVERED LOT, not the calendar)",
-            ))
-
-    vest_dates = [vd for v in vest_calendar if (vd := _d(v.date)) is not None]
-    for ld, lot in lot_dates:
-        age = (today - ld).days
-        if age < 0 or age > window_days:
-            continue
-        matched = any(0 <= (ld - vd).days <= match_days for vd in vest_dates)
-        if not matched:
-            flags.append(PulseFlag(
-                kind="unscheduled_lot", symbol=symbol,
-                message=f"{symbol} lot acquired {lot.acquired} ({lot.qty:g} sh) matches NO calendar "
-                        "vest — reconcile the vest calendar (the unreconciled-vest guard's inverse)",
-            ))
-    return flags
-
-
-class PulseReport(BaseModel):
-    """The scheduled-agent contract: quiet=True -> end silently;
-    flags -> notify. Composes the watch digest underneath (delta news rides the seen-cache)."""
-
-    as_of: str
-    quiet: bool = True
-    flags: list[PulseFlag] = Field(default_factory=list)
-    orders: list[OpenOrderStatus] = Field(default_factory=list)
-    indexes: list[Quote] = Field(default_factory=list)  # index-level tape sense
-    digest: WatchDigest | None = None
-
-
-class SeenCache(BaseModel):
-    """URL-keyed seen-set for delta news. Tiny, local, transparent."""
-
-    seen: list[str] = Field(default_factory=list)
-
-    @classmethod
-    def load(cls, path: Path | None = None) -> SeenCache:
-        path = path or cache_file(_SEEN_CACHE)
-        if path.exists():
-            try:
-                return cls.model_validate(json.loads(path.read_text()))
-            except (json.JSONDecodeError, ValueError):
-                return cls()
-        return cls()
-
-    def filter_new(self, items: list[NewsItem]) -> list[NewsItem]:
-        s = set(self.seen)
-        return [i for i in items if i.url and i.url not in s]
-
-    def mark(self, items: list[NewsItem]) -> None:
-        s = set(self.seen)
-        s.update(i.url for i in items if i.url)
-        self.seen = sorted(s)[-2000:]  # bounded; oldest URLs age out
-
-    def save(self, path: Path | None = None) -> None:
-        path = path or cache_file(_SEEN_CACHE)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json())
-
-
-class EarningsDateCache(BaseModel):
-    """Per-symbol confirmed-earnings-date cache (nasdaq provider), day-scale TTL.
-
-    Volume discipline for an unofficial API: the standing pulse runs many times per market day —
-    without this cache each run would re-sweep the whole book against api.nasdaq.com. One fetch
-    per symbol per `ttl_days` keeps the footprint at ~one sweep/day; the date itself moves on a
-    quarter timescale, so a day-stale confirmed date is still better than a cadence estimate.
-    """
-
-    # symbol → {"date": "YYYY-MM-DD", "confirmed": bool, "fetched": "YYYY-MM-DD"}
-    #        | {"miss": True, "fetched": "YYYY-MM-DD"}  — a MISS is cached too:
-    # a name with no dated announcement (every holding between prints) would otherwise be
-    # refetched on EVERY run, so the "once a day" sweep becomes once a run for most of the book.
-    # Same TTL as a hit.
-    entries: dict[str, dict[str, str | bool]] = Field(default_factory=dict)
-
-    @classmethod
-    def load(cls, path: Path | None = None) -> EarningsDateCache:
-        path = path or cache_file(_EARNINGS_CACHE)
-        if path.exists():
-            try:
-                return cls.model_validate(json.loads(path.read_text()))
-            except (json.JSONDecodeError, ValueError):
-                return cls()
-        return cls()
-
-    def known(self, symbol: str, today: date, ttl_days: int = 1) -> bool:
-        """True when the symbol was looked up within the TTL — hit OR miss — so the caller can
-        skip the network. `fresh()` then says which (a date, or None for a cached miss)."""
-        e = self.entries.get(symbol.upper())
-        if not e:
-            return False
-        try:
-            return (today - date.fromisoformat(str(e["fetched"]))).days <= ttl_days
-        except (KeyError, ValueError):
-            return False
-
-    def put_miss(self, symbol: str, today: date) -> None:
-        self.entries[symbol.upper()] = {"miss": True, "fetched": today.isoformat()}
-
-    def fresh(self, symbol: str, today: date, ttl_days: int = 1) -> EarningsDate | None:
-        """The cached date, if fetched within the TTL — else None (a stale entry, or a cached
-        miss; `known()` distinguishes the two)."""
-        e = self.entries.get(symbol.upper())
-        if not e or e.get("miss"):
-            return None
-        try:
-            fetched = date.fromisoformat(str(e["fetched"]))
-            if (today - fetched).days > ttl_days:
-                return None
-            return EarningsDate(
-                symbol=symbol.upper(),
-                report_date=date.fromisoformat(str(e["date"])),
-                confirmed=bool(e["confirmed"]),
-            )
-        except (KeyError, ValueError):
-            return None
-
-    def put(self, ed: EarningsDate, today: date) -> None:
-        self.entries[ed.symbol] = {
-            "date": ed.report_date.isoformat(),
-            "confirmed": ed.confirmed,
-            "fetched": today.isoformat(),
-        }
-
-    def save(self, path: Path | None = None) -> None:
-        path = path or cache_file(_EARNINGS_CACHE)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json())
-
-
-class ConsensusState(BaseModel):
-    """Last-seen consensus PT snapshot per symbol — the diff baseline for the ratings wire.
-
-    `diff()` is pure (no I/O): given a fresh snapshot it returns a one-line change description
-    when the move is material (mean PT moved ≥ `pt_move_pct`, or the buy/hold/sell mix changed),
-    else None. First sight of a symbol just seeds the baseline silently — a baseline is not news.
-    The same TTL discipline as EarningsDateCache bounds fetch volume (`stale()` gates refetch).
-    """
-
-    # symbol → {"mean": float, "buy": int, "hold": int, "sell": int, "fetched": "YYYY-MM-DD"}
-    entries: dict[str, dict[str, float | int | str]] = Field(default_factory=dict)
-
-    @classmethod
-    def load(cls, path: Path | None = None) -> ConsensusState:
-        path = path or cache_file(_CONSENSUS_STATE)
-        if path.exists():
-            try:
-                return cls.model_validate(json.loads(path.read_text()))
-            except (json.JSONDecodeError, ValueError):
-                return cls()
-        return cls()
-
-    def stale(self, symbol: str, today: date, ttl_days: int = 1) -> bool:
-        e = self.entries.get(symbol.upper())
-        if not e:
-            return True
-        try:
-            return (today - date.fromisoformat(str(e["fetched"]))).days > ttl_days
-        except (KeyError, ValueError):
-            return True
-
-    def diff(self, pt: ConsensusPT, pt_move_pct: float = 2.0) -> str | None:
-        """Material-change line vs the stored baseline, or None (incl. first sight)."""
-        e = self.entries.get(pt.symbol)
-        if not e:
-            return None
-        try:
-            prior_mean = float(e["mean"])
-            prior_mix = (int(e["buy"]), int(e["hold"]), int(e["sell"]))
-        except (KeyError, TypeError, ValueError):
-            return None
-        parts: list[str] = []
-        if prior_mean > 0:
-            move = (pt.mean - prior_mean) / prior_mean * 100
-            if abs(move) >= pt_move_pct:
-                parts.append(f"consensus PT ${prior_mean:,.2f} → ${pt.mean:,.2f} ({move:+.1f}%)")
-        mix = (pt.buy, pt.hold, pt.sell)
-        if mix != prior_mix:
-            parts.append(
-                f"rating mix {prior_mix[0]}B/{prior_mix[1]}H/{prior_mix[2]}S"
-                f" → {mix[0]}B/{mix[1]}H/{mix[2]}S"
-            )
-        return "; ".join(parts) if parts else None
-
-    def put(self, pt: ConsensusPT, today: date) -> None:
-        self.entries[pt.symbol] = {
-            "mean": pt.mean,
-            "buy": pt.buy,
-            "hold": pt.hold,
-            "sell": pt.sell,
-            "fetched": today.isoformat(),
-        }
-
-    def save(self, path: Path | None = None) -> None:
-        path = path or cache_file(_CONSENSUS_STATE)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(self.model_dump_json())
+_READS_POSITIONS = {Section.MOVES, Section.DRIFT, Section.WASH_SALE}
 
 
 def watch(
-    svc: FinanceService, *, mark_seen: bool = True, news_limit: int = 4, ticker_news: bool = True,
+    svc: FinanceService,
+    *,
+    mark_seen: bool = True,
+    news_limit: int = 4,
+    ticker_news: bool = True,
+    only: Collection[Section] | None = None,
 ) -> WatchDigest:
-    """One-shot standing-watch digest: day moves + band drift + wash-sale
-    window + days-to-print + seen-cache-filtered fresh headlines. Read-only; cron-able later.
+    """Build the digest, or just the sections named in `only`.
 
-    `ticker_news` adds a per-HELD-stock Google News search (single-name catalysts beyond Yahoo's
-    per-ticker feed); held-scoped to bound the added serial fetches. Set False as the escape
-    hatch if a run ever feels slow (the `--no-ticker-news` CLI flag)."""
-    from datetime import date as _date
-
-
+    `mark_seen` records the headlines this run reports, so the next run doesn't repeat them; pass
+    False to look without consuming them. `ticker_news` adds a news search per held stock, the
+    slowest part of the news section.
+    """
+    wanted = set(only or Section)
     seed = svc.reader.read_portfolio()
-    snap = svc.positions()
-    digest = WatchDigest(as_of=_date.today().isoformat())
+    today = date.today()
+    digest = WatchDigest(as_of=today.isoformat())
+    snap = svc.positions() if wanted & _READS_POSITIONS else None
 
-    # day moves — live-quoted positions, biggest |day move| first
-    live = [p for p in snap.positions if p.valuation == "live" and p.day_change_pct is not None]
-    digest.day_moves = sorted(live, key=lambda p: abs(p.day_change_pct or 0), reverse=True)
-
-    # watchlist day reads — non-held symbols the user keeps tabs on. Symbols off
-    # the IEX feed (e.g. OTC ADRs) come back available=False — stated honestly; news-covered below.
-    if seed.watchlist:
-        notes_by_sym = {w.symbol: w.note for w in seed.watchlist}
-        try:
-            wl_quotes = svc.quote([w.symbol for w in seed.watchlist])
-        except ProviderError as e:
-            digest.notes.append(f"watchlist quotes failed: {e}")
-            wl_quotes = []
-        moves: list[WatchlistMove] = []
-        for q in wl_quotes:
-            day_pct: float | None = None
-            if q.available and q.price is not None and q.prev_close:
-                day_pct = (q.price - q.prev_close) / q.prev_close * 100.0
-            moves.append(
-                WatchlistMove(
-                    symbol=q.symbol,
-                    note=notes_by_sym.get(q.symbol, ""),
-                    available=q.available,
-                    price=q.price,
-                    day_change_pct=round(day_pct, 2) if day_pct is not None else None,
-                )
-            )
-        digest.watchlist_moves = sorted(
-            moves, key=lambda m: abs(m.day_change_pct or 0), reverse=True
-        )
-
-    # band drift — % of the holding's OWN account (bands mean "% of a given brokerage", so a
-    # position held at a SEPARATE broker must not dilute that denominator; static balances excluded)
-    if seed.rebalance_bands:
-        marked = [
-            p
-            for p in snap.positions
-            if p.market_value is not None and p.valuation in {"live", "last_known"}
-        ]
-        acct_totals: dict[str, float] = {}
-        for p in marked:
-            acct_totals[p.account] = acct_totals.get(p.account, 0.0) + (p.market_value or 0.0)
-        pct = {
-            p.symbol: (p.market_value or 0.0) / acct_totals[p.account] * 100.0
-            for p in marked
-            if acct_totals.get(p.account)
-        }
-        digest.drift = check_drift(pct, seed.rebalance_bands)
+    if snap and Section.MOVES in wanted:
+        digest.day_moves = _day_moves(snap)
+    if Section.WATCHLIST in wanted and seed.watchlist:
+        digest.watchlist_moves = _watchlist_moves(svc, seed, digest.notes)
+    if snap and Section.DRIFT in wanted and seed.rebalance_bands:
+        digest.drift = _band_drift(snap, seed)
         digest.notes.append(
             "Bands are illustrative until real targets are set in portfolio.yaml; "
             "drift % is of the holding's own brokerage account, not net worth."
         )
-
-    # concentrated-holding wash-sale window — vest dates manual-synced from a vesting calendar
-    if seed.vest_dates:
-        digest.wash_sale = wash_sale_status(seed.vest_dates)
-        # lot-aware enrichment: size the harvestable-loss inventory from the
-        # per-lot basis + the live price, so the digest reports "$X harvestable" not just
-        # "poisoned/clean". Only when the concentrated holding carries lots.
-        from harness.finance.unwind import classify_lots
-
-        conc = next((h for h in seed.holdings if h.lots), None)
-        conc_pos = (
-            next((p for p in snap.positions if p.symbol == conc.symbol), None) if conc else None
+    if snap and Section.WASH_SALE in wanted and seed.vest_dates:
+        digest.wash_sale = _wash_sale(seed, snap, today)
+    if Section.PRINTS in wanted:
+        digest.prints = _print_dates(svc, seed, today, digest.notes)
+    if Section.NEWS in wanted:
+        digest.fresh_news, digest.filtered_news = _news(
+            svc, seed, today, digest.notes,
+            mark_seen=mark_seen, news_limit=news_limit, ticker_news=ticker_news,
         )
-        if conc and conc_pos and conc_pos.price:
-            loss_lots = [
-                lt
-                for lt in classify_lots(
-                    conc.lots, conc_pos.price, poisoned=digest.wash_sale.today_poisoned,
-                    today=_date.today(),
-                )
-                if lt.klass == "loss"
-            ]
-            digest.wash_sale.harvestable_loss = round(
-                sum(lt.unrealized_gl for lt in loss_lots), 2
-            )
-            digest.wash_sale.harvestable_shares = round(
-                sum(lt.qty for lt in loss_lots), 4
-            )
-
-    # days-to-print per holding — CONFIRMED date first (nasdaq analyst API through the
-    # day-TTL cache), honest filing-cadence estimate as the fallback. The label is the
-    # contract: "= … (confirmed · nasdaq)" vs "≈ … (est. …)" — a consumer can always tell an
-    # announcement from a projection (the month-off filing-cadence estimate error this closes).
-    today = _date.today()
-    from functools import partial as _partial
-
-    from harness.finance.providers.nasdaq_provider import fetch_earnings_date
-    from harness.finance.scan import run_parallel as _run_parallel
-
-    earnings_cache = EarningsDateCache.load()
-    earnings_dirty = False
-    # The sweep: every stock NOT looked up today (hit or miss) is fetched on the bounded pool
-    # (the nasdaq lane paces it), then the cache is written here in order. A miss is cached
-    # like a hit — the pre-fix shape refetched every between-prints name on every run.
-    stocks = [h for h in seed.holdings if h.asset_type == "stock"]
-    to_fetch = [h.symbol for h in stocks if not earnings_cache.known(h.symbol, today)]
-    for r in _run_parallel([(sym, _partial(fetch_earnings_date, sym)) for sym in to_fetch]):
-        if r.value is not None:
-            earnings_cache.put(r.value, today)
-        else:
-            earnings_cache.put_miss(r.label, today)  # honest miss (ETF-shaped / no date yet)
-        earnings_dirty = True
-    for h in stocks:
-        ed = earnings_cache.fresh(h.symbol, today)
-        if ed is not None and ed.confirmed:
-            digest.prints.append(
-                PrintCountdown(
-                    symbol=h.symbol,
-                    estimate=f"= {ed.report_date.isoformat()} (confirmed · nasdaq)",
-                    days_out=(ed.report_date - today).days,
-                    confirmed=True,
-                )
-            )
-            continue
-        # Fallback: the EDGAR filing-cadence estimate (or nasdaq's own algo date — same
-        # class of projection; prefer our auditable-from-facts one and label it est.).
-        cik = svc._cik_resolver.cik_for(h.symbol)
-        if not cik:
-            continue
-        try:
-            from harness.finance.research import estimate_next_print
-
-            est = estimate_next_print(fetch_recent_filings(cik, limit=14))
-        except ProviderError as e:
-            digest.notes.append(f"{h.symbol} print estimate failed: {e}")
-            continue
-        if not est:
-            continue
-        days: int | None = None
-        try:
-            days = (_date.fromisoformat(est.split()[1]) - today).days
-        except (ValueError, IndexError):
-            pass
-        digest.prints.append(PrintCountdown(symbol=h.symbol, estimate=est, days_out=days))
-    if earnings_dirty:
-        earnings_cache.save()
-
-    # ratings wire — consensus PT/mix per held stock, TTL-gated (≈one sweep/day against the
-    # unofficial API), diffed vs the stored baseline. A material move becomes a synthetic
-    # [RATING] NewsItem: it rides the existing fresh-news rendering AND the catalyst→bus path
-    # (symbol-tagged info event) for free. First sight seeds the baseline silently.
-    from harness.finance.providers.nasdaq_provider import fetch_price_target
-
-    consensus = ConsensusState.load()
-    consensus_dirty = False
-    for h in seed.holdings:
-        if h.asset_type != "stock" or not consensus.stale(h.symbol, today):
-            continue
-        try:
-            pt = fetch_price_target(h.symbol)
-        except ProviderError:
-            continue  # honest miss — no consensus coverage; never a fabricated baseline
-        change = consensus.diff(pt)
-        if change:
-            digest.fresh_news.append(
-                NewsItem(
-                    symbol=h.symbol,
-                    title=f"[RATING] {h.symbol}: {change}",
-                    # Synthetic per-change key → the seen-cache dedupes it like any headline.
-                    url=f"consensus://{h.symbol}/{today.isoformat()}/{pt.mean:.2f}",
-                    source="nasdaq-consensus",
-                    published=today.isoformat(),
-                )
-            )
-        consensus.put(pt, today)
-        consensus_dirty = True
-    if consensus_dirty:
-        consensus.save()
-
-    # fresh headlines — the news scan minus everything already seen. Coverage = held
-    # stocks/ETFs + the watchlist (Yahoo RSS covers OTC ADRs the quote feed can't).
-    news_syms = [h.symbol for h in seed.holdings if h.asset_type in {"stock", "etf"}]
-    news_syms += [w.symbol for w in seed.watchlist if w.symbol not in news_syms]
-    cache = SeenCache.load()
-    for sn in svc.news(symbols=news_syms, limit=news_limit):
-        if sn.headline_error:
-            digest.notes.append(f"{sn.symbol} headlines failed: {sn.headline_error}")
-        digest.fresh_news.extend(cache.filter_new(sn.headlines))
-
-    # custom feeds: feeds.yaml wires + thesis topics + per-holding EDGAR 8-K feed +
-    # per-ticker Google News catalysts — ONE bounded, host-paced fan-out. The
-    # jobs are built in the same order the serial loops ran (feeds → EDGAR → gnews), results come
-    # back in that order, and the seen-cache filter runs here on the caller's thread — so the
-    # digest is byte-identical to the serial run, minus ~40s of waiting. Failure shape preserved:
-    # each job's ProviderError lands as the same note it always produced.
-    from functools import partial
-
-    from harness.finance.providers.news_provider import (
-        fetch_edgar_filing_feed,
-        fetch_gnews_ticker,
-        fetch_rss,
-    )
-    from harness.finance.scan import run_parallel
-
-    scan_jobs: list[tuple[str, Callable[[], list[NewsItem]]]] = []
-    from harness.finance import service as _service  # looked up at call time (tests patch it)
-
-    for feed in _service._load_feeds():
-        scan_jobs.append((
-            f"feed {feed['name']}",
-            partial(fetch_rss, feed["url"], feed["name"], limit=news_limit),
-        ))
-    for h in seed.holdings:
-        if h.asset_type != "stock":
-            continue
-        cik = svc._cik_resolver.cik_for(h.symbol)
-        if not cik:
-            continue
-        scan_jobs.append((
-            f"EDGAR feed {h.symbol}",
-            partial(fetch_edgar_filing_feed, cik, h.symbol, limit=3),
-        ))
-    # per-ticker single-name catalysts — Google News search, HELD stocks only. The
-    # breadth layer beyond Yahoo: catches single-name catalysts a per-ticker feed misses — the
-    # kind a broker console's news-event marker surfaces that a plain RSS wire can lag.
-    # Held-scoped to bound the fetch volume; `ticker_news=False` is the escape hatch.
-    if ticker_news:
-        for h in seed.holdings:
-            if h.asset_type != "stock":
-                continue
-            scan_jobs.append((
-                f"gnews {h.symbol}",
-                partial(fetch_gnews_ticker, h.symbol, limit=news_limit),
-            ))
-    for scan in run_parallel(scan_jobs):
-        if scan.error is not None:
-            digest.notes.append(f"{scan.label} failed: {scan.error}")
-        elif scan.value:
-            digest.fresh_news.extend(cache.filter_new(scan.value))
-    # catalyst hygiene: quote/option-chain pages leave the fresh news (they are not news)
-    from harness.finance import catalysts as _cat
-
-    digest.fresh_news, digest.filtered_news = _cat.triage(digest.fresh_news, _cat.config_rules())
-    if mark_seen and (digest.fresh_news or digest.filtered_news):
-        cache.mark(digest.fresh_news + digest.filtered_news)
-        cache.save()
     digest.notes.append(
         "Read-only observation, not advice. Wash-sale math covers KNOWN vests only — "
         "confirm the forward schedule with your broker before acting on a harvest window."
     )
     return digest
+
+
+def _day_moves(snap: PortfolioSnapshot) -> list[Position]:
+    """The live-priced positions, biggest day move first."""
+    live = [p for p in snap.positions if p.valuation == "live" and p.day_change_pct is not None]
+    return sorted(live, key=lambda p: abs(p.day_change_pct or 0), reverse=True)
+
+
+def _news(
+    svc: FinanceService,
+    seed: PortfolioSeed,
+    today: date,
+    notes: list[str],
+    *,
+    mark_seen: bool,
+    news_limit: int,
+    ticker_news: bool,
+) -> tuple[list[NewsItem], list[NewsItem]]:
+    """What is new since the last run, as (fresh, filtered): rating changes, then each symbol's
+    headlines, then the custom feeds, all passed through the seen-cache. `filtered` is what the
+    catalyst rules took out (quote and option-chain pages are not news), kept so a reader can count
+    it. A source that fails is a note; the rest still report."""
+    seen = SeenCache.load()
+    found = _rating_changes(seed, today)
+    symbols = [h.symbol for h in seed.holdings if h.asset_type in {"stock", "etf"}]
+    symbols += [w.symbol for w in seed.watchlist if w.symbol not in symbols]
+    for symbol_news in svc.news(symbols=symbols, limit=news_limit):
+        if symbol_news.headline_error:
+            notes.append(f"{symbol_news.symbol} headlines failed: {symbol_news.headline_error}")
+        found.extend(seen.filter_new(symbol_news.headlines))
+    for scan in run_parallel(_feed_jobs(svc, seed, news_limit, ticker_news)):
+        if scan.error is not None:
+            notes.append(f"{scan.label} failed: {scan.error}")
+        elif scan.value:
+            found.extend(seen.filter_new(scan.value))
+
+    fresh, filtered = catalysts.triage(found, catalysts.config_rules())
+    if mark_seen and (fresh or filtered):
+        seen.mark(fresh + filtered)
+        seen.save()
+    return fresh, filtered
+
+
+def _watchlist_moves(
+    svc: FinanceService, seed: PortfolioSeed, notes: list[str]
+) -> list[WatchlistMove]:
+    """Day reads for the non-held symbols the user keeps tabs on, biggest move first. A symbol the
+    quote feed doesn't carry (an OTC ADR, say) comes back available=False; the news scan still
+    covers it."""
+    notes_by_sym = {w.symbol: w.note for w in seed.watchlist}
+    try:
+        quotes = svc.quote([w.symbol for w in seed.watchlist])
+    except ProviderError as e:
+        notes.append(f"watchlist quotes failed: {e}")
+        quotes = []
+    moves = []
+    for q in quotes:
+        day_pct: float | None = None
+        if q.available and q.price is not None and q.prev_close:
+            day_pct = (q.price - q.prev_close) / q.prev_close * 100.0
+        moves.append(WatchlistMove(
+            symbol=q.symbol,
+            note=notes_by_sym.get(q.symbol, ""),
+            available=q.available,
+            price=q.price,
+            day_change_pct=round(day_pct, 2) if day_pct is not None else None,
+        ))
+    return sorted(moves, key=lambda m: abs(m.day_change_pct or 0), reverse=True)
+
+
+def _band_drift(snap: PortfolioSnapshot, seed: PortfolioSeed) -> list[DriftFlag]:
+    """Each banded position as a % of its OWN brokerage account: a band means "% of this account",
+    so a position at a separate broker must not dilute the denominator. Static balances are out."""
+    marked = [
+        p for p in snap.positions if p.market_value is not None and p.valuation in {"live", "last_known"}
+    ]
+    account_totals: dict[str, float] = {}
+    for p in marked:
+        account_totals[p.account] = account_totals.get(p.account, 0.0) + (p.market_value or 0.0)
+    pct = {
+        p.symbol: (p.market_value or 0.0) / account_totals[p.account] * 100.0
+        for p in marked
+        if account_totals.get(p.account)
+    }
+    return check_drift(pct, seed.rebalance_bands)
+
+
+def _wash_sale(seed: PortfolioSeed, snap: PortfolioSnapshot, today: date) -> WashSaleStatus:
+    """The concentrated holding's wash-sale window from its vest dates. When that holding carries
+    lots and has a live price, the loss lots are sized too, so the digest can say "$X harvestable"
+    rather than only poisoned or clean."""
+    status = wash_sale_status(seed.vest_dates)
+    conc = next((h for h in seed.holdings if h.lots), None)
+    pos = next((p for p in snap.positions if p.symbol == conc.symbol), None) if conc else None
+    if conc and pos and pos.price:
+        losses = [
+            lt
+            for lt in classify_lots(conc.lots, pos.price, poisoned=status.today_poisoned, today=today)
+            if lt.klass == "loss"
+        ]
+        status.harvestable_loss = round(sum(lt.unrealized_gl for lt in losses), 2)
+        status.harvestable_shares = round(sum(lt.qty for lt in losses), 4)
+    return status
+
+
+def _print_dates(
+    svc: FinanceService, seed: PortfolioSeed, today: date, notes: list[str]
+) -> list[PrintCountdown]:
+    """Days to each held stock's next print. A CONFIRMED date (Nasdaq's analyst API, cached for the
+    day) comes first; otherwise an estimate from the EDGAR filing cadence. The label is the contract:
+    "= … (confirmed · nasdaq)" vs "≈ … (est. …)", so a reader can always tell an announcement from a
+    projection.
+
+    Every stock not looked up today is fetched on the bounded pool, and a miss is cached like a hit,
+    so a name between prints isn't asked again every run. A throttle is not an answer: that symbol
+    stays unknown and the next run asks again.
+    """
+    cache = EarningsDateCache.load()
+    dirty = False
+    stocks = [h for h in seed.holdings if h.asset_type == "stock"]
+    to_fetch = [h.symbol for h in stocks if not cache.known(h.symbol, today)]
+    unchecked: list[str] = []
+    jobs = [(sym, partial(nasdaq_provider.fetch_earnings_date, sym)) for sym in to_fetch]
+    for r in run_parallel(jobs):
+        if r.value is not None:
+            cache.put(r.value, today)
+        elif r.error is not None and r.error.transient:
+            unchecked.append(r.label)
+            continue
+        else:
+            cache.put_miss(r.label, today)  # an honest miss: ETF-shaped, or no date set yet
+        dirty = True
+    if unchecked:
+        notes.append(
+            f"Confirmed print dates weren't checked for {len(unchecked)} symbols (nasdaq refused the "
+            f"requests): {', '.join(unchecked)}. Their dates below are estimates."
+        )
+
+    prints = []
+    for h in stocks:
+        ed = cache.fresh(h.symbol, today)
+        if ed is not None and ed.confirmed:
+            prints.append(PrintCountdown(
+                symbol=h.symbol,
+                estimate=f"= {ed.report_date.isoformat()} (confirmed · nasdaq)",
+                days_out=(ed.report_date - today).days,
+                confirmed=True,
+            ))
+            continue
+        # Nasdaq's own projected date is the same class of guess; the filing-cadence one can be
+        # audited from the filings, so it is the one shown, labeled est.
+        estimate = _estimated_print(svc, h.symbol, today, notes)
+        if estimate:
+            prints.append(estimate)
+    if dirty:
+        cache.save()
+    return prints
+
+
+def _estimated_print(
+    svc: FinanceService, symbol: str, today: date, notes: list[str]
+) -> PrintCountdown | None:
+    cik = svc.cik_for(symbol)
+    if not cik:
+        return None
+    try:
+        est = estimate_next_print(fetch_recent_filings(cik, limit=14))
+    except ProviderError as e:
+        notes.append(f"{symbol} print estimate failed: {e}")
+        return None
+    if not est:
+        return None
+    days: int | None = None
+    try:
+        days = (date.fromisoformat(est.split()[1]) - today).days
+    except (ValueError, IndexError):
+        pass
+    return PrintCountdown(symbol=symbol, estimate=est, days_out=days)
+
+
+def _rating_changes(seed: PortfolioSeed, today: date) -> list[NewsItem]:
+    """A material move in a held stock's consensus price target or rating mix, as a synthetic
+    `[RATING]` news item, so it rides the fresh-news rendering and the catalyst → bus path.
+
+    Each symbol is fetched at most once a day against the unofficial API and diffed against the
+    stored baseline; the first sighting only seeds that baseline. No coverage is an honest miss,
+    never a made-up baseline.
+    """
+    state = ConsensusState.load()
+    dirty = False
+    items = []
+    for h in seed.holdings:
+        if h.asset_type != "stock" or not state.stale(h.symbol, today):
+            continue
+        try:
+            pt = nasdaq_provider.fetch_price_target(h.symbol)
+        except ProviderError:
+            continue
+        change = state.diff(pt)
+        if change:
+            items.append(NewsItem(
+                symbol=h.symbol,
+                title=f"[RATING] {h.symbol}: {change}",
+                # a key per change, so the seen-cache dedupes it like any headline
+                url=f"consensus://{h.symbol}/{today.isoformat()}/{pt.mean:.2f}",
+                source="nasdaq-consensus",
+                published=today.isoformat(),
+            ))
+        state.put(pt, today)
+        dirty = True
+    if dirty:
+        state.save()
+    return items
+
+
+def _feed_jobs(
+    svc: FinanceService, seed: PortfolioSeed, news_limit: int, ticker_news: bool
+) -> list[tuple[str, Callable[[], list[NewsItem]]]]:
+    """The custom feeds as one bounded, host-paced fan-out: feeds.yaml wires and thesis topics, each
+    held stock's EDGAR 8-K feed, and (with `ticker_news`) a Google News search per held stock for the
+    single-name catalysts a per-ticker feed misses. Results come back in job order, so the digest
+    matches a serial run; each job's failure is the same one-line note."""
+    jobs: list[tuple[str, Callable[[], list[NewsItem]]]] = []
+    for feed in service.load_feeds():  # called through the module, where tests replace it
+        fetch = partial(news_provider.fetch_rss, feed["url"], feed["name"], limit=news_limit)
+        jobs.append((f"feed {feed['name']}", fetch))
+    held_stocks = [h for h in seed.holdings if h.asset_type == "stock"]
+    for h in held_stocks:
+        cik = svc.cik_for(h.symbol)
+        if cik:
+            fetch = partial(news_provider.fetch_edgar_filing_feed, cik, h.symbol, limit=3)
+            jobs.append((f"EDGAR feed {h.symbol}", fetch))
+    if ticker_news:
+        for h in held_stocks:
+            fetch = partial(news_provider.fetch_gnews_ticker, h.symbol, limit=news_limit)
+            jobs.append((f"gnews {h.symbol}", fetch))
+    return jobs

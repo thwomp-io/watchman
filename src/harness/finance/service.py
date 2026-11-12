@@ -11,12 +11,13 @@ from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Collection
 
     from harness.finance.corpus.reader import PortfolioSeed
+    from harness.finance.pulse import OpenOrderStatus, PulseReport
     from harness.finance.research import ResearchBundle
     from harness.finance.unwind import UnwindReport
-    from harness.finance.watch import PulseReport, WatchDigest
+    from harness.finance.watch import Section, WatchDigest
 
 from harness.finance.cik_resolver import CikResolver
 from harness.finance.corpus.reader import CorpusReader
@@ -168,6 +169,10 @@ class FinanceService:
         if entry is None:
             return CikLookup(symbol=sym, found=False)
         return CikLookup(symbol=sym, cik=entry.cik, title=entry.title, found=True, source="map")
+
+    def cik_for(self, symbol: str) -> str | None:
+        """The symbol's SEC CIK, or None when the map doesn't list it (a fund, a foreign listing)."""
+        return self._cik_resolver.cik_for(symbol)
 
     # ---- fundamentals: reported GAAP/XBRL financials (SEC EDGAR, keyless) ----
     def fundamentals(self, symbol: str, *, cik: str | None = None, recent: int = 6) -> Fundamentals:
@@ -632,7 +637,7 @@ class FinanceService:
         jobs = []
         for raw in symbols:
             sym = raw.upper()
-            jobs.append((sym, _one(sym, self._cik_resolver.cik_for(sym))))
+            jobs.append((sym, _one(sym, self.cik_for(sym))))
         results = run_parallel(jobs)
         # run_parallel only captures ProviderError, which the job itself never lets escape — so
         # every result carries its SymbolNews; the assert documents the invariant.
@@ -647,7 +652,7 @@ class FinanceService:
         sources (the `wire` verb / `finance_wire` MCP tool). The 'what's the market narrative today?'
         layer for a `market take`.
 
-        Composes the two existing primitives — `_load_feeds()` (the feeds.yaml loader, also feeding
+        Composes the two existing primitives — `load_feeds()` (the feeds.yaml loader, also feeding
         watch/pulse) + `fetch_rss()` (the generic RSS path, also used by Yahoo per-ticker) — so it
         inherits their already-debugged behavior; the only new logic is aggregate + sort + filter.
         Crucially it does NOT touch the seen-cache (unlike `news`/`watch`, which dedupe), so it
@@ -657,7 +662,7 @@ class FinanceService:
         run — the standing-agent doctrine the RSS path already enforces). Read-only."""
         from harness.finance.providers.news_provider import fetch_rss
 
-        feeds = _load_feeds()
+        feeds = load_feeds()
         if source:
             needle = source.lower()
             feeds = [f for f in feeds if needle in f["name"].lower()]
@@ -752,11 +757,20 @@ class FinanceService:
             bundle.notes.append(f"current wire failed: {e}")
         return bundle, bars
 
-    def watch(self, *, mark_seen: bool = True, news_limit: int = 4, ticker_news: bool = True) -> WatchDigest:
+    def watch(
+        self,
+        *,
+        mark_seen: bool = True,
+        news_limit: int = 4,
+        ticker_news: bool = True,
+        only: Collection[Section] | None = None,
+    ) -> WatchDigest:
         """Delegates to `harness.finance.watch.watch` (documented there)."""
         from harness.finance import watch as _watch
 
-        return _watch.watch(self, mark_seen=mark_seen, news_limit=news_limit, ticker_news=ticker_news)
+        return _watch.watch(
+            self, mark_seen=mark_seen, news_limit=news_limit, ticker_news=ticker_news, only=only
+        )
 
     def unwind(self, *, symbol: str | None = None, days: int = 120) -> UnwindReport:
         """The concentration-unwind data contract — the deterministic source for the
@@ -768,7 +782,7 @@ class FinanceService:
 
         from harness.finance.levels import support_levels
         from harness.finance.unwind import build_unwind
-        from harness.finance.watch import wash_sale_status
+        from harness.finance.wash_sale import wash_sale_status
 
         seed = self.reader.read_portfolio()
         # default to the config's concentrated holding (the one with per-lot basis)
@@ -855,6 +869,12 @@ class FinanceService:
 
         return _gates.trap_map(self, days=days)
 
+    def open_orders(self) -> list[OpenOrderStatus]:
+        """Delegates to `harness.finance.pulse.open_orders` (documented there)."""
+        from harness.finance import pulse as _pulse
+
+        return _pulse.open_orders(self, self.reader.read_portfolio())
+
     def pulse(self, *, mark_seen: bool = True) -> PulseReport:
         """Delegates to `harness.finance.pulse.pulse` (documented there)."""
         from harness.finance import pulse as _pulse
@@ -889,7 +909,7 @@ class FinanceService:
         )
 
 
-def _load_feeds() -> list[dict[str, str]]:
+def load_feeds() -> list[dict[str, str]]:
     """feeds.yaml — resolved pack > tracker-resident > packaged (Settings.feeds_path,
     the portfolio-seed precedence): the packaged file is a generic default wire; a tuned roster is
     corpus data. Absent file = no feeds."""

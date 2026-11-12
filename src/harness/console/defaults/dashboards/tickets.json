@@ -37,7 +37,7 @@
           "run",
           "hn",
           "finance",
-          "pulse",
+          "orders",
           "--json"
         ],
         "cwd": "."

@@ -7,7 +7,13 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-app = typer.Typer(no_args_is_help=True, help="Read-only board over the tracker's beads export")
+from harness._cli import ReportingGroup
+
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="Read-only board over the tracker's beads export",
+)
 console = Console()
 
 TICKETS_REL = "ops/beads"

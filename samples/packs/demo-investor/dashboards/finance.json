@@ -73,14 +73,14 @@
           "run",
           "hn",
           "finance",
-          "pulse",
+          "market",
           "--json"
         ],
         "cwd": "."
       },
       "refresh": "market10m",
       "span": 2,
-      "value_path": "indexes",
+      "value_path": "indices",
       "prefix": null,
       "suffix": null,
       "signed": null,
@@ -130,7 +130,8 @@
           "hn",
           "finance",
           "watch",
-          "--no-mark",
+          "--only",
+          "moves",
           "--json"
         ],
         "cwd": "."
@@ -165,7 +166,7 @@
           "run",
           "hn",
           "finance",
-          "pulse",
+          "orders",
           "--json"
         ],
         "cwd": "."
@@ -222,7 +223,7 @@
     },
     {
       "id": "allocation",
-      "title": "Allocation (current \u2192 target)",
+      "title": "Allocation (current → target)",
       "kind": "viz",
       "source": {
         "type": "command",
@@ -283,7 +284,8 @@
           "hn",
           "finance",
           "watch",
-          "--no-mark",
+          "--only",
+          "prints",
           "--json"
         ],
         "cwd": "."
@@ -303,7 +305,7 @@
     },
     {
       "id": "chart",
-      "title": "Position chart \u2014 candles + levels",
+      "title": "Position chart — candles + levels",
       "kind": "chart",
       "source": {
         "type": "command",
@@ -343,7 +345,7 @@
     },
     {
       "id": "correlation",
-      "title": "Book correlation \u2014 daily returns",
+      "title": "Book correlation — daily returns",
       "kind": "correlation",
       "source": {
         "type": "command",

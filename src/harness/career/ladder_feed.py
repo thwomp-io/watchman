@@ -15,14 +15,15 @@ The plan, in order (the first `limit` are this run's; the rest wait for the next
      the screen-gated pane gets no fetch budget) with no ladder. Survey rows only; the watchlist is
      never written.
 One company per fetch through `comp.get_ladder` (the provider's own 2s min-interval paces the run;
-the feed adds no second throttle). The run STOPS on the first throttle-shaped refusal — a 429, a
-403, or the site's empty-page answer — logs it by name and never retries inside the same run; a
-404 (a slug the site does not know) is logged and the run continues.
+the feed adds no second throttle). The run STOPS the first time the site refuses a request — any
+error status but a 404, or its empty-page answer — logs it by name and never retries inside the
+same run. A 404 (a slug the site does not know) is logged and the run continues.
 
 Every candidate writes one line to `role-hunt/comp/feed-log.jsonl` (`ts · slug · action
 fetched|skipped|error · reason`) — the did-it-run audit, next to the cache it feeds. `--notify`
-publishes ONE bus `info` event with the counts ("ladders: 3 refreshed, 2 new, 33 fresh"); a run with
-nothing to do publishes nothing (the pacing budget is the only thing that costs; silence is fine).
+publishes ONE bus event with the counts ("ladders: 3 refreshed, 2 new, 33 fresh"): `info` for a
+normal run, `warn` for one the site stopped, so a refusal reaches a person. A run with nothing to do
+publishes nothing (the pacing budget is the only thing that costs; silence is fine).
 A weekly scheduled run (e.g. a launchd timer) runs it with
 the default cap; launchd does not catch up after a dark week, by design.
 """
@@ -30,6 +31,7 @@ the default cap; launchd does not catch up after a dark week, by design.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +39,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from harness.autocommit import CommitOutcome, commit_path
 from harness.career import comp as compmod
 from harness.career.pool import pool_dir
 from harness.career.watchlist import load_watchlist
@@ -114,7 +117,7 @@ class FeedResult(BaseModel):
         if self.errors:
             s += f", {self.errors} error{'s' if self.errors != 1 else ''}"
         if self.stopped:
-            s += " · stopped on a throttle"
+            s += " · stopped: the site refused"
         return s
 
 
@@ -276,13 +279,23 @@ def plan_feed(
     return plan
 
 
-_THROTTLE_TELLS = ("429", "403", "empty page", "too many requests", "rate limit")
+_HTTP_STATUS = re.compile(r"\bHTTP (\d{3})\b")
+_REFUSAL_TELLS = ("empty page", "too many requests", "rate limit")
 
 
 def is_throttle(err: BaseException) -> bool:
-    """A refusal that means 'the site is saying stop' — the run ends on it, never retries."""
-    msg = str(err).lower()
-    return any(t in msg for t in _THROTTLE_TELLS)
+    """Whether the site is saying stop. The run ends on it and never retries.
+
+    Any error status counts except a 404, which only means the site has no such page. The list is
+    deliberately not an allowlist of known codes: a site that starts answering with a verification
+    page (a 405 here) is refusing just as much as one that answers 429, and a feed that kept going
+    would send its whole batch into the refusal.
+    """
+    msg = str(err)
+    status = _HTTP_STATUS.search(msg)
+    if status:
+        return status.group(1) != "404"
+    return any(tell in msg.lower() for tell in _REFUSAL_TELLS)
 
 
 def _append_log(path: Path, entry: FeedEntry) -> None:
@@ -309,7 +322,7 @@ def run_feed(
     for cand in plan.selected:
         ts = now.isoformat()
         if stopped:
-            entry = FeedEntry(ts=ts, slug=cand.slug, action="skipped", reason="stopped after a throttle")
+            entry = FeedEntry(ts=ts, slug=cand.slug, action="skipped", reason="stopped after a refusal")
         else:
             try:
                 compmod.get_ladder(
@@ -332,9 +345,34 @@ def run_feed(
     return res
 
 
+def commit_run(role_hunt: Path, repo: Path, res: FeedResult, *, notify: bool = False) -> CommitOutcome:
+    """Commit what the run wrote (the comp directory: ladders and the feed log) so a scheduled run
+    leaves the repository clean. With `notify`, a commit that failed or couldn't be pushed is one
+    bus warning: an unattended run's unpushed commit is otherwise invisible until someone trips on it."""
+    fetched = sum(1 for e in res.entries if e.action == "fetched")
+    outcome = commit_path(
+        repo,
+        compmod.comp_dir(role_hunt).relative_to(repo).as_posix(),
+        f"career(ladders): standing-agent ladder feed {_now():%Y-%m-%d} — {fetched} fetched, "
+        f"{res.errors} error{'s' if res.errors != 1 else ''} ({{n}} file(s))",
+    )
+    if notify and outcome.needs_attention:
+        from harness.bus.models import EventDraft
+        from harness.bus.service import BusService
+
+        BusService().publish(EventDraft(
+            producer=PRODUCER, lane=LANE, kind="ladder_feed_commit", subject="ladders",
+            title="ladders: the run's files are not pushed",
+            body=f"{outcome.note}\nrepo: {repo}",
+            severity="warn",
+        ))
+    return outcome
+
+
 def publish_summary(res: FeedResult, *, stamp: str | None = None) -> bool:
-    """ONE bus `info` event per run that did something (a fetch, an error, or a stop); a run whose
-    plan was empty publishes nothing. Returns whether an event was published."""
+    """One bus event per run that did something (a fetch, an error, or a stop): `info`, or `warn`
+    when the site stopped the run. A run whose plan was empty publishes nothing. Returns whether an
+    event was published."""
     if not res.entries:
         return False
     from harness.bus.models import EventDraft
@@ -370,7 +408,7 @@ def publish_summary(res: FeedResult, *, stamp: str | None = None) -> bool:
                 "stopped": res.stopped,
                 "fetched": fetched,
             },
-            severity="info",
+            severity="warn" if res.stopped else "info",
             idempotency_key=f"{PRODUCER}:{KIND}:{stamp}",
         )
     )

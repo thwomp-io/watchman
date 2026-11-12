@@ -1,6 +1,6 @@
 [project]
 name = "harness"
-version = "0.16.0"
+version = "0.17.0"
 description = "A personal agentic-harness toolkit — one CLI of domain lanes (finance, career, travel). Provider-abstracted, corpus-aware, exposed via MCP + CLI."
 requires-python = ">=3.12"
 dependencies = [
@@ -8,19 +8,22 @@ dependencies = [
     # <2: mcp 2.x renamed FastMCP (every mcp_server.py imports it). `uv tool install` resolves from
     # this list, not uv.lock, so the ceiling has to live here for the installed harness-mcp too.
     "mcp[cli]>=1.30,<2",
-    "typer",
+    # The same reasoning for every library the whole CLI is built on: a release that changes its API
+    # breaks every verb, so the next breaking line is excluded and moving past it is a deliberate
+    # change. Typer is pre-1.0 (its minors break; PackGroup subclasses TyperGroup).
+    "typer>=0.27,<0.30",
     "rich",
-    "pydantic",
-    "pydantic-settings",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.4,<3",
     "python-frontmatter",
     "jinja2",
-    "httpx",
+    "httpx>=0.28,<1",
     "pyyaml",
     "pillow",
     "tzdata>=2026.2",
     # bus server (hn bus serve) — both already ride mcp[cli]; declared so the dependency is
     # honest rather than transitive-by-luck. Zero growth to the installed tree.
-    "starlette",
+    "starlette>=1,<2",
     "uvicorn",
     # web push (harness.bus.push) — VAPID ES256 JWT + aes128gcm payload encryption. The one
     # deliberate library-over-primitives call in the bus: this is crypto, never hand-rolled.
@@ -29,8 +32,8 @@ dependencies = [
 ]
 
 [project.scripts]
-harness = "harness.cli:app"
-hn = "harness.cli:app"
+harness = "harness.cli:main"
+hn = "harness.cli:main"
 harness-mcp = "harness.mcp_server:main"
 
 [dependency-groups]

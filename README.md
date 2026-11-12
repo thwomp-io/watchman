@@ -17,6 +17,40 @@ is read, and stopping the container deletes the demo's files.
 
 ![How Watchman works](docs/assets/architecture.svg)
 
+Your files and public data go into a deterministic engine. Its commands fill the console and publish
+events. An agent, if you want one, reads through the same commands and answers in the Chat tab.
+
+- **Deterministic core.** Every view and every alert is a plain command. No model sits in a render loop
+  or an alert path.
+- **Read-only by default.** The engine observes. Nothing trades, sends or submits by itself.
+- **Your files are the source of truth.** Plain YAML and Markdown, outside this repository. The bundled
+  personas are fiction.
+
+How the code is laid out, and why: **[`ARCHITECTURE.md`](ARCHITECTURE.md)**.
+
+## See it
+
+![The finance console on a sample persona](docs/assets/demo-finance.gif)
+
+_Finance: net worth, the market-take reader, order tickets, earnings-report scorecards, projections and
+holdings._
+
+![The career console on a sample persona](docs/assets/demo-career.gif)
+
+_Career: the campaign in flight, openings ranked by fit with expected comp, the company pool and pay
+ladders._
+
+More clips, one per lane: **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
+
+## What's inside
+
+| Part | What it is |
+|---|---|
+| **Console** | Dashboards that refresh themselves. **Finance:** Core, Market, Tickets, News, Compare, Prints, Projections, Holdings, Plans. **Career:** Campaign, Openings, Pool, Ladders. **Travel:** Planning, Trips, Visits, Calendar, Conditions. **Ops:** Backlog. Plus an Inbox, a viz gallery, a document vault, and **CHAT** |
+| **`hn` CLI** | The engine, one lane per domain: `finance` (quotes, net worth, the wire with article and PDF reads, SEC filings, options gauges, scenario bands, event studies, session shapes, a macro calendar whose actuals come from the publishing agencies) · `career` (keyless job-board scans, pay ladders) · `travel` (flights, hotels, events, weather and conditions) · `beads` (a read-only board over a [beads](https://github.com/gastownhall/beads) tracker) · `calibration` (predictions logged with a probability and scored afterwards) · `pocket` (the CHAT runner) |
+| **Bus** | Standing agents publish events; the console shows them, and urgent ones push to your devices |
+| **Packs** | Fictional personas that drive every lane, so a fresh install has something to show |
+
 ## Talk to your agent from your phone
 
 The **CHAT** tab is a conversation with an agent on your always-on machine: the Claude Code you already
@@ -40,32 +74,6 @@ without an agent._
 | **Audited** | every prompt, tool call and refusal lands in the Inbox |
 
 Setup, the runbook and the full threat model: **[`docs/POCKET.md`](docs/POCKET.md)**.
-
-## See it
-
-![The finance console on a sample persona](docs/assets/demo-finance.gif)
-
-_Finance: net worth, the market-take reader, order tickets, earnings-report scorecards, projections and
-holdings._
-
-![The career console on a sample persona](docs/assets/demo-career.gif)
-
-_Career: the campaign in flight, openings ranked by fit with expected comp, the company pool and pay
-ladders._
-
-More clips, one per lane: **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
-
-## What's inside
-
-| Part | What it is |
-|---|---|
-| **Console** | Dashboards that refresh themselves. **Finance:** Core, Market, Tickets, News, Compare, Prints, Projections, Holdings, Plans. **Career:** Campaign, Openings, Pool, Ladders. **Travel:** Planning, Trips, Visits, Calendar, Conditions. **Ops:** Backlog. Plus an Inbox, a viz gallery, a document vault, and **CHAT** |
-| **`hn` CLI** | The engine, one lane per domain: `finance` (quotes, net worth, the wire with article and PDF reads, SEC filings, options gauges, scenario bands, event studies, session shapes) · `career` (keyless job-board scans, pay ladders) · `travel` (flights, hotels, events, weather and conditions) · `beads` (a read-only board over a [beads](https://github.com/gastownhall/beads) tracker) · `pocket` (the CHAT runner) |
-| **Bus** | Standing agents publish events; the console shows them, and urgent ones push to your devices |
-| **Packs** | Fictional personas that drive every lane, so a fresh install has something to show |
-
-Everything the console shows comes from deterministic commands. No model sits in the render loop or the
-alert path; the agent is a separate, opt-in tab.
 
 ## Run it
 
@@ -161,16 +169,15 @@ Your real data lives outside the repo (`TRACKER_PATH`). `hn init <dir>` scaffold
 [corpus-operator skill](skills/corpus-operator/SKILL.md) teaches an AI agent to build and maintain it from
 conversation, in your own words.
 
-## Posture
+## Privacy and security
 
 - **Read-only by default.** The finance lane reads public prices and a local file. No brokerage
   credentials, and nothing places an order. The agent is sealed the same way.
-- **Private by construction.** Outbound calls identify the tool, never you. The project page is added only for providers that require a contact. The server binds localhost
-  unless you point it at your private network, and every API route requires the token.
+- **Private by construction.** Outbound calls identify the tool, never you; the project page is added
+  only for providers that require a contact. The server binds localhost unless you point it at your
+  private network, and every API route requires the token.
 - **Demo mode is sealed.** With a sample persona active, the console renders only that pack and never
   falls back to a real corpus on the machine.
-- **Deterministic core.** Thresholds, alerts and dashboards run without a model; agents work alongside,
-  out of the loop.
 
 ## Docs
 
@@ -179,6 +186,7 @@ conversation, in your own words.
 | [`docs/POCKET.md`](docs/POCKET.md) | the CHAT agent: setup, runbook, threat model |
 | [`docs/EXAMPLES.md`](docs/EXAMPLES.md) | a clip for every lane |
 | [`docs/WEB-CONSOLE.md`](docs/WEB-CONSOLE.md) | serving the console, tokens, phones, push |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | how the code is laid out, and why |
 | [`docs/CLI.md`](docs/CLI.md) | the engine from a shell, building from source |
 | [`docs/BEADS.md`](docs/BEADS.md) | the beads backlog tab and ticket pages |
 | [`docs/BUS.md`](docs/BUS.md) | publishing events from any language |

@@ -51,6 +51,40 @@ export async function shellListen(event: string, cb: (payload: unknown) => void)
   return tauriListen(event, (e) => cb(e.payload));
 }
 
+/** A failed call to the door. `message` is the sentence to show a person; the rest is optional
+ * context the server sent with it: whose problem it is, what to do, and the raw output. */
+export type ErrorKind = "source" | "internal" | "error";
+export class InvokeError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly kind: ErrorKind = "error",
+    readonly hint?: string,
+    readonly detail?: string,
+  ) {
+    super(message);
+    this.name = "InvokeError";
+  }
+
+  static async fromResponse(cmd: string, res: Response): Promise<InvokeError> {
+    const text = await res.text().catch(() => "");
+    try {
+      const body = JSON.parse(text) as { error?: unknown; kind?: unknown; hint?: unknown; detail?: unknown };
+      if (typeof body.error === "string") {
+        const kind = body.kind === "source" || body.kind === "internal" ? body.kind : "error";
+        return new InvokeError(
+          body.error, res.status, kind,
+          typeof body.hint === "string" ? body.hint : undefined,
+          typeof body.detail === "string" ? body.detail : undefined,
+        );
+      }
+    } catch {
+      /* not JSON: a proxy or an older server answered */
+    }
+    return new InvokeError(`${cmd} failed (HTTP ${res.status})`, res.status, "error", undefined, text || undefined);
+  }
+}
+
 // --- web: the HTTP client ----------------------------------------------------------------------------
 // Wire contract (mirrored by the server's RPC door): one RPC-style
 // route per backend command — `POST {base}/api/invoke/{cmd}` with the camelCase args as the JSON body,
@@ -177,11 +211,7 @@ export function httpTransport(opts: HttpTransportOptions = {}): Transport {
       );
       if (replaced) res = await post(cmd, args);
     }
-    if (!res.ok) {
-      // Mirror the Tauri failure shape (invoke rejects with the command's error string) so callers'
-      // catch-paths behave identically on both transports.
-      throw new Error(`${cmd}: ${res.status} ${await res.text().catch(() => res.statusText)}`);
-    }
+    if (!res.ok) throw await InvokeError.fromResponse(cmd, res);
     return finish((await res.json()) as T);
   };
   return {

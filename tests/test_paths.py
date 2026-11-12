@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from harness.finance.watch import EarningsDateCache, SeenCache
+from harness.finance.watch_state import EarningsDateCache, SeenCache
 from harness.paths import cache_file, harness_cache_dir
 
 

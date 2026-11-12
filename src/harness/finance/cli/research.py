@@ -15,13 +15,12 @@ import typer
 from rich.markup import escape
 from rich.table import Table
 
+from harness.errors import HarnessError, UsageError
+from harness.finance.cli.common import console, finance_service, money_short, signed, trend_money
 from harness.finance.config.settings import get_settings
-from harness.finance.providers.base import ProviderError
 
 if TYPE_CHECKING:
     pass
-from harness._cli import fail as _fail
-from harness.finance._cli import _money_short, _signed, _svc, _trend_money, console
 
 wire_app = typer.Typer(invoke_without_command=True, no_args_is_help=False)
 
@@ -32,7 +31,7 @@ def resolve(
 ) -> None:
     """Resolve a ticker → SEC CIK (the permanent filer ID every EDGAR call needs) via the bundled
     company_tickers.json. Misses (ETFs/mutual funds/ADRs aren't US filers) are reported honestly."""
-    look = _svc().resolve_cik(symbol.upper())
+    look = finance_service().resolve_cik(symbol.upper())
     if as_json:
         console.print_json(look.model_dump_json())
         return
@@ -53,11 +52,7 @@ def fundamentals(
 ) -> None:
     """Reported GAAP/XBRL financials from SEC EDGAR (keyless) — revenue, net income, etc. per
     fiscal period. Read-only; figures LAG real-time (newest = most recent 10-Q/10-K)."""
-    try:
-        fun = _svc().fundamentals(symbol.upper(), cik=cik, recent=recent)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    fun = finance_service().fundamentals(symbol.upper(), cik=cik, recent=recent)
 
     if as_json:
         console.print_json(fun.model_dump_json())
@@ -75,7 +70,7 @@ def fundamentals(
             # prior = next-older fact of the SAME period type (quarter-vs-quarter, annual-vs-annual)
             prior = next((g.value for g in c.facts[i + 1:] if g.period_type == f.period_type), None)
             table.add_row(
-                period, f.period_type, _trend_money(f.value, prior), f.form, f.filed or "—"
+                period, f.period_type, trend_money(f.value, prior), f.form, f.filed or "—"
             )
         console.print(table)
     console.print(
@@ -104,11 +99,7 @@ def multiples(
     FMP when keyed, else EDGAR. GAAP-honest either way: unprofitable reads "N/M", a missing input
     reads "unavailable" — never a fabricated number.
     """
-    try:
-        m = _svc().multiples(symbol.upper(), cik=cik, recent=recent, source=source)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    m = finance_service().multiples(symbol.upper(), cik=cik, recent=recent, source=source)
 
     if as_json:
         console.print_json(m.model_dump_json())
@@ -142,7 +133,7 @@ def multiples(
             return f"{v / 1e6:,.1f}M sh" if v >= 1e6 else f"{v:,.0f} sh"
         if comp.label == "Live price":  # type: ignore[attr-defined]
             return f"${v:,.2f}"
-        return _money_short(v)
+        return money_short(v)
 
     table = Table(title="Components — every figure surfaced so the math audits")
     for col in ("Component", "Value", "Basis", "XBRL tag / note"):
@@ -182,13 +173,9 @@ def filing(
     Requires HARNESS_SEC_CONTACT in .env (SEC fair-access UA for www.sec.gov, fail-loud).
     Honest boundary: call transcripts + un-filed IR slides are NOT SEC documents — this reads
     what EDGAR carries."""
-    try:
-        r = _svc().filing(
-            symbol.upper(), form=form, cik=cik, accession=accession, doc=doc, list_only=list_docs
-        )
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    r = finance_service().filing(
+        symbol.upper(), form=form, cik=cik, accession=accession, doc=doc, list_only=list_docs
+    )
 
     if as_json:
         console.print_json(r.model_dump_json())
@@ -221,11 +208,7 @@ def compare(
     resolve) + the corpus values-screen. The interpretive comparison (which name wins, and why) is an
     agent-written doc — not computed here. Reported figures LAG; only price/day move are live.
     Read-only."""
-    try:
-        rep = _svc().compare([s.upper() for s in symbols], recent=recent)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    rep = finance_service().compare([s.upper() for s in symbols], recent=recent)
 
     if as_json:
         console.print_json(rep.model_dump_json())
@@ -250,11 +233,11 @@ def compare(
         table.add_row(
             r.symbol,
             f"${r.price:,.2f}" if r.price is not None else "[dim]—[/dim]",
-            _signed(r.day_change_pct),
+            signed(r.day_change_pct),
             _mult(r.ps),
             _mult(r.pe),
             _mult(r.ev_ebitda),
-            _money_short(r.market_cap) if r.market_cap is not None else "[dim]—[/dim]",
+            money_short(r.market_cap) if r.market_cap is not None else "[dim]—[/dim]",
             _scr(r.screen, r.screen_category),
         )
     console.print(table)
@@ -279,11 +262,7 @@ def news(
     ticker), use `hn finance wire` (config/feeds.yaml). `watch`/`pulse` also fold those broad feeds
     into their fresh-headlines rail, deduped via the seen-cache.
     """
-    try:
-        scans = _svc().news(symbols=list(symbols) if symbols else None, limit=limit)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    scans = finance_service().news(symbols=list(symbols) if symbols else None, limit=limit)
     for sn in scans:
         console.print(f"\n[bold]{sn.symbol}[/bold]")
         if sn.headline_error:
@@ -321,14 +300,12 @@ def wire_read(
     from harness.finance.providers.article_provider import grep_article, read_with_mirror
 
     if (url is None) == (match is None):
-        _fail("give a URL or --match TEXT (one, not both)")
-        raise typer.Exit(code=2)
+        raise UsageError("give a URL or --match TEXT (one, not both)")
     if match is not None:
         needle = match.lower()
-        hits = [it for it in _svc().wire(limit=8).items if needle in it.title.lower() and it.url]
+        hits = [it for it in finance_service().wire(limit=8).items if needle in it.title.lower() and it.url]
         if not hits:
-            _fail(f"no wire headline contains {match!r} (the wire keeps each feed's 8 newest)")
-            raise typer.Exit(code=1)
+            raise HarnessError(f"no wire headline contains {match!r} (the wire keeps each feed's 8 newest)")
         url = hits[0].url
         if not as_json:
             console.print(f"[dim]{len(hits)} match(es) — reading the newest: {hits[0].source} "
@@ -338,11 +315,7 @@ def wire_read(
                               f"{escape(other.title[:90])}[/dim]")
     assert url is not None
     headline = hits[0].title if match is not None else ""
-    try:
-        art = read_with_mirror(url, headline)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    art = read_with_mirror(url, headline)
     matches = grep_article(art, grep) if grep else None
     if as_json:
         payload = asdict(art)
@@ -387,13 +360,13 @@ def wire_audit(
     from urllib.parse import quote_plus
 
     from harness.finance.providers.news_provider import _GNEWS_SEARCH_URL, _YAHOO_RSS_URL, audit_feed
-    from harness.finance.service import _load_feeds
+    from harness.finance.service import load_feeds
 
     sym = ticker.upper()
     feeds = [
         (f"gnews:{sym}", f"{_GNEWS_SEARCH_URL}?q={quote_plus(sym + ' stock')}&hl=en-US&gl=US&ceid=US:en"),
         (f"yahoo:{sym}", f"{_YAHOO_RSS_URL}?s={sym}&region=US&lang=en-US"),
-    ] + [(f["name"], f["url"]) for f in _load_feeds()]
+    ] + [(f["name"], f["url"]) for f in load_feeds()]
     rows = [audit_feed(url, name, sample=sample) for name, url in feeds]
     if as_json:
         console.print_json(json.dumps({"sample": sample, "feeds": rows}))
@@ -432,11 +405,7 @@ def wire(
     """
     if ctx.invoked_subcommand is not None:
         return
-    try:
-        d = _svc().wire(source=source, limit=limit)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    d = finance_service().wire(source=source, limit=limit)
     if as_json:
         console.print_json(d.model_dump_json())
         return
@@ -475,12 +444,8 @@ def research(
     """
     from harness.finance.research import write_research_report
 
-    try:
-        bundle, bars = _svc().research(symbol.upper(), months=months, threshold=threshold)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
-    held = {h.symbol for h in _svc().reader.read_portfolio().holdings}
+    bundle, bars = finance_service().research(symbol.upper(), months=months, threshold=threshold)
+    held = {h.symbol for h in finance_service().reader.read_portfolio().holdings}
     out = write_research_report(bundle, bars, get_settings().tracker_path, held_symbols=held)
     sign = "+" if (bundle.window_pct or 0) >= 0 else ""
     console.print(
@@ -524,8 +489,7 @@ def scorecards(
     try:
         cards = load_scorecards(path)
     except (OSError, ScorecardError, yaml.YAMLError) as e:
-        _fail(f"scorecard registry unreadable ({path}): {e}")
-        raise typer.Exit(code=1) from e
+        raise HarnessError(f"scorecard registry unreadable ({path}): {e}") from e
     contract = to_contract(cards)
     if as_json:
         console.print_json(json.dumps(contract))
@@ -586,19 +550,18 @@ def projections(
     try:
         params = load_params(path)
     except (OSError, ProjectionError, yaml.YAMLError) as e:
-        _fail(f"projection registry unreadable ({path}): {e}")
-        raise typer.Exit(code=1) from e
+        raise HarnessError(f"projection registry unreadable ({path}): {e}") from e
     # Live prices (best-effort — offline/keyless degrades per-name to ref_price, source named)
     quotes: dict[str, float] = {}
     try:
-        for q in _svc(feed).quote([p.symbol for p in params]):
+        for q in finance_service(feed).quote([p.symbol for p in params]):
             if q.available and q.price is not None:
                 quotes[q.symbol] = q.price
     except Exception:  # noqa: BLE001 — a dead provider is a degradation, never a dead verb
         pass
     holdings: dict[str, float] = {}
     try:
-        for h in _svc(feed).reader.read_portfolio().holdings:
+        for h in finance_service(feed).reader.read_portfolio().holdings:
             if h.avg_cost:
                 holdings[h.symbol] = float(h.avg_cost)
     except Exception:  # noqa: BLE001 — projections must render even with no/broken corpus seed
@@ -640,7 +603,7 @@ def screen(
     symbol: str = typer.Argument(..., help="Ticker to check against the values screen"),
 ) -> None:
     """Check a symbol against the values screen (corpus-only; no network)."""
-    r = _svc().screen(symbol)
+    r = finance_service().screen(symbol)
     color = "red" if r.status == "excluded" else "green"
     console.print(f"[{color}]{r.symbol}: {r.status}[/{color}]")
     console.print(f"  {r.note}")
@@ -666,8 +629,7 @@ def take_write(
         written = write_take(body, tracker_path=get_settings().tracker_path, author=who,
                              session=session, tags=list(tag or []))
     except TakeError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     console.print(f"wrote {written.path} ({written.bytes} bytes, author {written.author}) — uncommitted")
     note = announce(written)
     if note:

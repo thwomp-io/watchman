@@ -3,6 +3,86 @@
 All notable changes to Watchman, following [Keep a Changelog](https://keepachangelog.com/) and
 [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2026-11-11
+
+### Security
+- The desktop shell's `rusqlite` moves 0.32 to 0.41, which bundles libsqlite3-sys 0.39.1
+  (RUSTSEC-2026-0459), and `rustix` moves 1.1.5 to 1.1.6 (RUSTSEC-2026-0486; it is reached through
+  the updater's archive extraction).
+- The bus server registers every `/api` route through one bearer-token check, with a test that every
+  route but `/health` refuses a request without the token. Its token file is created owner-only.
+- `pyproject.toml` bounds the libraries the CLI is built on to their current major line (Typer 0.29.x,
+  Pydantic 2.x, httpx 0.x, Starlette 1.x), so an install that resolves outside the lockfile cannot
+  pick up a breaking release.
+
+### Added
+- **`hn finance calendar` reads a printed number from the agency that publishes it.** CPI, PPI,
+  payrolls, the unemployment rate and hourly earnings come from the BLS API, GDP and the PCE price
+  index from BEA, retail sales from Census, and the number shows the agency beside it
+  (`actual 0.4% (bls)`; `actual_source` in `--json`). Nasdaq remains the schedule, the consensus and
+  the fallback. A headline figure Nasdaq has no row for is added (`CPI y/y`), and one the agency did
+  not publish reads `not published`. Weekly jobless claims stay on Nasdaq.
+- **Market-holiday rows on the calendar**, from SIFMA's bond-market schedule and the NYSE's: a close
+  in one market names the other as open, and early closes carry their times.
+- **`hn calibration`**: a ledger of predictions scored after the fact. `add` logs a claim with a
+  probability, a resolve-by date and the test that settles it; `due` lists what has come due;
+  `resolve` records the outcome and its Brier score, or voids an entry whose test can't be
+  evaluated; `score` reports the mean Brier and five reliability buckets per owner.
+- **A history store for the ledger.** `portfolio.yaml` holds the current state; fills, changes made
+  against a broker screen and fund-proxy grades are rows in a SQLite database in the state
+  directory, exported after every write to `ledger-history/ledger.jsonl` beside the portfolio file
+  (the export is what version control carries; the database is rebuilt from it when missing).
+  `hn finance ledger-log` reads it, `ledger-note` records a change made by hand, and `ledger-grade`
+  records a day's check of the fund proxy against the NAV.
+- **`hn finance orders [--json]`** (MCP `finance_orders`): the resting orders against the live price,
+  from one quote request.
+- **`hn finance watch --only SECTION`** (repeatable): build just the named sections of the digest
+  (`moves`, `watchlist`, `drift`, `wash-sale`, `prints`, `news`).
+- **`hn career comp --refresh-stale --commit`**: the ladder feed commits what it wrote (the comp
+  directory only) and pushes if that fast-forwards. A commit that fails is one bus warning.
+
+### Changed
+- **Every CLI failure is one short report on stderr**: `error: <what happened>` and, when there is
+  one, `hint: <what to do>`, across every command group. An unexpected exception is named in one
+  line and exits 70 (`HARNESS_DEBUG=1` shows its traceback); a command called wrong exits 2. A
+  network error reads as a source failure naming the host, never the URL. With
+  `HARNESS_ERROR_FORMAT=json` the report is one JSON line; the console sets it and shows a failed
+  widget's kind, sentence and hint with a Try again button and the raw output under Details.
+- **`hn` starts faster.** A command group is imported when it is asked for: `hn version` went from
+  207 ms to 71 ms, and every dashboard widget and agent tool call is one such start.
+- **Dashboard widgets ask for what they show.** Day moves, Upcoming prints, Open traps, Resting
+  orders and Indexes ran the whole watch or pulse (13 to 19 seconds on a full book) to read one
+  field; they now run `watch --only …`, `orders` and `market` (about a second each).
+- `hn finance log-fill` writes the new state and nothing else. Prior values, the filled order and the
+  cash figures go to the history store as one row; they used to be kept as comments in the file.
+- Fed speakers are one pulse flag per day, naming each speaker with their time. The Chair keeps a
+  flag of their own, and the gates board still lists every speech.
+- The Inbox status strip's wash-sale line reads `wash-sale window · until <date>` or `clear`.
+- Internal structure, no behavior change: the three lane CLIs share one layout (a package with one
+  module per noun); the travel service, the finance pulse and watch, the portfolio reader and the
+  bus HTTP server are split into named modules and steps. Each was run old against new on the same
+  inputs and matched.
+- Dependencies refreshed within their declared ranges, Playwright to 1.65.0 among them.
+- `ARCHITECTURE.md`: how the code is laid out, and why.
+- The README leads with how the system works, and its two diagrams are redrawn: they follow the
+  reader's light or dark theme and describe the parts in plain terms.
+
+### Fixed
+- Every pulse flag reaches the bus. Flags that shared a kind and a subject (two macro releases on one
+  day, two filings for one symbol) derived the same once-a-day key, so the bus stored the first and
+  dropped the rest as duplicates.
+- A dashboard's Open traps and Resting orders tables no longer consume the headline seen-cache; their
+  source marked headlines as seen on every refresh.
+- Confirmed earnings dates, consensus price targets and the economic calendar are back. Nasdaq began
+  refusing the Python HTTP client while answering `curl`, so those requests go through the system
+  `curl` when there is one; without it a refusal is one note and dates fall back to estimates.
+- A throttled Nasdaq request no longer fails the whole `watch` and `pulse` run; it is a note on the
+  digest, and the date is asked again on the next run.
+- The ladder feed stops at the first request the site refuses, whatever the status, and a stopped
+  run publishes a warning.
+- `--pack` works on Typer 0.29.
+- A calendar read late in a Pacific evening treats the day's releases as past.
+
 ## [0.16.0] - 2026-11-08
 
 ### Security

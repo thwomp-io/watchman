@@ -7,9 +7,13 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from harness.errors import ProviderError
+from harness._cli import ReportingGroup
 
-app = typer.Typer(no_args_is_help=True, help="Read a video: transcript + keyframes (YouTube, via yt-dlp).")
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="Read a video: transcript + keyframes (YouTube, via yt-dlp).",
+)
 console = Console()
 
 
@@ -31,11 +35,7 @@ def transcript(
     printed and written to <id>-transcript.md in the corpus tmp/ dir. Read-only; no account or key."""
     from harness.media.youtube import read_transcript, render_markdown
 
-    try:
-        t = read_transcript(url)
-    except ProviderError as e:
-        console.print(f"[red]{e}[/red]")
-        raise typer.Exit(code=1) from None
+    t = read_transcript(url)
     md = render_markdown(t)
     dest = _tmp(out)
     dest.mkdir(parents=True, exist_ok=True)
@@ -61,11 +61,7 @@ def frames(
     sheet (<id>-sheet.png), then deletes the video. Read the sheet first."""
     from harness.media.youtube import read_frames
 
-    try:
-        fr = read_frames(url, _tmp(out), max_n=max(1, max_n))
-    except ProviderError as e:
-        console.print(f"[red]{e}[/red]")
-        raise typer.Exit(code=1) from None
+    fr = read_frames(url, _tmp(out), max_n=max(1, max_n))
     console.print(f"[bold]{fr.title}[/bold]  [dim]{fr.scene_changes} scene change(s) → "
                   f"{len(fr.stills)} still(s)[/dim]")
     for n in fr.notes:

@@ -223,174 +223,153 @@ class CorpusReader:
 
     def read_portfolio(self) -> PortfolioSeed:
         data: dict[str, Any] = load_yaml(self._path.read_text()) or {}
-
-        holdings = [
-            Holding(
-                symbol=str(h["symbol"]),
-                name=str(h.get("name", "")),
-                asset_type=str(h.get("type", "")),
-                account=str(h.get("account", "brokerage")),
-                shares=float(h.get("shares", 0.0)),
-                avg_cost=float(h.get("avg_cost", 0.0)),
-                cost_basis=float(h.get("cost_basis", 0.0)),
-                last_price=float(h["last_price"]) if h.get("last_price") is not None else None,
-                balance=float(h["balance"]) if h.get("balance") is not None else None,
-                as_of=str(h.get("as_of", "")),
-                lots=[
-                    Lot(
-                        acquired=str(lt["acquired"]),
-                        qty=float(lt["qty"]),
-                        unit_cost=float(lt["unit_cost"]),
-                    )
-                    for lt in h.get("lots", []) or []
-                ],
-                aliases=[str(a) for a in h.get("aliases", []) or []],
-            )
-            for h in data.get("holdings", [])
-        ]
-
-        # a mutual fund that doesn't price intraday → estimate its EOD direction from a basket of
-        # live proxies (config key `fund_proxy:`; absent → no proxy, the verb reports nothing to do).
-        proxy_raw = data.get("fund_proxy", {}) or {}
-        # two config forms: `basket:` [{symbol, weight}] = cap-weighted, weights are
-        # the names' N-PORT %-of-fund; legacy `symbols:` [..] = equal-weight. basket wins if both.
-        basket_rows = proxy_raw.get("basket", []) or []
-        if basket_rows:
-            proxy_symbols = [str(r.get("symbol", "")) for r in basket_rows if r.get("symbol")]
-            proxy_weights = {
-                str(r["symbol"]): float(r["weight"])
-                for r in basket_rows
-                if r.get("symbol") and r.get("weight") is not None
-            }
-            proxy_sources = {
-                str(r["symbol"]): str(r["source"]).lower()
-                for r in basket_rows
-                if r.get("symbol") and r.get("source")
-            }
-        else:
-            proxy_symbols = [str(s) for s in proxy_raw.get("symbols", [])]
-            proxy_weights = {}
-            proxy_sources = {}
-        proxy = ProxyBasket(
-            fund=str(proxy_raw.get("fund", "")),
-            symbols=proxy_symbols,
-            note=str(proxy_raw.get("note", "")).strip(),
-            weights=proxy_weights,
-            sources=proxy_sources,
-            cash_weight=float(proxy_raw.get("cash_weight", 0.0) or 0.0),
-            holdings_ref=(
-                (self._path.parent / str(proxy_raw["holdings_ref"])).resolve()
-                if proxy_raw.get("holdings_ref") else None
-            ),
-            fills=[
-                ProxyFill(
-                    symbol=str(f["symbol"]).upper(),
-                    exposure=str(f.get("exposure") or f["symbol"]),
-                    countries=[str(c).upper() for c in f.get("countries", []) or []],
-                )
-                for f in proxy_raw.get("fills", []) or []
-                if f.get("symbol")
-            ],
-        )
-
-        screen_raw = data.get("values_screen", {}) or {}
-        screen = ValuesScreen(
-            exclude={
-                str(cat): [str(t) for t in tickers]
-                for cat, tickers in (screen_raw.get("exclude", {}) or {}).items()
-            },
-            positive_tilts=[str(t) for t in screen_raw.get("positive_tilts", [])],
-        )
-
-        alloc_raw = data.get("allocation_target") or {}
-        allocation_target = (
-            AllocationTarget(
-                caption=str(alloc_raw.get("caption", "")).strip(),
-                slices=[
-                    AllocSlice(label=str(s["label"]), value=float(s["value"]))
-                    for s in alloc_raw.get("slices", []) or []
-                ],
-            )
-            if alloc_raw
-            else None
-        )
-
-        bands = {
-            str(sym): {str(k): float(v) for k, v in (band or {}).items()}
-            for sym, band in (data.get("rebalance_bands", {}) or {}).items()
-        }
         vest_calendar = [
             VestEvent(date=str(v["date"]), units=int(v.get("units", 0)))
-            for v in data.get("vest_calendar", []) or []
+            for v in data.get("vest_calendar") or []
         ]
-        vests = [v.date for v in vest_calendar]  # backward-compat: dates-only for wash_sale_status
-        watchlist = [
-            WatchItem(
-                symbol=str(w["symbol"]).upper(),
-                note=str(w.get("note", "")),
-                name=str(w.get("name", "")),
-                aliases=[str(a) for a in w.get("aliases", []) or []],
-            )
-            for w in data.get("watchlist", []) or []
-        ]
-
-        open_orders = [
-            OpenOrder(
-                symbol=str(o["symbol"]),
-                side=str(o.get("side", "buy")),
-                qty=float(o.get("qty", 0.0)),
-                limit=float(o["limit"]),
-                placed=str(o.get("placed", "")),
-                expires=str(o.get("expires", "")),
-                note=str(o.get("note", "")),
-            )
-            for o in data.get("open_orders") or []
-        ]
-        pulse_thresholds = {
-            str(k): float(v) for k, v in (data.get("pulse") or {}).items()
-        }
-
-        index_watch = [str(x) for x in data.get("index_watch") or []]
-        macro_events = [
-            MacroEvent(date=str(m["date"]), label=str(m.get("label", "")))
-            for m in data.get("macro_events") or []
-        ]
-        tax_events = [
-            MacroEvent(date=str(m["date"]), label=str(m.get("label", "")))
-            for m in data.get("tax_events") or []
-        ]
-
-        # the unwind sold-ledger + plan anchors; absent block → progress stays None.
-        # `unwind:` is the canonical key; no legacy alias is honored.
-        unwind_raw = data.get("unwind") or {}
-        unwind_sold = [
-            SoldLot(
-                date=str(s["date"]),
-                qty=float(s["qty"]),
-                px=float(s["px"]) if s.get("px") is not None else None,
-            )
-            for s in unwind_raw.get("sold") or []
-        ]
-        unwind_meta = {
-            str(k): float(v)
-            for k, v in unwind_raw.items()
-            if k in ("plan_start_pct_liquid", "target_pct_liquid") and v is not None
-        }
-
+        unwind = data.get("unwind") or {}
         return PortfolioSeed(
-            holdings=holdings,
-            proxy=proxy,
-            screen=screen,
-            allocation_target=allocation_target,
-            rebalance_bands=bands,
-            vest_dates=vests,
+            holdings=[_holding(h) for h in data.get("holdings", [])],
+            proxy=_proxy_basket(data.get("fund_proxy") or {}, self._path.parent),
+            screen=_values_screen(data.get("values_screen") or {}),
+            allocation_target=_allocation_target(data.get("allocation_target") or {}),
+            rebalance_bands={
+                str(sym): {str(k): float(v) for k, v in (band or {}).items()}
+                for sym, band in (data.get("rebalance_bands") or {}).items()
+            },
+            vest_dates=[v.date for v in vest_calendar],
             vest_calendar=vest_calendar,
-            watchlist=watchlist,
-            open_orders=open_orders,
-            pulse_thresholds=pulse_thresholds,
-            index_watch=index_watch,
-            macro_events=macro_events,
-            tax_events=tax_events,
-            unwind_sold=unwind_sold,
-            unwind_meta=unwind_meta,
+            watchlist=[
+                WatchItem(
+                    symbol=str(w["symbol"]).upper(),
+                    note=str(w.get("note", "")),
+                    name=str(w.get("name", "")),
+                    aliases=[str(a) for a in w.get("aliases") or []],
+                )
+                for w in data.get("watchlist") or []
+            ],
+            open_orders=[_open_order(o) for o in data.get("open_orders") or []],
+            pulse_thresholds={str(k): float(v) for k, v in (data.get("pulse") or {}).items()},
+            index_watch=[str(x) for x in data.get("index_watch") or []],
+            macro_events=_dated_events(data.get("macro_events")),
+            tax_events=_dated_events(data.get("tax_events")),
+            unwind_sold=[
+                SoldLot(
+                    date=str(s["date"]),
+                    qty=float(s["qty"]),
+                    px=float(s["px"]) if s.get("px") is not None else None,
+                )
+                for s in unwind.get("sold") or []
+            ],
+            unwind_meta={
+                str(k): float(v)
+                for k, v in unwind.items()
+                if k in ("plan_start_pct_liquid", "target_pct_liquid") and v is not None
+            },
         )
+
+
+# ---- one function per section of portfolio.yaml --------------------------------------------------
+# Each takes the section's raw YAML and returns its typed form. A missing optional key takes the
+# dataclass's default; a missing required one (a holding's symbol, an order's limit) is a KeyError,
+# which is the right failure for a ledger that is edited by hand.
+
+
+def _optional_float(value: Any) -> float | None:
+    return float(value) if value is not None else None
+
+
+def _holding(raw: dict[str, Any]) -> Holding:
+    return Holding(
+        symbol=str(raw["symbol"]),
+        name=str(raw.get("name", "")),
+        asset_type=str(raw.get("type", "")),
+        account=str(raw.get("account", "brokerage")),
+        shares=float(raw.get("shares", 0.0)),
+        avg_cost=float(raw.get("avg_cost", 0.0)),
+        cost_basis=float(raw.get("cost_basis", 0.0)),
+        last_price=_optional_float(raw.get("last_price")),
+        balance=_optional_float(raw.get("balance")),
+        as_of=str(raw.get("as_of", "")),
+        lots=[
+            Lot(acquired=str(lot["acquired"]), qty=float(lot["qty"]), unit_cost=float(lot["unit_cost"]))
+            for lot in raw.get("lots") or []
+        ],
+        aliases=[str(a) for a in raw.get("aliases") or []],
+    )
+
+
+def _proxy_basket(raw: dict[str, Any], base_dir: Path) -> ProxyBasket:
+    """The basket that stands in for a fund with no intraday price (`fund_proxy:`).
+
+    Two forms: `basket:` rows of {symbol, weight, source?}, where the weights are each name's share
+    of the fund, or the older `symbols:` list, which is equal-weight. `basket:` wins when both are
+    present. `holdings_ref` is resolved against the portfolio file's own directory.
+    """
+    rows = raw.get("basket") or []
+    if rows:
+        symbols = [str(r.get("symbol", "")) for r in rows if r.get("symbol")]
+        weights = {
+            str(r["symbol"]): float(r["weight"])
+            for r in rows
+            if r.get("symbol") and r.get("weight") is not None
+        }
+        sources = {
+            str(r["symbol"]): str(r["source"]).lower() for r in rows if r.get("symbol") and r.get("source")
+        }
+    else:
+        symbols = [str(s) for s in raw.get("symbols", [])]
+        weights, sources = {}, {}
+    return ProxyBasket(
+        fund=str(raw.get("fund", "")),
+        symbols=symbols,
+        note=str(raw.get("note", "")).strip(),
+        weights=weights,
+        sources=sources,
+        cash_weight=float(raw.get("cash_weight", 0.0) or 0.0),
+        holdings_ref=(base_dir / str(raw["holdings_ref"])).resolve() if raw.get("holdings_ref") else None,
+        fills=[
+            ProxyFill(
+                symbol=str(f["symbol"]).upper(),
+                exposure=str(f.get("exposure") or f["symbol"]),
+                countries=[str(c).upper() for c in f.get("countries") or []],
+            )
+            for f in raw.get("fills") or []
+            if f.get("symbol")
+        ],
+    )
+
+
+def _values_screen(raw: dict[str, Any]) -> ValuesScreen:
+    return ValuesScreen(
+        exclude={
+            str(category): [str(t) for t in tickers]
+            for category, tickers in (raw.get("exclude") or {}).items()
+        },
+        positive_tilts=[str(t) for t in raw.get("positive_tilts", [])],
+    )
+
+
+def _allocation_target(raw: dict[str, Any]) -> AllocationTarget | None:
+    if not raw:
+        return None
+    return AllocationTarget(
+        caption=str(raw.get("caption", "")).strip(),
+        slices=[AllocSlice(label=str(s["label"]), value=float(s["value"])) for s in raw.get("slices") or []],
+    )
+
+
+def _open_order(raw: dict[str, Any]) -> OpenOrder:
+    return OpenOrder(
+        symbol=str(raw["symbol"]),
+        side=str(raw.get("side", "buy")),
+        qty=float(raw.get("qty", 0.0)),
+        limit=float(raw["limit"]),
+        placed=str(raw.get("placed", "")),
+        expires=str(raw.get("expires", "")),
+        note=str(raw.get("note", "")),
+    )
+
+
+def _dated_events(raw: list[dict[str, Any]] | None) -> list[MacroEvent]:
+    return [MacroEvent(date=str(e["date"]), label=str(e.get("label", ""))) for e in raw or []]

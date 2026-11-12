@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -16,11 +15,13 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from harness._cli import fail
+from harness._cli import ReportingGroup
 from harness.bus.models import EventDraft, Severity
 from harness.bus.service import BusService
+from harness.errors import HarnessError, UsageError
 
 app = typer.Typer(
+    cls=ReportingGroup,
     add_completion=False,
     help="The harness message bus — durable human-event layer for standing agents. "
     "Producers publish; the tray app (and future transports) deliver. Spec: docs/BUS.md.",
@@ -28,7 +29,6 @@ app = typer.Typer(
 console = Console()
 
 
-_fail = partial(fail, mark="✗")
 
 
 def _payload_arg(raw: str) -> dict[str, object]:
@@ -160,8 +160,7 @@ def purge(
     --include-unread); `--policy default` is what a weekly scheduled run uses."""
     if policy:
         if policy != "default":
-            _fail(f"unknown policy: {policy} (only `default` exists)")
-            raise typer.Exit(code=1)
+            raise HarnessError(f"unknown policy: {policy} (only `default` exists)")
         counts = BusService().purge_policy(dry_run=dry_run)
         verb = "would purge" if dry_run else "purged"
         console.print(
@@ -174,8 +173,7 @@ def purge(
             console.print(f"{'would rotate' if dry_run else 'rotated'} {rotated}")
         return
     if not before:
-        _fail("pass --before <bound> or --policy default")
-        raise typer.Exit(code=1)
+        raise UsageError("pass --before <bound> or --policy default")
     bound = before
     if before.endswith("d") and before[:-1].isdigit():
         cutoff = datetime.now(UTC) - timedelta(days=int(before[:-1]))

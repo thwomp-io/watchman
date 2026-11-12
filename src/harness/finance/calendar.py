@@ -2,16 +2,20 @@
 
 One dated schedule from primary sources (see providers/calendar_provider.py): the economic
 releases (with the numbers once printed), FOMC decisions (+ the minutes, estimated three weeks on
-until the release date is published), and coupon auctions. Tiered: `high` = the releases that move
-the tape (CPI, payrolls, PCE, GDP, the Fed…); everything else is `normal` and shows with `--all`.
+until the release date is published), coupon auctions, and the days a market is closed or closes
+early. A printed release's number is taken from the agency that publishes it where one is
+reachable (calendar_actuals.py); the schedule source's own number stands until then. Tiered:
+`high` = the releases that move the tape (CPI, payrolls, PCE, GDP, the Fed…); everything else is
+`normal` and shows with `--all`.
 
 Machine-sourced rows never touch the hand-kept `macro_events` ledger: the gates board and pulse
 MERGE them, skipping a calendar row when a ledger row on the same date already names the same
 release (the ledger's wording wins — it carries the operator's context).
 
 Cached under the harness cache dir: a past day's rows are final; today refreshes every 30 minutes
-(actuals land through the day); future days every 12 hours; the Fed page weekly; auctions every
-6 hours. `--refresh` ignores the cache.
+(actuals land through the day; an agency due today is asked every 5 minutes until it posts);
+future days every 12 hours; the Fed page and the holiday schedules weekly; auctions every 6 hours.
+`--refresh` ignores the cache.
 """
 
 from __future__ import annotations
@@ -66,11 +70,12 @@ HIGH_TIER: list[tuple[str, str]] = [
 class CalEvent:
     date: str  # ISO
     name: str
-    source: str  # nasdaq | fed | treasury
+    source: str  # nasdaq | fed | treasury | bls | bea | census | sifma | nyse
     tier: str  # high | normal
     family: str | None = None  # the HIGH_TIER family ("CPI"…) — the dedup key vs the ledger
     time_et: str | None = None
     actual: str | None = None
+    actual_source: str | None = None  # the agency the actual was read from; None = the row's own source
     consensus: str | None = None
     previous: str | None = None
     confirmed: bool = True  # False = an estimate (FOMC minutes before the Fed publishes the date)
@@ -84,7 +89,7 @@ class CalEvent:
         if self.time_et:
             bits.append(f"{self.time_et} ET")
         if self.actual:
-            bits.append(f"actual {self.actual}")
+            bits.append(f"actual {self.actual}" + (f" ({self.actual_source})" if self.actual_source else ""))
         elif self.awaiting_actual:
             bits.append("printed, actual not posted yet")
         if self.consensus:
@@ -148,6 +153,7 @@ def build_calendar(
 ) -> Calendar:
     """The next `days` days (today included). `offline` = cache only, never fetch (the fast
     consumers: the gates widget, pulse between refreshes)."""
+    from harness.finance import calendar_actuals as ca
     from harness.finance.providers import calendar_provider as cp
 
     today = today or date.today()
@@ -167,7 +173,7 @@ def build_calendar(
                 try:
                     if i:
                         time.sleep(_PACE)
-                    rows = [asdict(r) for r in cp.fetch_econ_day(d, client)]
+                    rows = [asdict(r) for r in cp.fetch_econ_day(d)]
                     entry = cache["days"][key] = {"fetched": now, "rows": rows}
                     dirty = True
                 except ProviderError as e:
@@ -216,6 +222,14 @@ def build_calendar(
                 dirty = True
             except ProviderError as e:
                 cal.notes.append(str(e))
+        # the days a market is closed or closes early
+        hol = cache.get("holidays")
+        if not offline and not _fresh(hol, ca.TTL_HOLIDAYS, now):
+            market_days = ca.fetch_holidays(client, cal.notes)
+            if market_days is not None:
+                hol = cache["holidays"] = {"fetched": now, "rows": market_days}
+                dirty = True
+        cal.events += ca.holiday_events((hol or {}).get("rows", []), today, end)
         for a in (td or {}).get("auctions", []):
             if today.isoformat() <= a["day"] <= end.isoformat():
                 amt = f" ${a['amount_bn']:g}B" if a.get("amount_bn") else ""
@@ -224,15 +238,30 @@ def build_calendar(
                     date=a["day"], source="treasury", tier="normal", family=None,
                     name=f"{a['term']} {a['kind']} auction{amt}{reopen}", time_et=a.get("close_et"),
                 ))
+        # today's printed releases, from the agencies that publish them
+        now_et = now_et or clock_for(today, datetime.now(_ET))
+        dirty |= ca.apply_actuals(cal.events, cache, today=today, now_et=now_et, now=now, client=client,
+                                  offline=offline, notes=cal.notes)
     if dirty:
         _save(cache)
-    mark_awaiting(cal.events, today, now_et or datetime.now(_ET).strftime("%H:%M"))
+    mark_awaiting(cal.events, today, now_et)
     cal.events.sort(key=lambda e: (e.date, e.time_et or "99:99", e.name))
     return cal
 
 
 _ET = ZoneInfo("America/New_York")
 _GRACE_MIN = 10
+
+
+def clock_for(today: date, now: datetime) -> str:
+    """The Eastern clock as it bears on `today`'s rows (pure; `now` is Eastern). `today` is the
+    reader's local date: late in a Pacific evening Eastern is already on the next day, and every
+    release of `today` is past, not still ahead."""
+    if now.date() > today:
+        return "23:59"
+    if now.date() < today:
+        return "00:00"
+    return now.strftime("%H:%M")
 
 
 def mark_awaiting(events: list[CalEvent], today: date, now_et: str) -> None:
@@ -267,6 +296,7 @@ _FAMILY_WORDS = {
     # ledger "ISM PMI" row must not hide the S&P rows
     "S&P PMI": ("s&p global", "s&p pmi", "flash pmi"),
     "Fed speaker": ("speaks", "speech", "remarks", "testimony"),
+    "Market holiday": ("holiday", "market closed", "markets closed", "early close"),
 }
 
 

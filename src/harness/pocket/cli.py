@@ -12,11 +12,16 @@ from pathlib import Path
 
 import typer
 
+from harness._cli import ReportingGroup
 from harness.pocket import config as pocket_config
 from harness.pocket.runner import Runner
 from harness.pocket.store import PocketStore
 
-app = typer.Typer(no_args_is_help=True, help="The pocket agent — a read-only phone chat with an agent lane.")
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="The pocket agent — a read-only phone chat with an agent lane.",
+)
 
 
 @app.command()

@@ -15,14 +15,13 @@ import typer
 from rich.markup import escape
 from rich.table import Table
 
+from harness.errors import HarnessError, UsageError
+from harness.finance.cli.common import console, finance_service, money_short, signed
 from harness.finance.config.settings import get_settings
-from harness.finance.providers.base import ProviderError
+from harness.viz import VizError, render_diagram
 
 if TYPE_CHECKING:
     pass
-from harness._cli import fail as _fail
-from harness.finance._cli import _money_short, _signed, _svc, console
-from harness.viz import VizError, render_diagram
 
 
 def positions(
@@ -30,11 +29,7 @@ def positions(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     """Portfolio holdings (from the corpus seed) joined to live quotes — read-only observation."""
-    try:
-        snap = _svc(feed).positions()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    snap = finance_service(feed).positions()
 
     if as_json:
         console.print_json(snap.model_dump_json())
@@ -51,9 +46,9 @@ def positions(
             f"{p.shares:g}",
             f"${p.price:,.2f}" if p.price is not None else "—",
             f"${p.market_value:,.2f}" if p.market_value is not None else "—",
-            _signed(p.unrealized_gl, money=True),
-            _signed(p.unrealized_gl_pct),
-            _signed(p.day_change_pct),
+            signed(p.unrealized_gl, money=True),
+            signed(p.unrealized_gl_pct),
+            signed(p.day_change_pct),
         )
     console.print(table)
 
@@ -64,12 +59,12 @@ def positions(
             acct_pos = [p for p in positions if p.account == acct]
             mv = sum(p.market_value or 0.0 for p in acct_pos)
             gl = sum(p.unrealized_gl or 0.0 for p in acct_pos)
-            unreal = _signed(gl, money=True)
+            unreal = signed(gl, money=True)
             console.print(f"[dim]  {acct}: value ${mv:,.2f}   unrealized {unreal}[/dim]")
     console.print(
         f"\n[bold]Net worth ${snap.net_worth:,.2f}[/bold]  "
         f"[dim](live ${snap.live_value:,.2f} + last-known ${snap.last_known_value:,.2f} + "
-        f"static ${snap.static_value:,.2f})[/dim]   day {_signed(snap.quoted_day_gl, money=True)} (live)"
+        f"static ${snap.static_value:,.2f})[/dim]   day {signed(snap.quoted_day_gl, money=True)} (live)"
     )
     for p in positions:
         if p.note:
@@ -83,11 +78,7 @@ def networth(
     log: bool = typer.Option(False, "--log", help="Upsert today's total into finance/networth-history.json"),
 ) -> None:
     """Full-picture net worth across institutions (brokerage + retirement + cash)."""
-    try:
-        nw = _svc().networth()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    nw = finance_service().networth()
 
     if as_json:
         console.print_json(nw.model_dump_json())
@@ -122,11 +113,7 @@ def daygl(
     if after_hours:
         _after_hours(as_json)
         return
-    try:
-        d = _svc().daygl()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    d = finance_service().daygl()
 
     if as_json:
         console.print_json(d.model_dump_json())
@@ -138,19 +125,19 @@ def daygl(
         table.add_row(
             r.label,
             f"${r.value:,.2f}",
-            _signed(r.day_gl, money=True) if r.day_gl is not None else "[dim]flat[/dim]",
-            _signed(r.day_pct) if r.day_pct is not None else "[dim]—[/dim]",
+            signed(r.day_gl, money=True) if r.day_gl is not None else "[dim]flat[/dim]",
+            signed(r.day_pct) if r.day_pct is not None else "[dim]—[/dim]",
             f"{r.kind}" + (f" · {r.detail}" if r.detail else ""),
         )
     console.print(table)
     if d.total_day_gl is not None:
         console.print(
-            f"\n[bold]Day G/L {_signed(d.total_day_gl, money=True)} "
-            f"({_signed(d.total_day_pct) if d.total_day_pct is not None else '—'}) est[/bold]  "
+            f"\n[bold]Day G/L {signed(d.total_day_gl, money=True)} "
+            f"({signed(d.total_day_pct) if d.total_day_pct is not None else '—'}) est[/bold]  "
             f"[dim]of net worth ${d.net_worth:,.2f}[/dim]"
         )
         if d.accounts:
-            split = " · ".join(f"{a} {_signed(v, money=True)}" for a, v in sorted(d.accounts.items()))
+            split = " · ".join(f"{a} {signed(v, money=True)}" for a, v in sorted(d.accounts.items()))
             console.print(f"[dim]  exact sleeve by account: {split}[/dim]")
     else:
         console.print("[yellow]Nothing priced this run (no live quotes, no proxy estimate).[/yellow]")
@@ -161,11 +148,7 @@ def daygl(
 def _after_hours(as_json: bool) -> None:
     from harness.finance.sessions import ET
 
-    try:
-        ah = _svc().after_hours()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    ah = finance_service().after_hours()
     if as_json:
         console.print_json(ah.model_dump_json())
         return
@@ -181,12 +164,12 @@ def _after_hours(as_json: bool) -> None:
             f"{r.close:,.2f}" if r.close is not None else "—",
             f"{r.price:,.2f}" if r.price is not None else f"[dim]{r.note}[/dim]",
             f"{when:%a %H:%M}" if when else "",
-            _signed(r.move, money=True) if r.move is not None else "[dim]excluded[/dim]",
-            _signed(r.move_pct) if r.move_pct is not None else "",
+            signed(r.move, money=True) if r.move is not None else "[dim]excluded[/dim]",
+            signed(r.move_pct) if r.move_pct is not None else "",
         )
     console.print(table)
-    pct = f" ({_signed(ah.total_pct)})" if ah.total_pct is not None else ""
-    console.print(f"\n[bold]Implied quoted-sleeve move {_signed(ah.total_move, money=True)}{pct}[/bold]  "
+    pct = f" ({signed(ah.total_pct)})" if ah.total_pct is not None else ""
+    console.print(f"\n[bold]Implied quoted-sleeve move {signed(ah.total_move, money=True)}{pct}[/bold]  "
                   f"[dim]on ${ah.value_at_close:,.2f} at the close[/dim]")
     if ah.excluded:
         console.print(f"[dim]  excluded (no extended-hours trade / close): {', '.join(ah.excluded)}[/dim]")
@@ -207,39 +190,40 @@ def log_fill(
     no_order: bool = typer.Option(False, "--no-order", help="The ledger never held an order for this fill"),
     name: str = typer.Option(None, "--name", help="Required to open a new position"),
     asset_type: str = typer.Option("stock", "--type", help="stock | etf (a new position)"),
-    at: str = typer.Option(None, "--at", help="YYYY-MM-DD HH:MM local (default: now) — dates the sync line"),
+    at: str = typer.Option(None, "--at", help="YYYY-MM-DD HH:MM local (default: now): the fill's time"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the diff; write nothing"),
 ) -> None:
-    """Apply one broker fill (a buy) to the tracker-resident portfolio.yaml: shares/avg/basis with history
-    demotion, the open order → FILLED, the cash sweep net of a pending debit, a sync line; parse-smoked."""
+    """Apply one broker fill (a buy) to the tracker-resident portfolio.yaml.
+
+    Updates shares, average cost and basis, removes the order that filled (or reduces a partial), and
+    with `--pending` nets the unsettled debit out of the cash sweep. The file is parse-checked and
+    restored on any failure. What the ledger said before, and the evidence, are recorded as one row
+    in the history (`hn finance ledger-log --kind fills`)."""
     from harness.finance.ledger_fill import Fill, FillError, write_fill
 
     settings = get_settings()
     path = settings.tracker_path / "finance" / "config" / "portfolio.yaml"
     if settings.portfolio_path != path:
-        _fail(f"log-fill writes only the tracker-resident ledger ({path}); the active seed is "
+        raise UsageError(f"log-fill writes only the tracker-resident ledger ({path}); the active seed is "
               f"{settings.portfolio_path} (a weight pack or the packaged default): nothing written")
-        raise typer.Exit(code=2)
     try:
         when = (_dt.datetime.strptime(at, "%Y-%m-%d %H:%M") if at else _dt.datetime.now()).astimezone()
     except ValueError as e:
-        _fail("--at must look like 2026-10-30 08:02")
-        raise typer.Exit(code=2) from e
+        raise UsageError("--at must look like 2026-10-30 08:02") from e
     fill = Fill(symbol=symbol, qty=qty, price=price, screen=screen, when=when, account=account,
                 broker_avg=broker_avg, broker_basis=broker_basis, pending=pending, order_limit=order_limit,
                 no_order=no_order, name=name, asset_type=asset_type)
     try:
         res = write_fill(path, fill, dry_run=dry_run)
     except FillError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     if dry_run:
         console.print(res.diff, markup=False, highlight=False)
         console.print("[yellow]dry run — nothing written[/yellow]")
     for c in res.changes:
         console.print(f"  {'would ' if dry_run else ''}{escape(c)}")
     if not dry_run:
-        console.print(f"[dim]  ↳ {path.name} written + parse-smoked[/dim]")
+        console.print(f"[dim]  ↳ {path.name} written + parse-smoked · history: ledger-log --kind fills[/dim]")
     if not pending:
         console.print("[dim]  cash sweep not adjusted (no --pending): the screen's is already net[/dim]")
     if res.opened:
@@ -257,8 +241,7 @@ def _render_derived(diagram: str, data: dict[str, object], dest: str, name: str)
     try:
         written = render_diagram(diagram, data, out)
     except VizError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+        raise HarnessError(str(e)) from e
     rel = written.resolve().relative_to(tracker.resolve())
     console.print(f"wrote {written}")
     console.print(f"![[{rel.as_posix()}|640]]", markup=False)
@@ -279,11 +262,7 @@ def concentration(
     cash). Never stale — a fresh portfolio.yaml sync + this command reproduces it current. `--json`
     emits the `treemap` contract; `--write` renders the SVG. Read-only observation.
     """
-    try:
-        data = _svc().concentration_treemap()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    data = finance_service().concentration_treemap()
     if write:
         _render_derived("treemap", data, dest, name)
         return
@@ -314,11 +293,7 @@ def allocation(
     strategic plan read from `allocation_target:` (config-stored judgment, synced when the strategy
     changes — not per-fill). `--json` emits the `pie` contract; `--write` renders the SVG.
     """
-    try:
-        data = _svc().allocation_pie()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    data = finance_service().allocation_pie()
     if write:
         _render_derived("pie", data, dest, name)
         return
@@ -343,11 +318,7 @@ def fund_proxy(
 ) -> None:
     """Estimate a mutual fund's EOD direction from a live proxy basket (it doesn't price intraday).
     The fund + its proxies come from the `fund_proxy:` block in portfolio.yaml."""
-    try:
-        est = _svc(feed).fund_proxy()
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    est = finance_service(feed).fund_proxy()
 
     if as_json:
         console.print_json(est.model_dump_json())
@@ -363,7 +334,7 @@ def fund_proxy(
             c.symbol,
             f"${c.price:,.2f}" if c.price is not None else "—",
             f"${c.prev_close:,.2f}" if c.prev_close is not None else "—",
-            _signed(c.move_pct),
+            signed(c.move_pct),
             ("fill " + c.exposure if c.source == "fill" else "ok") if c.available else "unavailable",
             c.basis if c.available else c.reason,
         ]
@@ -371,7 +342,7 @@ def fund_proxy(
             row.insert(1, f"{c.weight:.2f}" if c.weight is not None else "—")
         table.add_row(*row)
     console.print(table)
-    headline = _signed(est.estimate_pct) if est.estimate_pct is not None else "n/a"
+    headline = signed(est.estimate_pct) if est.estimate_pct is not None else "n/a"
     if est.session_state and est.session_date:
         sd = _dt.date.fromisoformat(est.session_date)
         tag = "live" if est.session_state == "live" else est.session_state
@@ -425,18 +396,13 @@ def fund_holdings(
     query = query.strip() or str(overlay_get("finance", "fund_holdings", "query", default="") or "")
     cik = cik.strip() or str(overlay_get("finance", "fund_holdings", "cik", default="") or "")
     if not query or not cik:
-        _fail(
+        raise HarnessError(
             "no fund configured — pass --query + --cik, or set finance.global_settings."
             "fund_holdings.{query,cik} in your user overlay (<tracker>/config/harness.yaml)"
         )
-        raise typer.Exit(code=1)
 
-    try:
-        accession, filed = nport.latest_filing_ref(query, cik)
-        filing = nport.fetch_filing(cik, accession, filed)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    accession, filed = nport.latest_filing_ref(query, cik)
+    filing = nport.fetch_filing(cik, accession, filed)
 
     diff = None
     stats = None
@@ -516,11 +482,7 @@ def unwind(
     The lot is the atom — gains never wash (sellable anytime), losses are the TLH inventory
     (wash-gated). Read-only observation; order placement is always the user's.
     """
-    try:
-        report = _svc(feed).unwind(symbol=symbol, days=days)
-    except ProviderError as e:
-        _fail(str(e))
-        raise typer.Exit(code=1) from e
+    report = finance_service(feed).unwind(symbol=symbol, days=days)
 
     if section:
         payload = report.model_dump(mode="json")
@@ -535,9 +497,9 @@ def unwind(
     p = report.position
     console.print(
         f"\n[bold]{report.symbol}[/bold] @ ${report.price:,.2f}  "
-        f"{_signed(report.day_change_pct)}  ·  position {p.shares:,.0f} sh  "
-        f"mkt {_money_short(p.market_value)}  unreal {_signed(p.unrealized_gl, money=True)} "
-        f"({_signed(p.unrealized_gl_pct)})\n"
+        f"{signed(report.day_change_pct)}  ·  position {p.shares:,.0f} sh  "
+        f"mkt {money_short(p.market_value)}  unreal {signed(p.unrealized_gl, money=True)} "
+        f"({signed(p.unrealized_gl_pct)})\n"
     )
     if report.progress:
         pr = report.progress
@@ -569,16 +531,16 @@ def unwind(
         )
         lt.add_row(
             lot.acquired, f"{lot.qty:,.0f}", f"${lot.unit_cost:,.3f}",
-            _money_short(lot.market_value), _signed(lot.unrealized_gl, money=True),
-            _signed(lot.unrealized_gl_pct), cls, harvest,
+            money_short(lot.market_value), signed(lot.unrealized_gl, money=True),
+            signed(lot.unrealized_gl_pct), cls, harvest,
         )
     console.print(lt)
 
     t = report.tlh
     console.print(
         f"\n  [bold]TLH split[/bold] @ ${report.price:,.2f} — "
-        f"[red]loss inventory {_money_short(t.harvestable_loss)} across {t.harvestable_shares:,.0f} sh[/red] "
-        f"(wash-gated) · [green]gain lots {_money_short(t.gain_lot_value)} / "
+        f"[red]loss inventory {money_short(t.harvestable_loss)} across {t.harvestable_shares:,.0f} sh[/red] "
+        f"(wash-gated) · [green]gain lots {money_short(t.gain_lot_value)} / "
         f"{t.gain_lot_shares:,.0f} sh[/green] (sellable anytime)"
     )
     w = report.wash_sale
@@ -595,7 +557,7 @@ def unwind(
         vt.add_column(col)
     for v in report.vests:
         vt.add_row(
-            v.date, f"{v.units:,}", _money_short(v.est_value),
+            v.date, f"{v.units:,}", money_short(v.est_value),
             f"{v.days_away:+d}", "upcoming" if v.future else "vested",
         )
     console.print(vt)
@@ -628,13 +590,11 @@ def holdings(
         try:
             params = load_params(path)
         except (OSError, ProjectionError) as e:
-            _fail(f"projection registry unreadable ({path}): {e}")
-            raise typer.Exit(code=1) from e
+            raise HarnessError(f"projection registry unreadable ({path}): {e}") from e
     try:
-        snap = _svc(feed).positions()
+        snap = finance_service(feed).positions()
     except Exception as e:  # noqa: BLE001 — no corpus seed = nothing to appraise; fail loud
-        _fail(f"positions unavailable: {e}")
-        raise typer.Exit(code=1) from e
+        raise HarnessError(f"positions unavailable: {e}") from e
     rows = [
         {
             "symbol": pos.symbol,
@@ -713,7 +673,7 @@ def symbols(
     parameterized chart derives its chip list from the portfolio seed at
     refresh, so it tracks buys/sells lock-step instead of drifting as a static config snapshot.
     Mutual funds / statics are excluded (not bar-chartable); symbols dedupe across lot entries."""
-    ordered = _svc().held_symbols()
+    ordered = finance_service().held_symbols()
     if as_json:
         import json as _json
 

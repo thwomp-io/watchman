@@ -219,8 +219,8 @@ describe("Dashboard Studio — unlock, migration, save (checkpoint C)", () => {
       expect(saved.owner).toBe("user");
       expect(saved.widgets.every((w: Widget) => !!w.layout)).toBe(true);
     });
-    // and the toggle reads EDITING
-    expect(screen.getByRole("button", { name: /EDITING/ })).toBeInTheDocument();
+    // and the toggle reads EDITING, once the state set after the save has rendered
+    expect(await screen.findByRole("button", { name: /EDITING/ })).toBeInTheDocument();
   });
 
   it("the unlock toggle is hidden while a pack is active (transient dashboards)", async () => {

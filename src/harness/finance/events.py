@@ -14,7 +14,7 @@ from harness.finance.catalysts import story_key
 
 if TYPE_CHECKING:
     from harness.finance.models import NewsItem
-    from harness.finance.watch import PulseReport
+    from harness.finance.pulse import PulseFlag, PulseReport
 
 SEVERITY_BY_KIND: dict[str, Severity] = {
     "trap_proximity": "alert",
@@ -104,12 +104,20 @@ def events_from_catalysts(
     return drafts
 
 
+def _topic_key(flag: PulseFlag, day: str) -> str:
+    """The key for a flag that shares its kind and symbol with others; blank lets the bus derive it."""
+    return f"finance.pulse:{flag.kind}:{flag.symbol}:{flag.topic}:{day}" if flag.topic else ""
+
+
 def events_from_pulse(
     rep: PulseReport, ref_dirs: dict[str, str] | None = None
 ) -> list[EventDraft]:
-    """One EventDraft per flag. The idempotency key is left blank → the bus derives
-    ``finance.pulse:{kind}:{symbol}:{date}`` — exactly the once-per-day-per-(kind,symbol)
-    semantics previously enforced producer-side (the bus now owns it).
+    """One EventDraft per flag, published once a day each.
+
+    A flag that kind and symbol identify leaves the idempotency key blank, and the bus derives
+    ``finance.pulse:{kind}:{symbol}:{date}``. A flag with a ``topic`` (one of several macro releases,
+    lots or filings that share a kind and symbol) carries the topic in its key; without it only the
+    first such flag of the day was ever stored.
 
     ``ref_dirs`` (symbol → vault-relative research dir, existence-checked by the caller — this stays
     pure/no-I/O) adds a ``payload.ref`` deep-link the bus-app Inbox renders as a "go to →" jump.
@@ -136,6 +144,7 @@ def events_from_pulse(
                 body=flag.message,
                 payload=payload,
                 severity=SEVERITY_BY_KIND.get(flag.kind, "warn"),
+                idempotency_key=_topic_key(flag, rep.as_of),
             )
         )
     return drafts

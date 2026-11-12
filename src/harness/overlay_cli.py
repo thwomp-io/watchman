@@ -14,9 +14,14 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from harness._cli import ReportingGroup
 from harness.settings import _PACKAGED_OVERLAY, overlay_path, user_overlay
 
-app = typer.Typer(no_args_is_help=True, help="The user overlay (harness.yaml) — show what's set.")
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="The user overlay (harness.yaml) — show what's set.",
+)
 console = Console()
 
 

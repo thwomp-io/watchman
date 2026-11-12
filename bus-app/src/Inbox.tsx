@@ -129,8 +129,8 @@ function StatusBar({ wm, agenda, health, urgent }: {
       <dl className="status-agenda">
         {nextPrint && <div><dt>next print</dt><dd>{nextPrint.symbol} · {nextPrint.days_out}d</dd></div>}
         {agenda?.wash && (
-          <div><dt>vest wash</dt><dd>{agenda.wash.today_poisoned
-            ? `poisoned → ${agenda.wash.next_clean_start ?? "—"}` : "clear"}</dd></div>
+          <div><dt>wash-sale window</dt><dd>{agenda.wash.today_poisoned
+            ? `until ${agenda.wash.next_clean_start ?? "—"}` : "clear"}</dd></div>
         )}
         {pulse?.last_flags && <div className="status-lastflag"><dt>last flag</dt><dd>{pulse.last_flags.split(";")[0]}</dd></div>}
       </dl>

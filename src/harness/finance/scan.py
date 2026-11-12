@@ -22,7 +22,7 @@ Design:
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -94,7 +94,7 @@ class JobResult[T]:
 
 
 def run_parallel[T](
-    jobs: list[tuple[str, Callable[[], T]]], *, workers: int = DEFAULT_WORKERS
+    jobs: Sequence[tuple[str, Callable[[], T]]], *, workers: int = DEFAULT_WORKERS
 ) -> list[JobResult[T]]:
     """Run `(label, fn)` jobs on a bounded pool; results come back in SUBMISSION ORDER with each
     `ProviderError` captured per job. Empty input → empty output without spinning a pool."""

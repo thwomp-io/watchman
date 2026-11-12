@@ -54,6 +54,25 @@ HARNESS_SEC_CONTACT=you@example.com
 - Discovery calls (`fundamentals`, the submissions JSON) stay on the open `data.sec.gov` host and
   need no contact.
 
+## When a command fails
+
+Every failure is a short report on stderr, and stdout stays empty:
+
+```
+error: nasdaq: HTTP 403 for ABC
+hint: Usually temporary. Try again in a minute.
+```
+
+| Exit | Meaning |
+|---|---|
+| 1 | A failure the command understood: a source that didn't answer, a missing key, bad input |
+| 70 | A bug. One line names the exception; `HARNESS_DEBUG=1` shows the traceback |
+
+A program driving the CLI can set `HARNESS_ERROR_FORMAT=json` to get the same report as one JSON line:
+`{"error": {"kind": "source", "message": "…", "hint": "…"}}`. `kind` is `source` (something outside didn't
+answer), `internal` (a bug) or `error`. The web console does this for every widget, which is where its error
+state's sentence, hint and Details come from.
+
 ## Notable verbs
 
 Run `hn --help` for the full lane/verb surface; these are the flag shapes worth

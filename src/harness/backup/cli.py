@@ -8,10 +8,16 @@ from typing import TYPE_CHECKING
 import typer
 from rich.console import Console
 
+from harness._cli import ReportingGroup
+
 if TYPE_CHECKING:
     from harness.backup.service import BackupConfig
 
-app = typer.Typer(no_args_is_help=True, help="age-encrypted offsite snapshots of the corpus + service state")
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="age-encrypted offsite snapshots of the corpus + service state",
+)
 console = Console()
 
 

@@ -95,7 +95,15 @@ export type SurfaceState =
   | { status: "idle" }
   | { status: "running"; startedAt: Date }
   | { status: "ok"; data: unknown; at: Date; tookSecs: number; cached?: boolean; refreshing?: boolean }
-  | { status: "error"; message: string; at: Date };
+  | ({ status: "error"; at: Date } & Failure);
+
+/** What a failed read shows: one sentence, and when the server sent them, a hint and the raw output. */
+export interface Failure {
+  message: string;
+  kind?: "source" | "internal" | "error";
+  hint?: string;
+  detail?: string;
+}
 
 // Vault-discovered viz data entry — shape-sniffed; supported grows per phase.
 export interface VizEntry {

@@ -11,6 +11,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from harness.finance.service import FinanceService
+from harness.finance.watch import Section
 
 mcp = FastMCP("harness-finance")
 
@@ -325,12 +326,25 @@ def finance_research(symbol: str, months: int = 6, threshold: float = 3.0) -> st
 
 
 @mcp.tool()
-def finance_watch(mark_seen: bool = True, news_limit: int = 4) -> dict[str, Any]:
+def finance_watch(
+    mark_seen: bool = True, news_limit: int = 4, only: list[str] | None = None
+) -> dict[str, Any]:
     """One-shot standing-watch digest: live day moves + rebalance-band drift
     (bands are illustrative until targets are set) + the wash-sale window (known vests only)
     + days-to-print estimates + ONLY-new headlines via the local seen-cache. READ-ONLY observation;
-    set mark_seen=False to peek without consuming the news delta."""
-    return _svc().watch(mark_seen=mark_seen, news_limit=news_limit).model_dump()
+    set mark_seen=False to peek without consuming the news delta. `only` builds just the named
+    sections (moves, watchlist, drift, wash-sale, prints, news): `["moves"]` reads positions and
+    nothing else."""
+    sections = [Section(name) for name in only] if only else None
+    return _svc().watch(mark_seen=mark_seen, news_limit=news_limit, only=sections).model_dump()
+
+
+@mcp.tool()
+def finance_orders() -> list[dict[str, Any]]:
+    """The resting orders in the portfolio's `open_orders:` ledger against the live price: side,
+    qty, limit, price, and `distance_pct` (smaller is closer to filling). One quote request.
+    READ-ONLY: nothing is placed or cancelled."""
+    return [o.model_dump() for o in _svc().open_orders()]
 
 
 @mcp.tool()
@@ -368,8 +382,10 @@ def finance_global(sections: list[str] | None = None) -> dict[str, Any]:
 @mcp.tool()
 def finance_calendar(days: int = 7, show_all: bool = False) -> dict[str, Any]:
     """The macro release calendar from primary sources: releases with actual/consensus/previous once
-    printed, FOMC decisions + minutes, Fed speakers, Treasury auctions. High tier by default;
-    `show_all` for every release. Use it for any date/time claim — never a remembered date. READ-ONLY."""
+    printed, FOMC decisions + minutes, Fed speakers, Treasury auctions, market holidays. A printed
+    number carries `actual_source` when it was read from the publishing agency (bls, bea, census);
+    "not published" means the agency left that figure out. High tier by default; `show_all` for
+    every release. Use it for any date/time claim — never a remembered date. READ-ONLY."""
     from harness.finance.reads import calendar_payload
 
     return calendar_payload(days, show_all=show_all)

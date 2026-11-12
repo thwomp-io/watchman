@@ -14,11 +14,10 @@ of each verb. `PackGroup` injects it into every verb at command-resolution time 
 per-verb signature noise — and an eager callback sets `WEIGHTS_PACK` (the env var the lane Settings
 read) before the verb body runs.
 
-Note: the injected option is a `TyperOption` (Typer's *vendored*-Click parameter), not a vanilla
-`click.Option`. Typer 0.26 vendors its own Click as `typer._click`; a real-`click` option mixed into
-a Typer command resolves against a vendored-Click context that lacks the real-Click attributes its
-processing expects (`_param_default_explicit`) → an AttributeError at parse time. Staying inside
-Typer's vendored Click keeps the param + the context consistent.
+The option is declared once with the public `typer.Option` on a stub command and lifted out of the
+compiled Click command (`typer.main.get_command`), so Typer constructs its own parameter class. Typer
+vendors Click and changes that class's constructor between releases; a hand-built one broke when it
+did, and a plain `click.Option` resolves against a context it doesn't match.
 """
 
 from __future__ import annotations
@@ -26,13 +25,15 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
+from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 import typer
 import yaml
-from typer.core import TyperGroup, TyperOption
+from typer.core import TyperOption
 
+from harness._cli import ReportingGroup
 from harness.yamlio import load_yaml
 
 
@@ -56,7 +57,7 @@ def _activate_pack(ctx: Any, param: Any, value: Any) -> Any:
     os.environ["WEIGHTS_PACK"] = str(pack.resolve())
     # Lazy imports: these lanes' packages import this module, so importing them at module top would
     # risk an import cycle. At callback time (runtime) the cycle is long resolved.
-    from harness.career.cli import get_settings as career_settings
+    from harness.career.config import get_settings as career_settings
     from harness.finance.config.settings import get_settings as finance_settings
     from harness.travel.config.settings import get_settings as travel_settings
 
@@ -65,20 +66,34 @@ def _activate_pack(ctx: Any, param: Any, value: Any) -> Any:
     return value
 
 
+@cache
 def _pack_option() -> TyperOption:
     """The injected `--pack` option. `expose_value=False` because the verb functions don't declare a
-    `pack` parameter — the side effect (setting the env) is the whole job."""
-    return TyperOption(
-        param_decls=["--pack"],
-        expose_value=False,
-        is_eager=True,
-        callback=_activate_pack,
-        help="Load a weight pack (a portable scenario bundle): the lanes it provides drive their "
-        "reads from <pack>/<lane>/…. Equivalent to setting WEIGHTS_PACK.",
-    )
+    `pack` parameter — the side effect (setting the env) is the whole job. One instance serves every
+    verb: a Click parameter holds no per-invocation state."""
+    stub = typer.Typer()
+
+    @stub.command()
+    def _stub(
+        pack: Annotated[
+            str | None,
+            typer.Option(
+                "--pack",
+                expose_value=False,
+                is_eager=True,
+                callback=_activate_pack,
+                help="Load a weight pack (a portable scenario bundle): the lanes it provides drive "
+                "their reads from <pack>/<lane>/…. Equivalent to setting WEIGHTS_PACK.",
+            ),
+        ] = None,
+    ) -> None: ...
+
+    option = next(p for p in typer.main.get_command(stub).params if p.name == "pack")
+    assert isinstance(option, TyperOption)
+    return option
 
 
-class PackGroup(TyperGroup):
+class PackGroup(ReportingGroup):
     """A lane group whose every verb accepts a trailing `--pack <dir>`.
 
     Set as the `cls` of a lane's `typer.Typer(...)`. At command-resolution time it appends the
@@ -142,6 +157,7 @@ def discover_bundled_packs() -> list[BundledPack]:
 
 
 packs_app = typer.Typer(
+    cls=ReportingGroup,
     no_args_is_help=True,
     help="Weight packs — portable scenario bundles. `list` shows the bundled samples; load ANY pack "
     "dir with `--pack <dir>` on a lane verb (or set WEIGHTS_PACK). The watchman app loads them too.",

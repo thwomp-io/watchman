@@ -876,6 +876,18 @@ select {
                  line-height: 1.5; user-select: text; }
 .surface .empty { padding: 4px 12px 0; }
 
+/* a failed read: a headline, one sentence, what to do, and the raw output folded away */
+.failure { padding: 2px 12px 12px; max-width: 72ch; }
+.failure-message { margin: 0 0 4px; color: var(--sig-alert); font-size: 12px; line-height: 1.5;
+                   user-select: text; overflow-wrap: anywhere; }
+.failure-hint { margin: 0 0 8px; color: var(--ink-dim); font-size: 11px; line-height: 1.5; }
+.failure-retry { margin: 4px 0 8px; }
+.failure-detail summary { cursor: pointer; color: var(--ink-faint); font-size: 9.5px;
+                          letter-spacing: 0.12em; text-transform: uppercase; }
+.failure-detail pre { margin: 6px 0 0; padding: 8px 10px; max-height: 220px; overflow: auto;
+                      border: var(--hairline); color: var(--ink-dim); font-size: 10px;
+                      line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+
 /* indeterminate acquisition sweep */
 .sweep { height: 1px; margin: -10px 12px 10px; overflow: hidden; position: relative;
          background: var(--etch); }

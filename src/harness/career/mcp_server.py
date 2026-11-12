@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
-from harness.career.cli import get_settings
-from harness.career.config import role_hunt_root
+from harness.career.config import get_settings, role_hunt_root
 from harness.career.service import CareerService
 
 mcp = FastMCP("harness-career")

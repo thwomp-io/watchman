@@ -25,10 +25,15 @@ from pathlib import Path
 
 import typer
 
+from harness._cli import ReportingGroup
 from harness.packs import bundled_packs_dir, discover_bundled_packs
 from harness.paths import REPO_ROOT
 
-app = typer.Typer(no_args_is_help=True, help="The web console: a sealed demo on the sample packs.")
+app = typer.Typer(
+    cls=ReportingGroup,
+    no_args_is_help=True,
+    help="The web console: a sealed demo on the sample packs.",
+)
 
 DEMO_WRITES = frozenset({"set_active_pack"})
 _UI_CANDIDATES = (REPO_ROOT / "bus-app" / "dist", Path("/app/ui"))

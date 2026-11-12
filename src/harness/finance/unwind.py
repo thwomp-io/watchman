@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from harness.finance.corpus.reader import Lot, SoldLot, VestEvent
 from harness.finance.models import Bar, SupportLevel
-from harness.finance.watch import WashSaleStatus
+from harness.finance.wash_sale import WASH_DAYS, WashSaleStatus
 
 
 class LotView(BaseModel):
@@ -234,9 +234,6 @@ def _rollup(lots: list[LotView]) -> PositionRollup:
     )
 
 
-_WASH_DAYS = 30
-
-
 def _merge_ranges(ranges: list[tuple[date, date]]) -> list[tuple[date, date]]:
     """Union overlapping/adjacent (lo, hi) date ranges — the poison bands of clustered vests."""
     if not ranges:
@@ -326,7 +323,7 @@ def _vest_timeline(symbol: str, vest_calendar: list[VestEvent], price: float, to
     else:
         start, end = today - timedelta(days=20), today + timedelta(days=60)
 
-    wash = timedelta(days=_WASH_DAYS)
+    wash = timedelta(days=WASH_DAYS)
     poison = _merge_ranges([(d - wash, d + wash) for d in vest_dates])
     windows: list[dict[str, Any]] = []
     cursor = start

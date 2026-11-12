@@ -105,3 +105,26 @@ def write_lodging_report(
         lines += _property_block(o, embeds)
     report.write_text("\n".join(lines))
     return report
+
+
+def pick_offers(offers: list[HotelOffer], terms: list[str]) -> list[HotelOffer]:
+    """The properties whose names contain each term (case-insensitive), in the order asked. A term
+    that matches nothing, or more than one property, is an error naming what the list holds — a
+    report must carry exactly the properties chosen, never a silent substitute."""
+    out: list[HotelOffer] = []
+    for term in terms:
+        needle = term.strip().lower()
+        hits = [o for o in offers if needle in o.name.lower()]
+        if not hits:
+            names = ", ".join(o.name for o in offers[:25])
+            raise ValueError(
+                f"--pick '{term.strip()}' matches no property in this search — it holds: {names}"
+            )
+        if len(hits) > 1:
+            raise ValueError(
+                f"--pick '{term.strip()}' matches {len(hits)} properties "
+                f"({', '.join(o.name for o in hits)}) — use a longer fragment"
+            )
+        if hits[0] not in out:
+            out.append(hits[0])
+    return out

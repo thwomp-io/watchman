@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { unreadCount } from "./api";
 import {
-  bootstrapToken, httpTransport, inShell, resetTokenMemo, resetTokenPrompt, resolveTransport,
+  bootstrapToken, httpTransport, InvokeError, inShell, resetTokenMemo, resetTokenPrompt, resolveTransport,
   setTransport, shellInvoke, shellIpc, type Transport,
 } from "./transport";
 
@@ -80,11 +80,18 @@ describe("httpTransport", () => {
     expect(JSON.parse(init.body as string)).toEqual({});
   });
 
-  it("rejects with the command name + status on a non-2xx (the Tauri-shaped failure)", async () => {
+  it("rejects with the server's own sentence, kind, hint and detail", async () => {
+    const body = { error: "nasdaq: HTTP 403 for ABC", kind: "source", hint: "Try again in a minute.", detail: "raw" };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body), { status: 400 })));
+    const err = await httpTransport().invoke("run_widget").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(InvokeError);
+    expect(err).toMatchObject({ message: body.error, kind: "source", hint: body.hint, detail: "raw", status: 400 });
+  });
+
+  it("names the command and status when the answer isn't the door's JSON, keeping the text as detail", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("verb not allowlisted", { status: 403 })));
-    await expect(httpTransport().invoke("run_widget")).rejects.toThrow(
-      /run_widget: 403 verb not allowlisted/,
-    );
+    const err = await httpTransport().invoke("run_widget").catch((e: unknown) => e);
+    expect(err).toMatchObject({ message: "run_widget failed (HTTP 403)", kind: "error", detail: "verb not allowlisted" });
   });
 
   it("subscribes as a quiet no-op (push emulation is the polling seam)", async () => {
