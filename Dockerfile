@@ -48,7 +48,7 @@ COPY bus-app/src ./src
 RUN npm run build
 
 # ---- runtime: slim, non-root, just the venv + the CLI on PATH ------------------------------------
-FROM python:3.12-slim-trixie AS runtime
+FROM python:3.15-slim-trixie AS runtime
 LABEL org.opencontainers.image.title="Watchman" \
       org.opencontainers.image.description="The headless engine — the hn CLI + standing agents + bus." \
       org.opencontainers.image.source="https://github.com/thwomp-io/watchman" \
